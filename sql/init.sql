@@ -214,6 +214,26 @@ CREATE TABLE `trade_order_item` (
     KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB COMMENT='交易订单明细表';
 
+CREATE TABLE `trade_order_log` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `order_id` bigint NOT NULL COMMENT '订单ID',
+    `user_id` bigint NOT NULL COMMENT '会员用户ID',
+    `operator_type` varchar(32) NOT NULL COMMENT '操作人类型 user/system/admin',
+    `operator_id` bigint DEFAULT NULL COMMENT '操作人ID，系统操作为0',
+    `action` varchar(64) NOT NULL COMMENT '操作动作',
+    `from_status` tinyint DEFAULT NULL COMMENT '变更前订单状态',
+    `to_status` tinyint DEFAULT NULL COMMENT '变更后订单状态',
+    `from_pay_status` tinyint DEFAULT NULL COMMENT '变更前支付状态',
+    `to_pay_status` tinyint DEFAULT NULL COMMENT '变更后支付状态',
+    `remark` varchar(255) DEFAULT '' COMMENT '操作说明',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    KEY `idx_order_id` (`order_id`),
+    KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB COMMENT='交易订单操作日志表';
+
 CREATE TABLE `pay_order` (
     `id` bigint NOT NULL AUTO_INCREMENT,
     `pay_sn` varchar(32) NOT NULL COMMENT '支付单号',

@@ -38,6 +38,7 @@ public class TradeOrderService {
     private final TradeLogisticsService tradeLogisticsService;
     private final TradeAfterSaleService tradeAfterSaleService;
     private final TradeOrderProperties tradeOrderProperties;
+    private final TradeOrderLogService tradeOrderLogService;
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
     private final PayOrderMapper payOrderMapper;
@@ -81,6 +82,7 @@ public class TradeOrderService {
         order.setAddress(address.getDetailInfo());
         order.setExpireTime(LocalDateTime.now().plusMinutes(tradeOrderProperties.getUnpaidTimeoutMinutes()));
         tradeOrderMapper.insert(order);
+        tradeOrderLogService.recordCreated(order);
 
         for (TradeCartDO cart : checkedList) {
             TradeOrderItemDO item = new TradeOrderItemDO();
@@ -138,6 +140,7 @@ public class TradeOrderService {
         result.put("handleOption", buildHandleOption(order));
         result.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
         result.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
+        result.put("orderLogs", tradeOrderLogService.listByOrderId(order.getId()));
         return result;
     }
 
@@ -150,7 +153,8 @@ public class TradeOrderService {
         if (order.getStatus() != 0) {
             throw new ServerException(400, "当前订单不能取消");
         }
-        if (closeUnpaidOrder(order.getId(), userId, "用户主动取消")) {
+        if (closeUnpaidOrder(order.getId(), userId, TradeOrderLogService.OPERATOR_USER, userId,
+                "USER_CANCEL", "用户主动取消")) {
             return "订单已取消";
         }
 
@@ -161,13 +165,17 @@ public class TradeOrderService {
         throw new ServerException(400, "当前订单不能取消");
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public String confirmOrder(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         if (order.getStatus() != 2) {
             throw new ServerException(400, "当前订单不能确认收货");
         }
+        Integer fromStatus = order.getStatus();
         order.setStatus(3);
         tradeOrderMapper.updateById(order);
+        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
+                "CONFIRM_RECEIPT", fromStatus, order.getStatus(), "用户确认收货");
         return "已确认收货";
     }
 
@@ -199,6 +207,10 @@ public class TradeOrderService {
                 .set(TradeOrderDO::getStatus, 1)
                 .set(TradeOrderDO::getPayTime, LocalDateTime.now()));
         if (updated == 1) {
+            order.setStatus(1);
+            order.setPayStatus(1);
+            tradeOrderLogService.recordPayChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
+                    "PAY_SUCCESS", 0, 1, 0, 1, "Mock 支付成功");
             return;
         }
         TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
@@ -235,7 +247,8 @@ public class TradeOrderService {
                 .last("LIMIT " + batchSize));
         int closedCount = 0;
         for (TradeOrderDO expiredOrder : expiredOrders) {
-            if (closeUnpaidOrder(expiredOrder.getId(), expiredOrder.getUserId(), "超时未支付自动关闭")) {
+            if (closeUnpaidOrder(expiredOrder.getId(), expiredOrder.getUserId(),
+                    TradeOrderLogService.OPERATOR_SYSTEM, 0L, "SYSTEM_CLOSE", "超时未支付自动关闭")) {
                 closedCount++;
             }
         }
@@ -301,7 +314,8 @@ public class TradeOrderService {
                 .orderByAsc(TradeOrderItemDO::getId));
     }
 
-    private boolean closeUnpaidOrder(Long orderId, Long userId, String closeReason) {
+    private boolean closeUnpaidOrder(Long orderId, Long userId, String operatorType, Long operatorId,
+                                     String action, String closeReason) {
         int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
@@ -313,6 +327,9 @@ public class TradeOrderService {
         if (updated != 1) {
             return false;
         }
+        TradeOrderDO closedOrder = tradeOrderMapper.selectById(orderId);
+        tradeOrderLogService.recordStatusChanged(closedOrder, operatorType, operatorId, action,
+                0, 4, closeReason);
         for (TradeOrderItemDO item : getOrderItems(orderId)) {
             tradeProductService.recoverStock(item.getSpuId(), item.getCount());
         }

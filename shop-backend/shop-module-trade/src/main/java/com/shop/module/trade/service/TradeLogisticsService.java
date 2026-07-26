@@ -25,6 +25,7 @@ public class TradeLogisticsService {
 
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderLogisticsMapper tradeOrderLogisticsMapper;
+    private final TradeOrderLogService tradeOrderLogService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> mockShip(Long userId, Long orderId, Map<String, Object> request) {
@@ -52,8 +53,12 @@ public class TradeLogisticsService {
             tradeOrderLogisticsMapper.updateById(logistics);
         }
 
+        Integer fromStatus = order.getStatus();
         order.setStatus(2);
         tradeOrderMapper.updateById(order);
+        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
+                "SHIP_ORDER", fromStatus, order.getStatus(),
+                "物流公司：" + company + "，物流单号：" + logisticsNo);
         return toResp(logistics, order.getStatus());
     }
 

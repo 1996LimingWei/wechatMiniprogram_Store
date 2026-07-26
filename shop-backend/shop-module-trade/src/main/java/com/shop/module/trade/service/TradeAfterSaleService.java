@@ -29,6 +29,7 @@ public class TradeAfterSaleService {
     private final TradeAfterSaleMapper tradeAfterSaleMapper;
     private final TradeOrderMapper tradeOrderMapper;
     private final PayOrderMapper payOrderMapper;
+    private final TradeOrderLogService tradeOrderLogService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> apply(Long userId, Long orderId, Map<String, Object> request) {
@@ -60,8 +61,11 @@ public class TradeAfterSaleService {
         afterSale.setApplyRemark(remark);
         afterSale.setApplyTime(LocalDateTime.now());
         tradeAfterSaleMapper.insert(afterSale);
+        Integer fromStatus = order.getStatus();
         order.setStatus(5);
         tradeOrderMapper.updateById(order);
+        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
+                "APPLY_AFTER_SALE", fromStatus, order.getStatus(), reason);
         return toResp(afterSale);
     }
 
@@ -93,9 +97,14 @@ public class TradeAfterSaleService {
         afterSale.setAuditTime(LocalDateTime.now());
         tradeAfterSaleMapper.updateById(afterSale);
 
+        Integer fromStatus = order.getStatus();
+        Integer fromPayStatus = order.getPayStatus();
         order.setPayStatus(2);
         order.setStatus(5);
         tradeOrderMapper.updateById(order);
+        tradeOrderLogService.recordPayChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
+                "REFUND_SUCCESS", fromStatus, order.getStatus(), fromPayStatus, order.getPayStatus(),
+                "Mock 退款审核通过");
 
         PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getOrderId, orderId)
