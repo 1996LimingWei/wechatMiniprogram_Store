@@ -28,7 +28,7 @@
 | Task 10: 小程序骨架 | ✅ 完成 | uni-app 首页+请求封装 |
 | Phase1-子阶段1: 登录与会话 | ✅ 完成 | 微信登录+Token+刷新 |
 | Phase1-子阶段2: 商品真实接口 | ⏳ 待开始 | MockData → 数据库 |
-| Phase1-子阶段3: 交易闭环 MVP | 🚧 进行中 | 购物车+地址+结算+订单+Mock支付+发货物流+售后退款+超时关闭+订单日志 |
+| Phase1-子阶段3: 交易闭环 MVP | ✅ P0完成 | 购物车+地址+结算+订单+Mock支付+管理端发货+售后同意/拒绝/撤销+超时关闭+订单日志+自动验收 |
 
 ## 阻塞项
 
@@ -302,6 +302,27 @@
 - 按 P0/P1/P2 梳理剩余工作、必要性、验收标准和建议顺序
 - 明确下一步优先推进管理端最小订单处理接口：订单列表、订单详情、发货、售后列表、售后同意/拒绝
 
+## 2026-07-26 交易闭环 P0 企业验收项完成
+
+- 新增管理端订单处理接口：
+  - `/admin-api/trade/order/list`
+  - `/admin-api/trade/order/detail`
+  - `/admin-api/trade/order/ship`
+- 新增管理端售后处理接口：
+  - `/admin-api/trade/after-sale/list`
+  - `/admin-api/trade/after-sale/approve`
+  - `/admin-api/trade/after-sale/reject`
+- 新增用户撤销售后接口：`/app-api/order/refund/cancel`
+- `trade_after_sale` 补齐 `before_order_status`、`reject_reason`、`reject_time`、`cancel_time` 字段，并同步本地 `shop-mysql`
+- 售后状态补齐：处理中、已退款、已拒绝、已撤销；拒绝和撤销后订单会恢复到申请售后前状态
+- 小程序订单列表/详情默认隐藏“模拟发货”“模拟退款通过”等开发按钮，统一由 `TradeDevActionEnabled` 控制
+- 小程序订单列表/详情新增“撤销申请”，订单详情展示售后拒绝原因
+- 新增交易验收文档：`docs/superpowers/plans/2026-07-26-trade-acceptance.md`
+- 新增自动验收脚本：`scripts/verify-trade-flow.ps1`
+- 已验证：`cd shop-backend && mvn clean install -DskipTests` 构建通过
+- 已验证：`.\scripts\verify-trade-flow.ps1 -BaseUrl "http://localhost:8085"` 自动跑通下单、支付、管理端发货、确认收货、售后同意、售后拒绝、用户撤销、超时关闭与库存回补
+- 已清理本次验收测试用户、购物车、地址、订单、支付单、物流单、售后单、订单日志和测试商品数据
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -328,8 +349,10 @@
 
 ## 下一步行动
 
-登录与会话子阶段已完成并通过真实微信联调。下一步：
-1. 推进 Phase 1 子阶段 2：商品真实接口（从 MockData 切换到数据库查询）
+交易闭环 P0 企业验收项已完成并通过自动验收。下一步：
+1. 交易侧进入 P1：支付状态机文档化、库存边界与商品模块对接、订单搜索索引补强
+2. 等商品同事提供真实商品/SKU 接口后，交易侧对接 SKU 库存扣减与商品快照服务
+3. 等客户提供微信商户资料后，替换当前 Mock 支付为微信支付 V3 与真实退款
 
 ---
 

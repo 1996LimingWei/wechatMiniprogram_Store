@@ -43,13 +43,14 @@
 						<!-- 立即支付 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.pay"
 							@tap.stop="payOrder(item, index)">立即支付</view>
-						<!-- 模拟发货 -->
-						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.ship"
+						<view class="action-btn primary" v-if="tradeDevActionEnabled && item.handleOption && item.handleOption.ship"
 							@tap.stop="mockShip(item, index)">模拟发货</view>
 						<!-- 申请退款 -->
 						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refund"
 							@tap.stop="applyRefund(item)">申请退款</view>
-						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.refundApprove"
+						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refundCancel"
+							@tap.stop="cancelRefund(item)">撤销申请</view>
+						<view class="action-btn primary" v-if="tradeDevActionEnabled && item.handleOption && item.handleOption.refundApprove"
 							@tap.stop="mockApproveRefund(item)">模拟退款通过</view>
 						<!-- 确认收货 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.confirm"
@@ -89,6 +90,7 @@ export default {
 			orderList: [],
 			page: 1,
 			size: 10,
+			tradeDevActionEnabled: api.TradeDevActionEnabled === true,
 			loading: false
 		}
 	},
@@ -169,7 +171,7 @@ export default {
 		applyRefund(item) {
 			uni.showModal({
 				title: '申请退款',
-				content: '将提交退款/售后申请，当前为 Mock 审核流程，确定继续吗？',
+				content: '将提交退款/售后申请，提交后商家会尽快处理，确定继续吗？',
 				confirmColor: '#5B8C5A',
 				success: (modalRes) => {
 					if (!modalRes.confirm) return;
@@ -203,6 +205,24 @@ export default {
 				}
 			});
 		},
+		cancelRefund(item) {
+			uni.showModal({
+				title: '撤销申请',
+				content: '确定撤销当前退款/售后申请吗？',
+				confirmColor: '#5B8C5A',
+				success: (modalRes) => {
+					if (!modalRes.confirm) return;
+					util.request(api.OrderRefundCancel, {
+						orderId: item.id
+					}, 'POST', 'application/json').then(res => {
+						if (res.code === 0) {
+							uni.showToast({ title: '已撤销', icon: 'success' });
+							this.reload();
+						}
+					});
+				}
+			});
+		},
 		viewLogistics(item) {
 			util.request(api.OrderLogistics, { orderId: item.id }).then(res => {
 				if (res.code !== 0 || !res.data || !res.data.hasLogistics) {
@@ -218,7 +238,7 @@ export default {
 			});
 		},
 		goReview() {
-			uni.showToast({ title: '评价功能开发中', icon: 'none' });
+			uni.showToast({ title: '评价入口暂未开放', icon: 'none' });
 		},
 		buyAgain() {
 			uni.switchTab({ url: '/pages/index/index' });

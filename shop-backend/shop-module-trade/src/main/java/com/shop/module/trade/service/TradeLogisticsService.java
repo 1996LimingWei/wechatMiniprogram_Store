@@ -29,6 +29,16 @@ public class TradeLogisticsService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> mockShip(Long userId, Long orderId, Map<String, Object> request) {
+        return ship(userId, orderId, request, TradeOrderLogService.OPERATOR_USER, userId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> adminShip(Long orderId, Map<String, Object> request) {
+        return ship(null, orderId, request, TradeOrderLogService.OPERATOR_ADMIN, 0L);
+    }
+
+    private Map<String, Object> ship(Long userId, Long orderId, Map<String, Object> request,
+                                     String operatorType, Long operatorId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         if (order.getStatus() == null || order.getStatus() != 1) {
             throw new ServerException(400, "当前订单不能发货");
@@ -56,7 +66,7 @@ public class TradeLogisticsService {
         Integer fromStatus = order.getStatus();
         order.setStatus(2);
         tradeOrderMapper.updateById(order);
-        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
+        tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
                 "SHIP_ORDER", fromStatus, order.getStatus(),
                 "物流公司：" + company + "，物流单号：" + logisticsNo);
         return toResp(logistics, order.getStatus());
@@ -72,9 +82,12 @@ public class TradeLogisticsService {
     }
 
     private TradeOrderDO getUserOrder(Long userId, Long orderId) {
-        TradeOrderDO order = tradeOrderMapper.selectOne(new LambdaQueryWrapper<TradeOrderDO>()
-                .eq(TradeOrderDO::getUserId, userId)
-                .eq(TradeOrderDO::getId, orderId));
+        LambdaQueryWrapper<TradeOrderDO> wrapper = new LambdaQueryWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, orderId);
+        if (userId != null) {
+            wrapper.eq(TradeOrderDO::getUserId, userId);
+        }
+        TradeOrderDO order = tradeOrderMapper.selectOne(wrapper);
         if (order == null) {
             throw new ServerException(1404, "订单不存在");
         }

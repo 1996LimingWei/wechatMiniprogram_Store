@@ -16,10 +16,11 @@
 				<view class="action-btns">
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.cancel" @tap="cancelOrder">取消订单</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.pay" @tap="payOrder">立即支付</view>
-					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.ship" @tap="mockShip">模拟发货</view>
+					<view class="action-btn primary" v-if="tradeDevActionEnabled && orderInfo.handleOption && orderInfo.handleOption.ship" @tap="mockShip">模拟发货</view>
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.logistics" @tap="viewLogistics">查看物流</view>
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refund" @tap="applyRefund">申请退款</view>
-					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.refundApprove" @tap="mockApproveRefund">模拟退款通过</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refundCancel" @tap="cancelRefund">撤销申请</view>
+					<view class="action-btn primary" v-if="tradeDevActionEnabled && orderInfo.handleOption && orderInfo.handleOption.refundApprove" @tap="mockApproveRefund">模拟退款通过</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.confirm" @tap="confirmOrder">确认收货</view>
 				</view>
 			</view>
@@ -90,6 +91,10 @@
 				<text class="after-label">申请原因</text>
 				<text class="after-value">{{afterSale.reason}}</text>
 			</view>
+			<view class="after-row" v-if="afterSale.rejectReason">
+				<text class="after-label">拒绝原因</text>
+				<text class="after-value">{{afterSale.rejectReason}}</text>
+			</view>
 		</view>
 
 		<view class="order-total">
@@ -120,7 +125,8 @@
 				orderGoods: [],
 				handleOption: {},
 				logistics: {},
-				afterSale: {}
+				afterSale: {},
+				tradeDevActionEnabled: api.TradeDevActionEnabled === true
 			}
 		},
 		methods: {
@@ -234,7 +240,7 @@
 				let that = this;
 				uni.showModal({
 					title: '申请退款',
-					content: '将提交退款/售后申请，当前为 Mock 审核流程，确定继续吗？',
+					content: '将提交退款/售后申请，提交后商家会尽快处理，确定继续吗？',
 					confirmColor: '#5B8C5A',
 					success: function(res) {
 						if (!res.confirm) return;
@@ -263,6 +269,25 @@
 						}, 'POST', 'application/json').then(function(res) {
 							if (res.code === 0) {
 								uni.showToast({ title: '已退款', icon: 'success' });
+								that.getOrderDetail();
+							}
+						});
+					}
+				});
+			},
+			cancelRefund() {
+				let that = this;
+				uni.showModal({
+					title: '撤销申请',
+					content: '确定撤销当前退款/售后申请吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (!res.confirm) return;
+						util.request(api.OrderRefundCancel, {
+							orderId: that.orderInfo.id
+						}, 'POST', 'application/json').then(function(res) {
+							if (res.code === 0) {
+								uni.showToast({ title: '已撤销', icon: 'success' });
 								that.getOrderDetail();
 							}
 						});

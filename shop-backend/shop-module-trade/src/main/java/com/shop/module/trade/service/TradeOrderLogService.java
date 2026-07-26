@@ -18,6 +18,7 @@ public class TradeOrderLogService {
 
     public static final String OPERATOR_USER = "user";
     public static final String OPERATOR_SYSTEM = "system";
+    public static final String OPERATOR_ADMIN = "admin";
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -100,6 +101,8 @@ public class TradeOrderLogService {
             case "CONFIRM_RECEIPT" -> "确认收货";
             case "APPLY_AFTER_SALE" -> "申请售后";
             case "REFUND_SUCCESS" -> "退款完成";
+            case "REJECT_AFTER_SALE" -> "拒绝售后";
+            case "CANCEL_AFTER_SALE" -> "撤销售后";
             default -> "订单操作";
         };
     }

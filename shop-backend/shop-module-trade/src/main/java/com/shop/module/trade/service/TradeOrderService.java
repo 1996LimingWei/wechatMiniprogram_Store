@@ -2,6 +2,8 @@ package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.shop.common.pojo.PageResult;
 import com.shop.common.exception.ServerException;
 import com.shop.module.trade.config.TradeOrderProperties;
 import com.shop.module.trade.dal.dataobject.MemberAddressDO;
@@ -133,15 +135,43 @@ public class TradeOrderService {
 
     public Map<String, Object> getOrderDetail(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
-        List<TradeOrderItemDO> items = getOrderItems(order.getId());
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("orderInfo", toOrderInfo(order));
-        result.put("orderGoods", items.stream().map(this::toOrderGoods).toList());
-        result.put("handleOption", buildHandleOption(order));
-        result.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
-        result.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
-        result.put("orderLogs", tradeOrderLogService.listByOrderId(order.getId()));
-        return result;
+        return buildOrderDetail(order);
+    }
+
+    public PageResult<Map<String, Object>> getAdminOrderPage(int page, int size, Map<String, Object> request) {
+        LambdaQueryWrapper<TradeOrderDO> wrapper = new LambdaQueryWrapper<TradeOrderDO>()
+                .orderByDesc(TradeOrderDO::getCreateTime);
+        Long userId = getLong(request, "userId", 0L);
+        Long orderId = getLong(request, "orderId", 0L);
+        Integer status = getInteger(request, "status");
+        Integer payStatus = getInteger(request, "payStatus");
+        String orderSn = getString(request, "orderSn");
+        String mobile = getString(request, "mobile");
+        if (userId > 0) {
+            wrapper.eq(TradeOrderDO::getUserId, userId);
+        }
+        if (orderId > 0) {
+            wrapper.eq(TradeOrderDO::getId, orderId);
+        }
+        if (status != null) {
+            wrapper.eq(TradeOrderDO::getStatus, status);
+        }
+        if (payStatus != null) {
+            wrapper.eq(TradeOrderDO::getPayStatus, payStatus);
+        }
+        if (!orderSn.isBlank()) {
+            wrapper.like(TradeOrderDO::getOrderSn, orderSn);
+        }
+        if (!mobile.isBlank()) {
+            wrapper.like(TradeOrderDO::getMobile, mobile);
+        }
+        Page<TradeOrderDO> pageResult = tradeOrderMapper.selectPage(new Page<>(Math.max(page, 1), Math.max(size, 1)), wrapper);
+        return new PageResult<>(pageResult.getRecords().stream().map(this::toOrderListItem).toList(),
+                pageResult.getTotal());
+    }
+
+    public Map<String, Object> getAdminOrderDetail(Long orderId) {
+        return buildOrderDetail(getOrder(orderId));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -263,6 +293,19 @@ public class TradeOrderService {
         return item;
     }
 
+    private Map<String, Object> buildOrderDetail(TradeOrderDO order) {
+        List<TradeOrderItemDO> items = getOrderItems(order.getId());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderInfo", toOrderInfo(order));
+        result.put("orderGoods", items.stream().map(this::toOrderGoods).toList());
+        result.put("handleOption", buildHandleOption(order));
+        result.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
+        result.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
+        result.put("payOrder", getPayOrderInfo(order));
+        result.put("orderLogs", tradeOrderLogService.listByOrderId(order.getId()));
+        return result;
+    }
+
     private Map<String, Object> toOrderInfo(TradeOrderDO order) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", order.getId());
@@ -276,6 +319,13 @@ public class TradeOrderService {
         item.put("mobile", order.getMobile());
         item.put("fullRegion", order.getFullRegion());
         item.put("address", order.getAddress());
+        item.put("status", order.getStatus());
+        item.put("payStatus", order.getPayStatus());
+        item.put("orderPrice", TradeMoneyUtils.formatYuan(order.getOrderPrice()));
+        item.put("payTime", order.getPayTime() == null ? "" : order.getPayTime().format(TIME_FORMATTER));
+        item.put("expireTime", order.getExpireTime() == null ? "" : order.getExpireTime().format(TIME_FORMATTER));
+        item.put("closeTime", order.getCloseTime() == null ? "" : order.getCloseTime().format(TIME_FORMATTER));
+        item.put("closeReason", order.getCloseReason());
         item.put("handleOption", buildHandleOption(order));
         item.put("addTime", order.getCreateTime() == null ? "" : order.getCreateTime().format(TIME_FORMATTER));
         return item;
@@ -304,6 +354,8 @@ public class TradeOrderService {
         option.put("refund", order.getPayStatus() != null && order.getPayStatus() == 1
                 && order.getStatus() != null && (order.getStatus() == 1 || order.getStatus() == 2 || order.getStatus() == 3));
         option.put("refundApprove", order.getPayStatus() != null && order.getPayStatus() == 1
+                && order.getStatus() != null && order.getStatus() == 5);
+        option.put("refundCancel", order.getPayStatus() != null && order.getPayStatus() == 1
                 && order.getStatus() != null && order.getStatus() == 5);
         return option;
     }
@@ -355,6 +407,53 @@ public class TradeOrderService {
             case 5 -> "退款中";
             default -> "未知";
         };
+    }
+
+    private Map<String, Object> getPayOrderInfo(TradeOrderDO order) {
+        PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getOrderId, order.getId())
+                .eq(PayOrderDO::getUserId, order.getUserId())
+                .orderByDesc(PayOrderDO::getUpdateTime)
+                .last("LIMIT 1"));
+        if (payOrder == null) {
+            return Map.of("hasPayOrder", false);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("hasPayOrder", true);
+        result.put("id", payOrder.getId());
+        result.put("paySn", payOrder.getPaySn());
+        result.put("amount", TradeMoneyUtils.formatYuan(payOrder.getAmount()));
+        result.put("channel", payOrder.getChannel());
+        result.put("status", payOrder.getStatus());
+        result.put("payTime", payOrder.getPayTime() == null ? "" : payOrder.getPayTime().format(TIME_FORMATTER));
+        return result;
+    }
+
+    private String getString(Map<String, Object> request, String key) {
+        Object value = request.get(key);
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private Long getLong(Map<String, Object> request, String key, Long defaultValue) {
+        Object value = request.get(key);
+        if (value == null || String.valueOf(value).isBlank()) {
+            return defaultValue;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+
+    private Integer getInteger(Map<String, Object> request, String key) {
+        Object value = request.get(key);
+        if (value == null || String.valueOf(value).isBlank()) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return Integer.parseInt(String.valueOf(value));
     }
 
     private Integer mapShowTypeToStatus(int showType) {

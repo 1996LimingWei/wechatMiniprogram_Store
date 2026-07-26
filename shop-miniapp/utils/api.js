@@ -1,4 +1,5 @@
 module.exports = {
+	TradeDevActionEnabled: false, //开发调试用交易操作开关，客户演示和正式交付必须保持关闭
 	IndexUrlNewGoods: 'index/newGoods', //新品首发
 	IndexUrlHotGoods: 'index/hotGoods', //热卖商品
 	IndexUrlTopic: 'index/topic', //专题精选
@@ -65,6 +66,7 @@ module.exports = {
 	OrderMockShip: 'order/mock-ship', //开发用模拟发货
 	OrderRefundApply: 'order/refund/apply', //申请退款/售后
 	OrderRefundDetail: 'order/refund/detail', //退款/售后详情
+	OrderRefundCancel: 'order/refund/cancel', //撤销退款/售后申请
 	OrderRefundMockApprove: 'order/refund/mock-approve', //开发用模拟退款通过
 
 	FootprintList: 'footprint/list', //足迹列表

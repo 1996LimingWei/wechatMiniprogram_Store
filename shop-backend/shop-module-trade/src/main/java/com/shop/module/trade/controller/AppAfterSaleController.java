@@ -42,4 +42,13 @@ public class AppAfterSaleController {
         Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);
         return CommonResult.success(tradeAfterSaleService.mockApprove(userId, orderId));
     }
+
+    @RequestMapping("/app-api/order/refund/cancel")
+    public CommonResult<Map<String, Object>> cancel(@RequestBody(required = false) String rawBody,
+                                                    @RequestParam Map<String, Object> params) {
+        Long userId = TradeSecurityUtils.getRequiredUserId();
+        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);
+        return CommonResult.success(tradeAfterSaleService.cancel(userId, orderId));
+    }
 }
