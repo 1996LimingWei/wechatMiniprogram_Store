@@ -9,6 +9,7 @@
 **阶段**: Development Roadmap（后续开发路径规划）
 **计划文件**: [next-development-path.md](plans/2026-07-16-next-development-path.md)
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
+**交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -293,6 +294,13 @@
 - 已验证：完整流程“提交订单 -> 支付成功 -> 发货 -> 确认收货 -> 申请售后 -> 退款完成”生成 6 条连续日志
 - 已验证：取消流程“提交订单 -> 用户取消”生成 2 条连续日志
 - 已清理本次接口测试用户、购物车、地址、订单、支付单、物流单、售后单、订单日志和测试商品数据
+
+## 2026-07-26 交易模块剩余工作梳理
+
+- 新增交易模块剩余工作正式清单：`docs/superpowers/plans/2026-07-26-trade-remaining-work.md`
+- 按企业交付视角区分测试阶段与正式交付要求
+- 按 P0/P1/P2 梳理剩余工作、必要性、验收标准和建议顺序
+- 明确下一步优先推进管理端最小订单处理接口：订单列表、订单详情、发货、售后列表、售后同意/拒绝
 
 ## 决策记录
 
