@@ -168,7 +168,7 @@ CREATE TABLE `trade_order` (
     `id` bigint NOT NULL AUTO_INCREMENT,
     `order_sn` varchar(32) NOT NULL COMMENT '订单号',
     `user_id` bigint NOT NULL COMMENT '会员用户ID',
-    `status` tinyint NOT NULL DEFAULT 0 COMMENT '订单状态 0=待付款 1=待发货 2=待收货 3=已完成 4=已取消',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '订单状态 0=待付款 1=待发货 2=待收货 3=已完成 4=已取消 5=退款中',
     `pay_status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=未支付 1=已支付 2=已退款',
     `goods_price` int NOT NULL DEFAULT 0 COMMENT '商品总价(分)',
     `freight_price` int NOT NULL DEFAULT 0 COMMENT '运费(分)',
@@ -181,13 +181,17 @@ CREATE TABLE `trade_order` (
     `full_region` varchar(255) DEFAULT '' COMMENT '省市区快照',
     `address` varchar(255) DEFAULT '' COMMENT '详细地址快照',
     `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
+    `expire_time` datetime DEFAULT NULL COMMENT '待付款超时关闭时间',
+    `close_time` datetime DEFAULT NULL COMMENT '订单关闭时间',
+    `close_reason` varchar(128) DEFAULT '' COMMENT '订单关闭原因',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_order_sn` (`order_sn`),
     KEY `idx_user_id` (`user_id`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_expire_status` (`status`, `pay_status`, `expire_time`)
 ) ENGINE=InnoDB COMMENT='交易订单表';
 
 CREATE TABLE `trade_order_item` (

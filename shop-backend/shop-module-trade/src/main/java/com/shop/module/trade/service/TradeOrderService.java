@@ -1,11 +1,15 @@
 package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shop.common.exception.ServerException;
+import com.shop.module.trade.config.TradeOrderProperties;
 import com.shop.module.trade.dal.dataobject.MemberAddressDO;
+import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeCartDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderItemDO;
+import com.shop.module.trade.dal.mysql.PayOrderMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
@@ -33,8 +37,10 @@ public class TradeOrderService {
     private final TradeProductService tradeProductService;
     private final TradeLogisticsService tradeLogisticsService;
     private final TradeAfterSaleService tradeAfterSaleService;
+    private final TradeOrderProperties tradeOrderProperties;
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
+    private final PayOrderMapper payOrderMapper;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> submitOrder(Long userId, Long addressId) {
@@ -73,6 +79,7 @@ public class TradeOrderService {
         order.setMobile(address.getTelNumber());
         order.setFullRegion(address.getFullRegion());
         order.setAddress(address.getDetailInfo());
+        order.setExpireTime(LocalDateTime.now().plusMinutes(tradeOrderProperties.getUnpaidTimeoutMinutes()));
         tradeOrderMapper.insert(order);
 
         for (TradeCartDO cart : checkedList) {
@@ -143,13 +150,15 @@ public class TradeOrderService {
         if (order.getStatus() != 0) {
             throw new ServerException(400, "当前订单不能取消");
         }
-        List<TradeOrderItemDO> items = getOrderItems(order.getId());
-        for (TradeOrderItemDO item : items) {
-            tradeProductService.recoverStock(item.getSpuId(), item.getCount());
+        if (closeUnpaidOrder(order.getId(), userId, "用户主动取消")) {
+            return "订单已取消";
         }
-        order.setStatus(4);
-        tradeOrderMapper.updateById(order);
-        return "订单已取消";
+
+        TradeOrderDO latest = tradeOrderMapper.selectById(order.getId());
+        if (latest != null && latest.getStatus() != null && latest.getStatus() == 4) {
+            return "订单已取消";
+        }
+        throw new ServerException(400, "当前订单不能取消");
     }
 
     public String confirmOrder(Long userId, Long orderId) {
@@ -181,10 +190,25 @@ public class TradeOrderService {
         if (order.getStatus() != 0) {
             throw new ServerException(400, "当前订单不能支付");
         }
-        order.setPayStatus(1);
-        order.setStatus(1);
-        order.setPayTime(LocalDateTime.now());
-        tradeOrderMapper.updateById(order);
+        int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, orderId)
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, 0)
+                .set(TradeOrderDO::getPayStatus, 1)
+                .set(TradeOrderDO::getStatus, 1)
+                .set(TradeOrderDO::getPayTime, LocalDateTime.now()));
+        if (updated == 1) {
+            return;
+        }
+        TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
+        if (latest != null && latest.getPayStatus() != null && latest.getPayStatus() == 1) {
+            return;
+        }
+        if (latest != null && latest.getStatus() != null && latest.getStatus() == 4) {
+            throw new ServerException(400, "订单已取消，不能支付");
+        }
+        throw new ServerException(400, "当前订单不能支付");
     }
 
     public TradeOrderDO getOrder(Long orderId) {
@@ -193,6 +217,29 @@ public class TradeOrderService {
             throw new ServerException(1404, "订单不存在");
         }
         return order;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public int closeExpiredUnpaidOrders() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime fallbackExpireTime = now.minusMinutes(tradeOrderProperties.getUnpaidTimeoutMinutes());
+        int batchSize = Math.max(1, tradeOrderProperties.getExpireBatchSize());
+        List<TradeOrderDO> expiredOrders = tradeOrderMapper.selectList(new LambdaQueryWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, 0)
+                .and(wrapper -> wrapper.le(TradeOrderDO::getExpireTime, now)
+                        .or()
+                        .isNull(TradeOrderDO::getExpireTime)
+                        .le(TradeOrderDO::getCreateTime, fallbackExpireTime))
+                .orderByAsc(TradeOrderDO::getCreateTime)
+                .last("LIMIT " + batchSize));
+        int closedCount = 0;
+        for (TradeOrderDO expiredOrder : expiredOrders) {
+            if (closeUnpaidOrder(expiredOrder.getId(), expiredOrder.getUserId(), "超时未支付自动关闭")) {
+                closedCount++;
+            }
+        }
+        return closedCount;
     }
 
     private Map<String, Object> toOrderListItem(TradeOrderDO order) {
@@ -252,6 +299,29 @@ public class TradeOrderService {
         return tradeOrderItemMapper.selectList(new LambdaQueryWrapper<TradeOrderItemDO>()
                 .eq(TradeOrderItemDO::getOrderId, orderId)
                 .orderByAsc(TradeOrderItemDO::getId));
+    }
+
+    private boolean closeUnpaidOrder(Long orderId, Long userId, String closeReason) {
+        int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, orderId)
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, 0)
+                .set(TradeOrderDO::getStatus, 4)
+                .set(TradeOrderDO::getCloseTime, LocalDateTime.now())
+                .set(TradeOrderDO::getCloseReason, closeReason));
+        if (updated != 1) {
+            return false;
+        }
+        for (TradeOrderItemDO item : getOrderItems(orderId)) {
+            tradeProductService.recoverStock(item.getSpuId(), item.getCount());
+        }
+        payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getOrderId, orderId)
+                .eq(PayOrderDO::getUserId, userId)
+                .eq(PayOrderDO::getStatus, 0)
+                .set(PayOrderDO::getStatus, 2));
+        return true;
     }
 
     private String getOrderStatusText(TradeOrderDO order) {

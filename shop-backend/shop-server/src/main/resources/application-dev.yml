@@ -18,6 +18,13 @@ wx:
     secret:
     mock-enabled: true
 
+trade:
+  order:
+    unpaid-timeout-minutes: 30
+    expire-job-enabled: true
+    expire-batch-size: 100
+    expire-job-fixed-delay: 60000
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

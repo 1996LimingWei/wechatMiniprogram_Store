@@ -1,5 +1,6 @@
 package com.shop.module.trade.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shop.common.exception.ServerException;
 import com.shop.module.product.controller.MockData;
 import com.shop.module.product.dal.dataobject.ProductSpuDO;
@@ -55,25 +56,23 @@ public class TradeProductService {
         if (!snapshot.isDatabaseProduct()) {
             return;
         }
-        ProductSpuDO spu = productSpuMapper.selectById(snapshot.getSpuId());
-        if (spu == null || spu.getStock() == null || spu.getStock() < count) {
+        int updated = productSpuMapper.update(null, new LambdaUpdateWrapper<ProductSpuDO>()
+                .eq(ProductSpuDO::getId, snapshot.getSpuId())
+                .eq(ProductSpuDO::getStatus, 1)
+                .ge(ProductSpuDO::getStock, count)
+                .setSql("stock = stock - " + count));
+        if (updated != 1) {
             throw new ServerException(1201, "商品库存不足");
         }
-        ProductSpuDO update = new ProductSpuDO();
-        update.setId(spu.getId());
-        update.setStock(spu.getStock() - count);
-        productSpuMapper.updateById(update);
     }
 
     public void recoverStock(Long spuId, int count) {
-        ProductSpuDO spu = productSpuMapper.selectById(spuId);
-        if (spu == null || spu.getStock() == null) {
+        if (spuId == null || count <= 0) {
             return;
         }
-        ProductSpuDO update = new ProductSpuDO();
-        update.setId(spu.getId());
-        update.setStock(spu.getStock() + count);
-        productSpuMapper.updateById(update);
+        productSpuMapper.update(null, new LambdaUpdateWrapper<ProductSpuDO>()
+                .eq(ProductSpuDO::getId, spuId)
+                .setSql("stock = stock + " + count));
     }
 
     private Long buildCartSkuId(Long goodsId, Long productId) {
