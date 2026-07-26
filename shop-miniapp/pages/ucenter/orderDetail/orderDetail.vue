@@ -16,6 +16,8 @@
 				<view class="action-btns">
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.cancel" @tap="cancelOrder">取消订单</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.pay" @tap="payOrder">立即支付</view>
+					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.ship" @tap="mockShip">模拟发货</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.logistics" @tap="viewLogistics">查看物流</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.confirm" @tap="confirmOrder">确认收货</view>
 				</view>
 			</view>
@@ -47,6 +49,24 @@
 			<text class="address-detail">{{(orderInfo.fullRegion || '') + (orderInfo.address || '')}}</text>
 		</view>
 
+		<view class="order-logistics" v-if="logistics && logistics.hasLogistics">
+			<view class="section-header">
+				<text class="section-title">物流信息</text>
+			</view>
+			<view class="logistics-row">
+				<text class="logistics-label">物流公司</text>
+				<text class="logistics-value">{{logistics.logisticsCompany}}</text>
+			</view>
+			<view class="logistics-row">
+				<text class="logistics-label">物流单号</text>
+				<text class="logistics-value">{{logistics.logisticsNo}}</text>
+			</view>
+			<view class="logistics-row">
+				<text class="logistics-label">发货时间</text>
+				<text class="logistics-value">{{logistics.deliveryTime}}</text>
+			</view>
+		</view>
+
 		<view class="order-total">
 			<view class="total-row">
 				<text class="total-label">商品合计</text>
@@ -73,7 +93,8 @@
 				orderId: 0,
 				orderInfo: {},
 				orderGoods: [],
-				handleOption: {}
+				handleOption: {},
+				logistics: {}
 			}
 		},
 		methods: {
@@ -84,6 +105,7 @@
 						that.orderInfo = res.data.orderInfo || {};
 						that.orderGoods = res.data.orderGoods || [];
 						that.handleOption = res.data.handleOption || {};
+						that.logistics = res.data.logistics || {};
 					}
 				});
 			},
@@ -143,6 +165,42 @@
 							});
 						}
 					}
+				});
+			},
+			mockShip() {
+				let that = this;
+				uni.showModal({
+					title: '模拟发货',
+					content: '当前还没有管理后台，先用模拟发货让订单进入待收货，确定继续吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (res.confirm) {
+							util.request(api.OrderMockShip, {
+								orderId: that.orderInfo.id,
+								logisticsCompany: '顺丰速运'
+							}, 'POST', 'application/json').then(function(res) {
+								if (res.code === 0) {
+									uni.showToast({ title: '已模拟发货', icon: 'success' });
+									that.getOrderDetail();
+								}
+							});
+						}
+					}
+				});
+			},
+			viewLogistics() {
+				let that = this;
+				util.request(api.OrderLogistics, { orderId: that.orderInfo.id }).then(function(res) {
+					if (res.code !== 0 || !res.data || !res.data.hasLogistics) {
+						util.toast('暂无物流信息');
+						return;
+					}
+					uni.showModal({
+						title: res.data.logisticsCompany || '物流信息',
+						content: '物流单号：' + res.data.logisticsNo + '\n发货时间：' + res.data.deliveryTime,
+						showCancel: false,
+						confirmColor: '#5B8C5A'
+					});
 				});
 			}
 		},
@@ -339,6 +397,32 @@
 		font-size: 24rpx;
 		color: #999;
 		line-height: 1.5;
+	}
+
+	.order-logistics {
+		background: #FEFEFC;
+		border-radius: 16rpx;
+		padding: 0 30rpx 24rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 10rpx rgba(91,140,90,0.08);
+	}
+
+	.logistics-row {
+		display: flex;
+		justify-content: space-between;
+		padding: 12rpx 0;
+	}
+
+	.logistics-label {
+		font-size: 26rpx;
+		color: #999;
+	}
+
+	.logistics-value {
+		font-size: 26rpx;
+		color: #333;
+		text-align: right;
+		max-width: 460rpx;
 	}
 
 	.order-total {

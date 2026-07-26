@@ -31,6 +31,7 @@ public class TradeOrderService {
     private final TradeCheckoutService tradeCheckoutService;
     private final MemberAddressService memberAddressService;
     private final TradeProductService tradeProductService;
+    private final TradeLogisticsService tradeLogisticsService;
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
 
@@ -124,6 +125,7 @@ public class TradeOrderService {
         result.put("orderInfo", toOrderInfo(order));
         result.put("orderGoods", items.stream().map(this::toOrderGoods).toList());
         result.put("handleOption", buildHandleOption(order));
+        result.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
         return result;
     }
 
@@ -147,7 +149,7 @@ public class TradeOrderService {
 
     public String confirmOrder(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
-        if (order.getStatus() != 2 && order.getStatus() != 1) {
+        if (order.getStatus() != 2) {
             throw new ServerException(400, "当前订单不能确认收货");
         }
         order.setStatus(3);
@@ -191,6 +193,7 @@ public class TradeOrderService {
     private Map<String, Object> toOrderListItem(TradeOrderDO order) {
         Map<String, Object> item = toOrderInfo(order);
         item.put("goodsList", getOrderItems(order.getId()).stream().map(this::toOrderGoods).toList());
+        item.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
         return item;
     }
 
@@ -229,7 +232,9 @@ public class TradeOrderService {
         Map<String, Object> option = new LinkedHashMap<>();
         option.put("pay", order.getStatus() == 0);
         option.put("cancel", order.getStatus() == 0);
-        option.put("confirm", order.getStatus() == 2 || order.getStatus() == 1);
+        option.put("ship", order.getStatus() == 1);
+        option.put("logistics", order.getStatus() == 2 || order.getStatus() == 3);
+        option.put("confirm", order.getStatus() == 2);
         return option;
     }
 

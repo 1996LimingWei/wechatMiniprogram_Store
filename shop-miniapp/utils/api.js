@@ -61,6 +61,8 @@ module.exports = {
 	OrderDetail: 'order/detail', //订单详情
 	OrderCancel: 'order/cancelOrder', //取消订单
 	OrderConfirm: 'order/confirmOrder', //确认收货
+	OrderLogistics: 'order/logistics', //订单物流
+	OrderMockShip: 'order/mock-ship', //开发用模拟发货
 
 	FootprintList: 'footprint/list', //足迹列表
 	FootprintDelete: 'footprint/delete', //删除足迹
