@@ -14,17 +14,9 @@
 					实付：<text class="price-num">¥{{orderInfo.actualPrice}}</text>
 				</view>
 				<view class="action-btns">
-					<view v-if="orderInfo.handleOption && orderInfo.handleOption.pay">
-						<view class="action-btn" @tap="cancelOrder">取消订单</view>
-						<view class="action-btn primary" @tap="payOrder">立即支付</view>
-					</view>
-					<view v-else-if="orderInfo.handleOption && orderInfo.handleOption.confirm">
-						<view class="action-btn" @tap="cancelOrder">取消订单</view>
-						<view class="action-btn primary" @tap="confirmOrder">确认收货</view>
-					</view>
-					<view v-else>
-						<view class="action-btn" @tap="cancelOrder">取消订单</view>
-					</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.cancel" @tap="cancelOrder">取消订单</view>
+					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.pay" @tap="payOrder">立即支付</view>
+					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.confirm" @tap="confirmOrder">确认收货</view>
 				</view>
 			</view>
 		</view>
