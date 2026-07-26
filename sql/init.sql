@@ -217,7 +217,7 @@ CREATE TABLE `pay_order` (
     `user_id` bigint NOT NULL COMMENT '会员用户ID',
     `amount` int NOT NULL COMMENT '支付金额(分)',
     `channel` varchar(32) NOT NULL DEFAULT 'mock' COMMENT '支付渠道 mock/wx_lite',
-    `status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=待支付 1=已支付 2=已关闭',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=待支付 1=已支付 2=已关闭 3=已退款',
     `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -239,3 +239,25 @@ CREATE TABLE `trade_order_logistics` (
     PRIMARY KEY (`id`),
     KEY `idx_order_id` (`order_id`)
 ) ENGINE=InnoDB COMMENT='订单物流表';
+
+CREATE TABLE `trade_after_sale` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `order_id` bigint NOT NULL COMMENT '订单ID',
+    `user_id` bigint NOT NULL COMMENT '会员用户ID',
+    `after_sale_sn` varchar(32) NOT NULL COMMENT '售后单号',
+    `type` tinyint NOT NULL DEFAULT 1 COMMENT '售后类型 1=仅退款 2=退货退款',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '售后状态 0=处理中 1=已退款 2=已拒绝',
+    `refund_amount` int NOT NULL DEFAULT 0 COMMENT '退款金额(分)',
+    `reason` varchar(128) DEFAULT '' COMMENT '申请原因',
+    `apply_remark` varchar(255) DEFAULT '' COMMENT '申请说明',
+    `apply_time` datetime DEFAULT NULL COMMENT '申请时间',
+    `audit_time` datetime DEFAULT NULL COMMENT '审核时间',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_after_sale_sn` (`after_sale_sn`),
+    KEY `idx_order_id` (`order_id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB COMMENT='交易售后表';

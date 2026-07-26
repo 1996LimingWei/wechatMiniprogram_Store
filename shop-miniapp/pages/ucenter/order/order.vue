@@ -47,8 +47,10 @@
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.ship"
 							@tap.stop="mockShip(item, index)">模拟发货</view>
 						<!-- 申请退款 -->
-						<view class="action-btn ghost" v-if="item.orderStatusText === '待发货'"
-							@tap.stop="applyRefund">申请退款</view>
+						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refund"
+							@tap.stop="applyRefund(item)">申请退款</view>
+						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.refundApprove"
+							@tap.stop="mockApproveRefund(item)">模拟退款通过</view>
 						<!-- 确认收货 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.confirm"
 							@tap.stop="confirmOrder(item, index)">确认收货</view>
@@ -164,8 +166,42 @@ export default {
 				});
 			});
 		},
-		applyRefund() {
-			uni.showToast({ title: '退款申请功能开发中', icon: 'none' });
+		applyRefund(item) {
+			uni.showModal({
+				title: '申请退款',
+				content: '将提交退款/售后申请，当前为 Mock 审核流程，确定继续吗？',
+				confirmColor: '#5B8C5A',
+				success: (modalRes) => {
+					if (!modalRes.confirm) return;
+					util.request(api.OrderRefundApply, {
+						orderId: item.id,
+						reason: item.orderStatusText === '待发货' ? '未发货申请退款' : '收到商品后申请售后'
+					}, 'POST', 'application/json').then(res => {
+						if (res.code === 0) {
+							uni.showToast({ title: '已提交申请', icon: 'success' });
+							this.reload();
+						}
+					});
+				}
+			});
+		},
+		mockApproveRefund(item) {
+			uni.showModal({
+				title: '模拟退款通过',
+				content: '当前还没有真实退款接口，先模拟审核通过并将订单标记为已退款，确定继续吗？',
+				confirmColor: '#5B8C5A',
+				success: (modalRes) => {
+					if (!modalRes.confirm) return;
+					util.request(api.OrderRefundMockApprove, {
+						orderId: item.id
+					}, 'POST', 'application/json').then(res => {
+						if (res.code === 0) {
+							uni.showToast({ title: '已退款', icon: 'success' });
+							this.reload();
+						}
+					});
+				}
+			});
 		},
 		viewLogistics(item) {
 			util.request(api.OrderLogistics, { orderId: item.id }).then(res => {

@@ -63,6 +63,9 @@ module.exports = {
 	OrderConfirm: 'order/confirmOrder', //确认收货
 	OrderLogistics: 'order/logistics', //订单物流
 	OrderMockShip: 'order/mock-ship', //开发用模拟发货
+	OrderRefundApply: 'order/refund/apply', //申请退款/售后
+	OrderRefundDetail: 'order/refund/detail', //退款/售后详情
+	OrderRefundMockApprove: 'order/refund/mock-approve', //开发用模拟退款通过
 
 	FootprintList: 'footprint/list', //足迹列表
 	FootprintDelete: 'footprint/delete', //删除足迹

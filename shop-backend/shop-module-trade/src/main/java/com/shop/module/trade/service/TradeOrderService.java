@@ -32,6 +32,7 @@ public class TradeOrderService {
     private final MemberAddressService memberAddressService;
     private final TradeProductService tradeProductService;
     private final TradeLogisticsService tradeLogisticsService;
+    private final TradeAfterSaleService tradeAfterSaleService;
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
 
@@ -100,9 +101,12 @@ public class TradeOrderService {
         Integer status = mapShowTypeToStatus(showType);
         if (status != null) {
             if (status < 0) {
-                return Map.of("list", List.of(), "page", page, "total", 0);
+                wrapper.and(w -> w.eq(TradeOrderDO::getStatus, 5)
+                        .or()
+                        .eq(TradeOrderDO::getPayStatus, 2));
+            } else {
+                wrapper.eq(TradeOrderDO::getStatus, status);
             }
-            wrapper.eq(TradeOrderDO::getStatus, status);
         }
         List<TradeOrderDO> all = tradeOrderMapper.selectList(wrapper);
         int fromIndex = Math.min(Math.max(page - 1, 0) * size, all.size());
@@ -126,6 +130,7 @@ public class TradeOrderService {
         result.put("orderGoods", items.stream().map(this::toOrderGoods).toList());
         result.put("handleOption", buildHandleOption(order));
         result.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
+        result.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
         return result;
     }
 
@@ -194,6 +199,7 @@ public class TradeOrderService {
         Map<String, Object> item = toOrderInfo(order);
         item.put("goodsList", getOrderItems(order.getId()).stream().map(this::toOrderGoods).toList());
         item.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
+        item.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
         return item;
     }
 
@@ -201,7 +207,7 @@ public class TradeOrderService {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", order.getId());
         item.put("orderSn", order.getOrderSn());
-        item.put("orderStatusText", getOrderStatusText(order.getStatus()));
+        item.put("orderStatusText", getOrderStatusText(order));
         item.put("actualPrice", TradeMoneyUtils.formatYuan(order.getActualPrice()));
         item.put("goodsPrice", TradeMoneyUtils.formatYuan(order.getGoodsPrice()));
         item.put("freightPrice", TradeMoneyUtils.formatYuan(order.getFreightPrice()));
@@ -235,6 +241,10 @@ public class TradeOrderService {
         option.put("ship", order.getStatus() == 1);
         option.put("logistics", order.getStatus() == 2 || order.getStatus() == 3);
         option.put("confirm", order.getStatus() == 2);
+        option.put("refund", order.getPayStatus() != null && order.getPayStatus() == 1
+                && order.getStatus() != null && (order.getStatus() == 1 || order.getStatus() == 2 || order.getStatus() == 3));
+        option.put("refundApprove", order.getPayStatus() != null && order.getPayStatus() == 1
+                && order.getStatus() != null && order.getStatus() == 5);
         return option;
     }
 
@@ -244,13 +254,18 @@ public class TradeOrderService {
                 .orderByAsc(TradeOrderItemDO::getId));
     }
 
-    private String getOrderStatusText(Integer status) {
+    private String getOrderStatusText(TradeOrderDO order) {
+        if (order.getPayStatus() != null && order.getPayStatus() == 2) {
+            return "已退款";
+        }
+        Integer status = order.getStatus();
         return switch (status == null ? 0 : status) {
             case 0 -> "待付款";
             case 1 -> "待发货";
             case 2 -> "待收货";
             case 3 -> "已完成";
             case 4 -> "已取消";
+            case 5 -> "退款中";
             default -> "未知";
         };
     }

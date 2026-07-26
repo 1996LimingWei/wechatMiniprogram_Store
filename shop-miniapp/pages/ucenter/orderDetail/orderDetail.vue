@@ -18,6 +18,8 @@
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.pay" @tap="payOrder">立即支付</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.ship" @tap="mockShip">模拟发货</view>
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.logistics" @tap="viewLogistics">查看物流</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refund" @tap="applyRefund">申请退款</view>
+					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.refundApprove" @tap="mockApproveRefund">模拟退款通过</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.confirm" @tap="confirmOrder">确认收货</view>
 				</view>
 			</view>
@@ -67,6 +69,29 @@
 			</view>
 		</view>
 
+		<view class="order-after-sale" v-if="afterSale && afterSale.hasAfterSale">
+			<view class="section-header">
+				<text class="section-title">退款/售后</text>
+				<text class="order-status">{{afterSale.statusText}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">售后单号</text>
+				<text class="after-value">{{afterSale.afterSaleSn}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">售后类型</text>
+				<text class="after-value">{{afterSale.typeText}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">退款金额</text>
+				<text class="after-value price">¥{{afterSale.refundAmount}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">申请原因</text>
+				<text class="after-value">{{afterSale.reason}}</text>
+			</view>
+		</view>
+
 		<view class="order-total">
 			<view class="total-row">
 				<text class="total-label">商品合计</text>
@@ -94,7 +119,8 @@
 				orderInfo: {},
 				orderGoods: [],
 				handleOption: {},
-				logistics: {}
+				logistics: {},
+				afterSale: {}
 			}
 		},
 		methods: {
@@ -106,6 +132,7 @@
 						that.orderGoods = res.data.orderGoods || [];
 						that.handleOption = res.data.handleOption || {};
 						that.logistics = res.data.logistics || {};
+						that.afterSale = res.data.afterSale || {};
 					}
 				});
 			},
@@ -201,6 +228,45 @@
 						showCancel: false,
 						confirmColor: '#5B8C5A'
 					});
+				});
+			},
+			applyRefund() {
+				let that = this;
+				uni.showModal({
+					title: '申请退款',
+					content: '将提交退款/售后申请，当前为 Mock 审核流程，确定继续吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (!res.confirm) return;
+						util.request(api.OrderRefundApply, {
+							orderId: that.orderInfo.id,
+							reason: that.orderInfo.orderStatusText === '待发货' ? '未发货申请退款' : '收到商品后申请售后'
+						}, 'POST', 'application/json').then(function(res) {
+							if (res.code === 0) {
+								uni.showToast({ title: '已提交申请', icon: 'success' });
+								that.getOrderDetail();
+							}
+						});
+					}
+				});
+			},
+			mockApproveRefund() {
+				let that = this;
+				uni.showModal({
+					title: '模拟退款通过',
+					content: '当前还没有真实退款接口，先模拟审核通过并将订单标记为已退款，确定继续吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (!res.confirm) return;
+						util.request(api.OrderRefundMockApprove, {
+							orderId: that.orderInfo.id
+						}, 'POST', 'application/json').then(function(res) {
+							if (res.code === 0) {
+								uni.showToast({ title: '已退款', icon: 'success' });
+								that.getOrderDetail();
+							}
+						});
+					}
 				});
 			}
 		},
@@ -423,6 +489,37 @@
 		color: #333;
 		text-align: right;
 		max-width: 460rpx;
+	}
+
+	.order-after-sale {
+		background: #FEFEFC;
+		border-radius: 16rpx;
+		padding: 0 30rpx 24rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 10rpx rgba(91,140,90,0.08);
+	}
+
+	.after-row {
+		display: flex;
+		justify-content: space-between;
+		padding: 12rpx 0;
+	}
+
+	.after-label {
+		font-size: 26rpx;
+		color: #999;
+	}
+
+	.after-value {
+		font-size: 26rpx;
+		color: #333;
+		text-align: right;
+		max-width: 460rpx;
+
+		&.price {
+			color: $red;
+			font-weight: 600;
+		}
 	}
 
 	.order-total {
