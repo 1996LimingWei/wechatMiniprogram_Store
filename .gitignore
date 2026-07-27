@@ -1,5 +1,6 @@
 # Java
 target/
+**/target-direct-deps.txt
 *.class
 *.jar
 *.war
@@ -27,6 +28,9 @@ application-local.yml
 .vscode/
 *.swp
 *.swo
+
+# Local worktrees
+.worktrees/
 
 # OS
 Thumbs.db

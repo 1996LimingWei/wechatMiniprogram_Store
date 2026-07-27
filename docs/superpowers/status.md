@@ -40,7 +40,8 @@
 
 - 从开源项目 platform-wxshop（Spring Boot 2.7 + Vue2）迁移到本项目架构
 - 按照 plan1-demo-foundation 完成了全部 10 个 Task 的代码创建
-- 后端采用 Spring Boot 3.2 + Java 17 + MyBatis-Plus 3.5.6
+- 后端采用 Spring Boot 3.2 + Java 25 + MyBatis-Plus 3.5.6
+- 2026-07-24：后端运行时从 Java 17 升级到 Java 25，容器镜像同步切换到 Temurin 25
 - 小程序采用 uni-app + Vue 2（从开源 wx-mall 的 uni-mall 版本复制，35 页面）
 - 参考开源项目的业务逻辑（商品、购物车、订单等），按新架构重构
 - 已删除 platform-wxshop 目录
@@ -329,6 +330,13 @@
 - 汇总交易闭环 P0 已完成能力、关键接口、关键表和验收脚本
 - 新增“给其他同事的补充方向”，明确商品真实信息、支付、物流、管理后台前端、营销和客户资料对交易模块的影响
 - 修正 README 本地开发口径：后端端口 `8085`、MySQL 端口 `3307`、Redis 端口 `6380`
+
+## 2026-07-27 项目同步与本地容器检查
+
+- 已同步远端 `main` 至 `fff6be5`（交易闭环 P0 企业验收项完成）。
+- 已启动项目专用 `shop-mysql`（本地端口 `3307`）与 `shop-redis`（本地端口 `6380`），并通过 MySQL/Redis 存活检查。
+- 发现当前本地 `shop` 数据库尚缺 `trade_after_sale`、`trade_order_log` 等新交易表；启动新版后端前应以增量迁移方式补齐表结构，避免重跑初始化脚本覆盖已有数据。
+- 本机当前仅安装 JDK 17；后端已配置 Java 25，需安装并配置 JDK 25 后才能完成本地 Maven 构建。
 
 ## 决策记录
 
