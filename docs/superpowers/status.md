@@ -42,7 +42,7 @@
 
 - 从开源项目 platform-wxshop（Spring Boot 2.7 + Vue2）迁移到本项目架构
 - 按照 plan1-demo-foundation 完成了全部 10 个 Task 的代码创建
-- 后端采用 Spring Boot 3.2 + Java 25 + MyBatis-Plus 3.5.6
+- 后端采用 Spring Boot 3.5.16 + Java 25 + MyBatis-Plus 3.5.6
 - 2026-07-24：后端运行时从 Java 17 升级到 Java 25，容器镜像同步切换到 Temurin 25
 - 小程序采用 uni-app + Vue 2（从开源 wx-mall 的 uni-mall 版本复制，35 页面）
 - 参考开源项目的业务逻辑（商品、购物车、订单等），按新架构重构
@@ -351,6 +351,14 @@
 - 新增计划：`docs/superpowers/plans/2026-07-27-database-incremental-migration.md`。
 - 首个子 Issue 聚焦可重复执行的交易 P0 数据库迁移，不修改商品接口，避免与现有 `feat/backend-product-real-api` 独立工作树冲突。
 - 计划已明确迁移历史表、迁移 SQL、PowerShell 执行器、隔离数据库验收和真实本地库升级步骤。
+
+## 2026-07-27 数据库增量迁移完成
+
+- 新增 `sql/migrations/V20260727_01__trade_p0_schema.sql`，补齐交易 P0 的订单超时字段与索引、订单日志表、售后表和退款支付状态定义。
+- 新增 `scripts/migrate-db.ps1`：按版本与 SHA-256 校验和执行迁移，并写入 `schema_migration_history`；重复执行会安全跳过已完成版本。
+- 新增 `scripts/verify-db-migration.ps1`：在隔离临时数据库中验证首次迁移、结构完整性和重复执行幂等性。
+- 已备份并升级本地 `shop` 数据库，确认 `trade_after_sale`、`trade_order_log`、`idx_expire_status` 和版本 `20260727_01` 存在。
+- 本机已安装 Temurin JDK 25；Spring Boot 从 3.2.5 升级至 3.5.16 以支持 Java 25，后端全量 Maven 构建及可执行 JAR 打包完成。
 
 ## 决策记录
 

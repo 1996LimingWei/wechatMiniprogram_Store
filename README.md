@@ -4,7 +4,7 @@
 
 ## 技术栈
 
-- **后端**: Java 17 + Spring Boot 3.2 + MyBatis-Plus 3.5.6 + MySQL 8 + Redis 7
+- **后端**: Java 25 + Spring Boot 3.5.16 + MyBatis-Plus 3.5.6 + MySQL 8 + Redis 7
 - **小程序**: uni-app (Vue2)（基于开源 wx-mall uni-mall 版本，35 页面）
 - **管理后台**: Vue3 + Element Plus（待开发）
 - **部署**: 微信云托管（Docker 容器）
@@ -97,7 +97,7 @@ wechatMiniprogram_Store/
 
 ### 环境要求
 
-- JDK 17+
+- JDK 25
 - Maven 3.8+
 - MySQL 8.0
 - Redis 7.x
@@ -114,7 +114,9 @@ docker run -d --name shop-mysql -e MYSQL_ROOT_PASSWORD=root -p 3307:3306 mysql:8
 docker run -d --name shop-redis -p 6380:6379 redis:7-alpine
 ```
 
-### 第二步：初始化数据库
+### 第二步：初始化或迁移数据库
+
+全新数据库使用初始化脚本：
 
 ```bash
 # 将 SQL 文件复制到容器中并执行（避免字符集问题）
@@ -123,12 +125,23 @@ docker cp sql/init.sql shop-mysql:/tmp/init.sql
 docker exec shop-mysql mysql -u root -proot --default-character-set=utf8mb4 -e "SOURCE /tmp/init.sql;"
 ```
 
+已有 `shop` 数据库禁止重新执行 `init.sql`。请先备份，再执行增量迁移：
+
+```powershell
+$backupFile = "sql\backups\shop-before-migration-$(Get-Date -Format 'yyyyMMddHHmmss').sql"
+New-Item -ItemType Directory -Force 'sql\backups' | Out-Null
+docker exec shop-mysql mysqldump -uroot -proot shop | Set-Content -Encoding utf8 $backupFile
+.\scripts\migrate-db.ps1 -Database shop
+```
+
+增量迁移文件位于 `sql/migrations/`。脚本会在 `schema_migration_history` 中保存版本和校验和；已执行迁移会被跳过，修改已记录迁移文件会终止执行。
+
 ### 第三步：启动后端服务
 
 ```bash
 cd shop-backend
-# 设置 JAVA_HOME 指向 Java 17（如果默认 Java 版本不是 17）
-export JAVA_HOME=/usr/local/Cellar/openjdk@17/17.0.19/libexec/openjdk.jdk/Contents/Home
+# 设置 JAVA_HOME 指向 Java 25（如果默认 Java 版本不是 25）
+export JAVA_HOME=/path/to/jdk-25
 # 全量构建（必须，确保所有子模块编译到本地仓库）
 mvn install -DskipTests -q
 # 启动后端（开发环境，使用 Mock 微信登录）

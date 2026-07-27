@@ -36,7 +36,7 @@
 - 新建：`scripts/verify-db-migration.ps1`
 - 新建：`sql/migrations/V20260727_01__trade_p0_schema.sql`（空文件，仅供脚本定位）
 
-- [ ] **步骤 1：定义隔离数据库与断言工具。**
+- [x] **步骤 1：定义隔离数据库与断言工具。**
 
 在 `scripts/verify-db-migration.ps1` 写入参数、Docker MySQL 调用和断言函数。测试库名称使用时间戳，禁止指向 `shop`：
 
@@ -68,7 +68,7 @@ function Assert-Equal([object]$Actual, [object]$Expected, [string]$Message) {
 }
 ```
 
-- [ ] **步骤 2：构造 2026-07-24 的最小旧版交易基线。**
+- [x] **步骤 2：构造 2026-07-24 的最小旧版交易基线。**
 
 脚本创建 `$TestDatabase`，并只建立迁移涉及的旧版对象；`trade_order` 不含 `expire_time`、`close_time`、`close_reason` 和 `idx_expire_status`，也不建立 `trade_order_log`、`trade_after_sale`。基线 DDL 必须与 `git diff 1c1718f fff6be5 -- sql/init.sql` 中的旧版列定义一致：
 
@@ -112,7 +112,7 @@ finally {
 }
 ```
 
-- [ ] **步骤 3：调用尚未实现的迁移脚本并确认其失败。**
+- [x] **步骤 3：调用尚未实现的迁移脚本并确认其失败。**
 
 ```powershell
 & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
@@ -120,7 +120,7 @@ finally {
 
 预期：失败，提示找不到 `scripts/migrate-db.ps1`；这证明验收脚本会实际调用迁移入口，而不是只检查静态 SQL。
 
-- [ ] **步骤 4：提交失败验收脚本。**
+- [x] **步骤 4：提交失败验收脚本。**
 
 ```powershell
 git add scripts/verify-db-migration.ps1 sql/migrations/V20260727_01__trade_p0_schema.sql
@@ -134,7 +134,7 @@ git commit -m "test: 添加数据库迁移失败验收"
 - 新建：`scripts/migrate-db.ps1`
 - 修改：`scripts/verify-db-migration.ps1`
 
-- [ ] **步骤 1：在验收脚本中定义成功后的断言。**
+- [x] **步骤 1：在验收脚本中定义成功后的断言。**
 
 在迁移调用后加入以下断言；在执行器实现前运行会失败：
 
@@ -146,7 +146,7 @@ Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schem
 Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260727_01';") 1 '应记录已执行迁移'
 ```
 
-- [ ] **步骤 2：实现迁移历史表、文件发现和校验和校验。**
+- [x] **步骤 2：实现迁移历史表、文件发现和校验和校验。**
 
 `scripts/migrate-db.ps1` 必须支持 `-Database`、`-MysqlContainer`、`-MysqlUser`、`-MysqlPassword` 参数；禁止默认清库或创建数据库。核心逻辑如下：
 
@@ -181,7 +181,7 @@ foreach ($migration in $migrations) {
 }
 ```
 
-- [ ] **步骤 3：执行验收脚本，确认表、字段、索引与历史记录均存在。**
+- [x] **步骤 3：执行验收脚本，确认表、字段、索引与历史记录均存在。**
 
 运行：
 
@@ -191,7 +191,7 @@ foreach ($migration in $migrations) {
 
 预期：在临时数据库中完成第一轮迁移，所有断言通过。
 
-- [ ] **步骤 4：为重复执行增加断言并再次执行。**
+- [x] **步骤 4：为重复执行增加断言并再次执行。**
 
 在验收脚本第二次调用 `migrate-db.ps1`，并断言历史表只有一行：
 
@@ -202,7 +202,7 @@ Assert-Equal (Invoke-Mysql $TestDatabase 'SELECT COUNT(*) FROM schema_migration_
 
 预期：第二轮执行跳过已记录版本，不重复修改结构。
 
-- [ ] **步骤 5：提交迁移执行器。**
+- [x] **步骤 5：提交迁移执行器。**
 
 ```powershell
 git add scripts/migrate-db.ps1 scripts/verify-db-migration.ps1
@@ -216,7 +216,7 @@ git commit -m "feat: 建立数据库增量迁移执行器"
 - 修改：`sql/migrations/V20260727_01__trade_p0_schema.sql`
 - 修改：`scripts/verify-db-migration.ps1`
 
-- [ ] **步骤 1：让验收脚本增加售后表字段与支付状态断言。**
+- [x] **步骤 1：让验收脚本增加售后表字段与支付状态断言。**
 
 ```powershell
 Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'trade_after_sale' AND column_name = 'before_order_status';") 1 '售后表应保留订单原状态'
@@ -224,7 +224,7 @@ Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schem
 Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COLUMN_COMMENT FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pay_order' AND column_name = 'status';") '支付状态 0=待支付 1=已支付 2=已关闭 3=已退款' '支付状态定义应包含退款'
 ```
 
-- [ ] **步骤 2：实现 `V20260727_01__trade_p0_schema.sql`。**
+- [x] **步骤 2：实现 `V20260727_01__trade_p0_schema.sql`。**
 
 迁移中创建 `trade_order_log`、`trade_after_sale` 时使用 `CREATE TABLE IF NOT EXISTS`，列、索引使用临时存储过程检测 `information_schema` 后再执行。例如：
 
@@ -259,7 +259,7 @@ DROP PROCEDURE migration_add_column_if_missing;
 - 使用与 `sql/init.sql` 相同的列、默认值、唯一索引和普通索引定义创建两个新表；
 - 不删除、重命名或重置任何现有数据。
 
-- [ ] **步骤 3：运行完整迁移验收并检查输出。**
+- [x] **步骤 3：运行完整迁移验收并检查输出。**
 
 运行：
 
@@ -269,7 +269,7 @@ DROP PROCEDURE migration_add_column_if_missing;
 
 预期：首次运行创建所需对象，第二次运行只跳过已记录版本；临时库的清理仅删除脚本刚创建的 `$TestDatabase`。
 
-- [ ] **步骤 4：提交交易 P0 迁移。**
+- [x] **步骤 4：提交交易 P0 迁移。**
 
 ```powershell
 git add sql/migrations/V20260727_01__trade_p0_schema.sql scripts/verify-db-migration.ps1
@@ -284,7 +284,7 @@ git commit -m "feat: 补齐交易 P0 数据库迁移"
 - 修改：`docs/superpowers/status.md`
 - 修改：`scripts/verify-db-migration.ps1`
 
-- [ ] **步骤 1：在 README 本地开发章节补充固定命令。**
+- [x] **步骤 1：在 README 本地开发章节补充固定命令。**
 
 ```powershell
 docker start shop-mysql shop-redis
@@ -293,7 +293,7 @@ docker start shop-mysql shop-redis
 
 文档必须注明：该命令仅升级已有库；全新数据库才使用 `sql/init.sql`；运行后端前必须使用 JDK 25。
 
-- [ ] **步骤 2：备份并迁移本地 `shop` 库。**
+- [x] **步骤 2：备份并迁移本地 `shop` 库。**
 
 先创建带时间戳的 SQL 备份文件，再执行迁移；备份与迁移目标均须明确为 `shop`：
 
@@ -306,7 +306,7 @@ docker exec shop-mysql mysqldump -uroot -proot shop | Set-Content -Encoding utf8
 
 执行前确认 `sql/backups/` 已加入 `.gitignore`，防止备份及敏感数据被提交。
 
-- [ ] **步骤 3：对真实本地库执行只读结构断言。**
+- [x] **步骤 3：对真实本地库执行只读结构断言。**
 
 ```powershell
 docker exec shop-mysql mysql -uroot -proot shop -N -B -e "SHOW TABLES LIKE 'trade_after_sale'; SHOW TABLES LIKE 'trade_order_log';"
@@ -315,7 +315,7 @@ docker exec shop-mysql mysql -uroot -proot shop -N -B -e "SHOW INDEX FROM trade_
 
 预期：输出两个表名和 `idx_expire_status` 索引；不执行删除或重置语句。
 
-- [ ] **步骤 4：在 JDK 25 环境完成构建验证。**
+- [x] **步骤 4：在 JDK 25 环境完成构建验证。**
 
 ```powershell
 cd shop-backend
@@ -324,7 +324,7 @@ mvn clean install -DskipTests
 
 预期：11 个 Maven 模块全部 `SUCCESS`。若环境仍使用 JDK 17，停止并先配置 JDK 25，不得把 JDK 版本回退为 17。
 
-- [ ] **步骤 5：更新状态并提交文档。**
+- [x] **步骤 5：更新状态并提交文档。**
 
 ```powershell
 git add .gitignore README.md docs/superpowers/status.md scripts sql/migrations

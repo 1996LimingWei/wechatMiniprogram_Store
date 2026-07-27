@@ -23,6 +23,7 @@ unpackage/
 .env.local
 .env.*.local
 application-local.yml
+sql/backups/
 
 # IDE
 .vscode/
