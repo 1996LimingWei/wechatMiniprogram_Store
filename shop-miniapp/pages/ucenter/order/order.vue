@@ -43,18 +43,21 @@
 						<!-- 立即支付 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.pay"
 							@tap.stop="payOrder(item, index)">立即支付</view>
-						<!-- 催发货 -->
-						<view class="action-btn ghost" v-if="item.orderStatusText === '待发货'"
-							@tap.stop="urgeShip">催发货</view>
+						<view class="action-btn primary" v-if="tradeDevActionEnabled && item.handleOption && item.handleOption.ship"
+							@tap.stop="mockShip(item, index)">模拟发货</view>
 						<!-- 申请退款 -->
-						<view class="action-btn ghost" v-if="item.orderStatusText === '待发货'"
-							@tap.stop="applyRefund">申请退款</view>
+						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refund"
+							@tap.stop="applyRefund(item)">申请退款</view>
+						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refundCancel"
+							@tap.stop="cancelRefund(item)">撤销申请</view>
+						<view class="action-btn primary" v-if="tradeDevActionEnabled && item.handleOption && item.handleOption.refundApprove"
+							@tap.stop="mockApproveRefund(item)">模拟退款通过</view>
 						<!-- 确认收货 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.confirm"
 							@tap.stop="confirmOrder(item, index)">确认收货</view>
 						<!-- 查看物流（待收货时） -->
-						<view class="action-btn ghost" v-if="item.orderStatusText === '待收货'"
-							@tap.stop="viewLogistics">查看物流</view>
+						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.logistics"
+							@tap.stop="viewLogistics(item)">查看物流</view>
 						<!-- 去评价 -->
 						<view class="action-btn primary" v-if="item.orderStatusText === '已完成'"
 							@tap.stop="goReview">去评价</view>
@@ -87,6 +90,7 @@ export default {
 			orderList: [],
 			page: 1,
 			size: 10,
+			tradeDevActionEnabled: api.TradeDevActionEnabled === true,
 			loading: false
 		}
 	},
@@ -150,17 +154,91 @@ export default {
 				});
 			});
 		},
-		urgeShip() {
-			uni.showToast({ title: '已催促商家发货', icon: 'success' });
+		mockShip(item, index) {
+			util.modal('模拟发货', '当前还没有管理后台，先用模拟发货让订单进入待收货，确定继续吗？', true, (confirm) => {
+				if (!confirm) return;
+				util.request(api.OrderMockShip, {
+					orderId: item.id,
+					logisticsCompany: '顺丰速运'
+				}, 'POST', 'application/json').then(res => {
+					if (res.code === 0) {
+						uni.showToast({ title: '已模拟发货', icon: 'success' });
+						this.reload();
+					}
+				});
+			});
 		},
-		applyRefund() {
-			uni.showToast({ title: '退款申请功能开发中', icon: 'none' });
+		applyRefund(item) {
+			uni.showModal({
+				title: '申请退款',
+				content: '将提交退款/售后申请，提交后商家会尽快处理，确定继续吗？',
+				confirmColor: '#5B8C5A',
+				success: (modalRes) => {
+					if (!modalRes.confirm) return;
+					util.request(api.OrderRefundApply, {
+						orderId: item.id,
+						reason: item.orderStatusText === '待发货' ? '未发货申请退款' : '收到商品后申请售后'
+					}, 'POST', 'application/json').then(res => {
+						if (res.code === 0) {
+							uni.showToast({ title: '已提交申请', icon: 'success' });
+							this.reload();
+						}
+					});
+				}
+			});
 		},
-		viewLogistics() {
-			uni.showToast({ title: '物流查询功能开发中', icon: 'none' });
+		mockApproveRefund(item) {
+			uni.showModal({
+				title: '模拟退款通过',
+				content: '当前还没有真实退款接口，先模拟审核通过并将订单标记为已退款，确定继续吗？',
+				confirmColor: '#5B8C5A',
+				success: (modalRes) => {
+					if (!modalRes.confirm) return;
+					util.request(api.OrderRefundMockApprove, {
+						orderId: item.id
+					}, 'POST', 'application/json').then(res => {
+						if (res.code === 0) {
+							uni.showToast({ title: '已退款', icon: 'success' });
+							this.reload();
+						}
+					});
+				}
+			});
+		},
+		cancelRefund(item) {
+			uni.showModal({
+				title: '撤销申请',
+				content: '确定撤销当前退款/售后申请吗？',
+				confirmColor: '#5B8C5A',
+				success: (modalRes) => {
+					if (!modalRes.confirm) return;
+					util.request(api.OrderRefundCancel, {
+						orderId: item.id
+					}, 'POST', 'application/json').then(res => {
+						if (res.code === 0) {
+							uni.showToast({ title: '已撤销', icon: 'success' });
+							this.reload();
+						}
+					});
+				}
+			});
+		},
+		viewLogistics(item) {
+			util.request(api.OrderLogistics, { orderId: item.id }).then(res => {
+				if (res.code !== 0 || !res.data || !res.data.hasLogistics) {
+					util.toast('暂无物流信息');
+					return;
+				}
+				uni.showModal({
+					title: res.data.logisticsCompany || '物流信息',
+					content: '物流单号：' + res.data.logisticsNo + '\n发货时间：' + res.data.deliveryTime,
+					showCancel: false,
+					confirmColor: '#5B8C5A'
+				});
+			});
 		},
 		goReview() {
-			uni.showToast({ title: '评价功能开发中', icon: 'none' });
+			uni.showToast({ title: '评价入口暂未开放', icon: 'none' });
 		},
 		buyAgain() {
 			uni.switchTab({ url: '/pages/index/index' });

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Loop"
+  short_description: "以目标、行动、观察和调整的闭环可靠推进复杂多步骤任务并提供完成证据"
+  default_prompt: "使用 $agent-loop 以证据驱动的循环完成当前项目任务。"

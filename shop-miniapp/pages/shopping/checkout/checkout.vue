@@ -172,11 +172,11 @@ export default {
 	},
 	onShow() {
 		this.getCouponData();
-		this.getCheckoutInfo();
 		try {
 			var addressId = uni.getStorageSync('addressId');
 			if (addressId) this.addressId = addressId;
 		} catch (e) {}
+		this.getCheckoutInfo();
 	},
 	onLoad(options) {
 		if (options.isBuy != null) this.isBuy = options.isBuy;

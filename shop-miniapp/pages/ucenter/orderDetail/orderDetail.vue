@@ -14,17 +14,14 @@
 					实付：<text class="price-num">¥{{orderInfo.actualPrice}}</text>
 				</view>
 				<view class="action-btns">
-					<view v-if="orderInfo.handleOption && orderInfo.handleOption.pay">
-						<view class="action-btn" @tap="cancelOrder">取消订单</view>
-						<view class="action-btn primary" @tap="payOrder">立即支付</view>
-					</view>
-					<view v-else-if="orderInfo.handleOption && orderInfo.handleOption.confirm">
-						<view class="action-btn" @tap="cancelOrder">取消订单</view>
-						<view class="action-btn primary" @tap="confirmOrder">确认收货</view>
-					</view>
-					<view v-else>
-						<view class="action-btn" @tap="cancelOrder">取消订单</view>
-					</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.cancel" @tap="cancelOrder">取消订单</view>
+					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.pay" @tap="payOrder">立即支付</view>
+					<view class="action-btn primary" v-if="tradeDevActionEnabled && orderInfo.handleOption && orderInfo.handleOption.ship" @tap="mockShip">模拟发货</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.logistics" @tap="viewLogistics">查看物流</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refund" @tap="applyRefund">申请退款</view>
+					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refundCancel" @tap="cancelRefund">撤销申请</view>
+					<view class="action-btn primary" v-if="tradeDevActionEnabled && orderInfo.handleOption && orderInfo.handleOption.refundApprove" @tap="mockApproveRefund">模拟退款通过</view>
+					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.confirm" @tap="confirmOrder">确认收货</view>
 				</view>
 			</view>
 		</view>
@@ -55,6 +52,51 @@
 			<text class="address-detail">{{(orderInfo.fullRegion || '') + (orderInfo.address || '')}}</text>
 		</view>
 
+		<view class="order-logistics" v-if="logistics && logistics.hasLogistics">
+			<view class="section-header">
+				<text class="section-title">物流信息</text>
+			</view>
+			<view class="logistics-row">
+				<text class="logistics-label">物流公司</text>
+				<text class="logistics-value">{{logistics.logisticsCompany}}</text>
+			</view>
+			<view class="logistics-row">
+				<text class="logistics-label">物流单号</text>
+				<text class="logistics-value">{{logistics.logisticsNo}}</text>
+			</view>
+			<view class="logistics-row">
+				<text class="logistics-label">发货时间</text>
+				<text class="logistics-value">{{logistics.deliveryTime}}</text>
+			</view>
+		</view>
+
+		<view class="order-after-sale" v-if="afterSale && afterSale.hasAfterSale">
+			<view class="section-header">
+				<text class="section-title">退款/售后</text>
+				<text class="order-status">{{afterSale.statusText}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">售后单号</text>
+				<text class="after-value">{{afterSale.afterSaleSn}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">售后类型</text>
+				<text class="after-value">{{afterSale.typeText}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">退款金额</text>
+				<text class="after-value price">¥{{afterSale.refundAmount}}</text>
+			</view>
+			<view class="after-row">
+				<text class="after-label">申请原因</text>
+				<text class="after-value">{{afterSale.reason}}</text>
+			</view>
+			<view class="after-row" v-if="afterSale.rejectReason">
+				<text class="after-label">拒绝原因</text>
+				<text class="after-value">{{afterSale.rejectReason}}</text>
+			</view>
+		</view>
+
 		<view class="order-total">
 			<view class="total-row">
 				<text class="total-label">商品合计</text>
@@ -81,7 +123,10 @@
 				orderId: 0,
 				orderInfo: {},
 				orderGoods: [],
-				handleOption: {}
+				handleOption: {},
+				logistics: {},
+				afterSale: {},
+				tradeDevActionEnabled: api.TradeDevActionEnabled === true
 			}
 		},
 		methods: {
@@ -92,6 +137,8 @@
 						that.orderInfo = res.data.orderInfo || {};
 						that.orderGoods = res.data.orderGoods || [];
 						that.handleOption = res.data.handleOption || {};
+						that.logistics = res.data.logistics || {};
+						that.afterSale = res.data.afterSale || {};
 					}
 				});
 			},
@@ -150,6 +197,100 @@
 								}
 							});
 						}
+					}
+				});
+			},
+			mockShip() {
+				let that = this;
+				uni.showModal({
+					title: '模拟发货',
+					content: '当前还没有管理后台，先用模拟发货让订单进入待收货，确定继续吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (res.confirm) {
+							util.request(api.OrderMockShip, {
+								orderId: that.orderInfo.id,
+								logisticsCompany: '顺丰速运'
+							}, 'POST', 'application/json').then(function(res) {
+								if (res.code === 0) {
+									uni.showToast({ title: '已模拟发货', icon: 'success' });
+									that.getOrderDetail();
+								}
+							});
+						}
+					}
+				});
+			},
+			viewLogistics() {
+				let that = this;
+				util.request(api.OrderLogistics, { orderId: that.orderInfo.id }).then(function(res) {
+					if (res.code !== 0 || !res.data || !res.data.hasLogistics) {
+						util.toast('暂无物流信息');
+						return;
+					}
+					uni.showModal({
+						title: res.data.logisticsCompany || '物流信息',
+						content: '物流单号：' + res.data.logisticsNo + '\n发货时间：' + res.data.deliveryTime,
+						showCancel: false,
+						confirmColor: '#5B8C5A'
+					});
+				});
+			},
+			applyRefund() {
+				let that = this;
+				uni.showModal({
+					title: '申请退款',
+					content: '将提交退款/售后申请，提交后商家会尽快处理，确定继续吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (!res.confirm) return;
+						util.request(api.OrderRefundApply, {
+							orderId: that.orderInfo.id,
+							reason: that.orderInfo.orderStatusText === '待发货' ? '未发货申请退款' : '收到商品后申请售后'
+						}, 'POST', 'application/json').then(function(res) {
+							if (res.code === 0) {
+								uni.showToast({ title: '已提交申请', icon: 'success' });
+								that.getOrderDetail();
+							}
+						});
+					}
+				});
+			},
+			mockApproveRefund() {
+				let that = this;
+				uni.showModal({
+					title: '模拟退款通过',
+					content: '当前还没有真实退款接口，先模拟审核通过并将订单标记为已退款，确定继续吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (!res.confirm) return;
+						util.request(api.OrderRefundMockApprove, {
+							orderId: that.orderInfo.id
+						}, 'POST', 'application/json').then(function(res) {
+							if (res.code === 0) {
+								uni.showToast({ title: '已退款', icon: 'success' });
+								that.getOrderDetail();
+							}
+						});
+					}
+				});
+			},
+			cancelRefund() {
+				let that = this;
+				uni.showModal({
+					title: '撤销申请',
+					content: '确定撤销当前退款/售后申请吗？',
+					confirmColor: '#5B8C5A',
+					success: function(res) {
+						if (!res.confirm) return;
+						util.request(api.OrderRefundCancel, {
+							orderId: that.orderInfo.id
+						}, 'POST', 'application/json').then(function(res) {
+							if (res.code === 0) {
+								uni.showToast({ title: '已撤销', icon: 'success' });
+								that.getOrderDetail();
+							}
+						});
 					}
 				});
 			}
@@ -347,6 +488,63 @@
 		font-size: 24rpx;
 		color: #999;
 		line-height: 1.5;
+	}
+
+	.order-logistics {
+		background: #FEFEFC;
+		border-radius: 16rpx;
+		padding: 0 30rpx 24rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 10rpx rgba(91,140,90,0.08);
+	}
+
+	.logistics-row {
+		display: flex;
+		justify-content: space-between;
+		padding: 12rpx 0;
+	}
+
+	.logistics-label {
+		font-size: 26rpx;
+		color: #999;
+	}
+
+	.logistics-value {
+		font-size: 26rpx;
+		color: #333;
+		text-align: right;
+		max-width: 460rpx;
+	}
+
+	.order-after-sale {
+		background: #FEFEFC;
+		border-radius: 16rpx;
+		padding: 0 30rpx 24rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 10rpx rgba(91,140,90,0.08);
+	}
+
+	.after-row {
+		display: flex;
+		justify-content: space-between;
+		padding: 12rpx 0;
+	}
+
+	.after-label {
+		font-size: 26rpx;
+		color: #999;
+	}
+
+	.after-value {
+		font-size: 26rpx;
+		color: #333;
+		text-align: right;
+		max-width: 460rpx;
+
+		&.price {
+			color: $red;
+			font-weight: 600;
+		}
 	}
 
 	.order-total {

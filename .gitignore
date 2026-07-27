@@ -1,5 +1,6 @@
 # Java
 target/
+**/target-direct-deps.txt
 *.class
 *.jar
 *.war
@@ -23,13 +24,14 @@ unpackage/
 .env.local
 .env.*.local
 application-local.yml
+sql/backups/
 
 # IDE
 .vscode/
 *.swp
 *.swo
 
-# Git worktrees
+# Local worktrees
 .worktrees/
 
 # OS

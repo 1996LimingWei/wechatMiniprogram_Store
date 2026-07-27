@@ -43,7 +43,12 @@ public class AppCartController {
     @RequestMapping("/app-api/buy/add")
     public CommonResult<Map<String, Object>> buyAdd(@RequestBody(required = false) String rawBody,
                                                      @RequestParam Map<String, Object> params) {
-        return add(rawBody, params);
+        Long userId = TradeSecurityUtils.getRequiredUserId();
+        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        Long goodsId = TradeRequestUtils.getLong(request, "goodsId", 0L);
+        Long productId = TradeRequestUtils.getLong(request, "productId", goodsId);
+        int number = TradeRequestUtils.getInt(request, "number", 1);
+        return CommonResult.success(tradeCartService.addBuyNow(userId, goodsId, productId, number));
     }
 
     @RequestMapping("/app-api/cart/update")

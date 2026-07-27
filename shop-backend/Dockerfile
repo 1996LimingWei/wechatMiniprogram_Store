@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY shop-framework/ shop-framework/
@@ -8,7 +8,7 @@ COPY shop-module-system/ shop-module-system/
 COPY shop-server/ shop-server/
 RUN mvn package -DskipTests -B
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 COPY --from=build /app/shop-server/target/*.jar app.jar
 EXPOSE 80

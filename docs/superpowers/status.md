@@ -9,6 +9,9 @@
 **阶段**: Development Roadmap（后续开发路径规划）
 **计划文件**: [next-development-path.md](plans/2026-07-16-next-development-path.md)
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
+**交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
+**下一 Epic 规格**: [product-real-api-and-migration-design.md](specs/2026-07-27-product-real-api-and-migration-design.md)
+**当前实施计划**: [database-incremental-migration.md](plans/2026-07-27-database-incremental-migration.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -27,7 +30,7 @@
 | Task 10: 小程序骨架 | ✅ 完成 | uni-app 首页+请求封装 |
 | Phase1-子阶段1: 登录与会话 | ✅ 完成 | 微信登录+Token+刷新 |
 | Phase1-子阶段2: 商品真实接口 | ✅ 完成 | Issue #10：分类、列表、详情与商品种子数据已接入数据库 |
-| Phase1-子阶段3: 交易闭环 MVP | 🚧 进行中 | 购物车+地址+结算+订单+Mock支付首版 |
+| Phase1-子阶段3: 交易闭环 MVP | ✅ P0完成 | 购物车+地址+结算+订单+Mock支付+管理端发货+售后同意/拒绝/撤销+超时关闭+订单日志+自动验收 |
 
 ## 阻塞项
 
@@ -39,7 +42,8 @@
 
 - 从开源项目 platform-wxshop（Spring Boot 2.7 + Vue2）迁移到本项目架构
 - 按照 plan1-demo-foundation 完成了全部 10 个 Task 的代码创建
-- 后端采用 Spring Boot 3.2 + Java 17 + MyBatis-Plus 3.5.6
+- 后端采用 Spring Boot 3.5.16 + Java 25 + MyBatis-Plus 3.5.6
+- 2026-07-24：后端运行时从 Java 17 升级到 Java 25，容器镜像同步切换到 Temurin 25
 - 小程序采用 uni-app + Vue 2（从开源 wx-mall 的 uni-mall 版本复制，35 页面）
 - 参考开源项目的业务逻辑（商品、购物车、订单等），按新架构重构
 - 已删除 platform-wxshop 目录
@@ -232,6 +236,130 @@
 - 已验证：`mvn clean install -DskipTests` 构建通过
 - 已验证：接口连续加购商品 1 和商品 2 时，购物车分别返回 `productId=1000000001` 与 `productId=2000000001`，删除单项正常
 
+## 2026-07-26 交易闭环 P0 补洞
+
+- 修复立即购买和购物车结算串单风险：`/app-api/buy/add` 不再直接复用普通加购逻辑，立即购买前会取消其他已勾选购物车项，并只保留本次商品进入结算
+- 修复结算页选地址返回后刷新顺序：先读取本地 `addressId`，再请求 `/app-api/cart/checkout`
+- 支付预下单增加状态校验：已支付、已取消、非待付款、金额异常、支付单已完成的订单不再返回支付参数
+- 订单详情页操作按钮改为严格跟随后端 `handleOption`，不可取消的订单不再展示“取消订单”
+- 已验证：`cd shop-backend && mvn clean install -DskipTests` 构建通过
+- 已验证：启动 `shop-mysql`、`shop-redis` 后完成接口联调，立即购买只结算本次商品，Mock 支付成功后订单变为“待发货”，已支付订单再次预支付返回 `订单已支付`
+- 已验证：取消订单后再次预支付返回 `当前订单不能支付`
+- 已清理本次接口测试用户、购物车、地址、订单和支付单数据
+
+## 2026-07-26 发货与物流 MVP
+
+- 新增 `trade_order_logistics` 对应后端实体、Mapper、Service 和小程序端接口
+- 新增 `/app-api/order/mock-ship`：开发用模拟发货接口，当前没有管理后台和真实物流时可将订单从“待发货”流转到“待收货”
+- 新增 `/app-api/order/logistics`：订单物流查询接口，返回物流公司、物流单号、发货时间和模拟轨迹
+- 订单列表和订单详情接口补充 `logistics` 信息，并在 `handleOption` 中返回 `ship`、`logistics`、`confirm` 操作状态
+- 小程序订单列表、订单详情接入“模拟发货”和“查看物流”，不再停留在“物流查询功能开发中”
+- 调整确认收货规则：只有“待收货”订单可确认收货，支付后的“待发货”订单需先发货
+- 已验证：`cd shop-backend && mvn clean install -DskipTests` 构建通过
+- 已验证：接口联调完成“支付成功 -> 待发货 -> 模拟发货 -> 待收货 -> 查看物流 -> 确认收货 -> 已完成”
+- 已清理本次接口测试用户、购物车、地址、订单、支付单和物流单数据
+
+## 2026-07-26 售后与退款 MVP
+
+- 新增 `trade_after_sale` 售后表，并同步本地 `shop-mysql` 数据库
+- 新增售后后端实体、Mapper、Service 和小程序端接口
+- 新增 `/app-api/order/refund/apply`：用户申请退款/售后，订单进入“退款中”
+- 新增 `/app-api/order/refund/detail`：查询订单售后信息
+- 新增 `/app-api/order/refund/mock-approve`：开发用模拟退款审核通过，订单展示“已退款”，支付状态更新为已退款
+- 订单列表和订单详情接口补充 `afterSale` 信息，并在 `handleOption` 中返回 `refund`、`refundApprove`
+- 小程序订单列表、订单详情接入“申请退款”和“模拟退款通过”，不再停留在“退款申请功能开发中”
+- 已验证：`cd shop-backend && mvn clean install -DskipTests` 构建通过
+- 已验证：待发货订单可申请退款，申请后显示“退款中”，模拟审核后显示“已退款”
+- 已验证：待收货订单可申请售后，模拟审核后显示“已退款”
+- 已清理本次接口测试用户、购物车、地址、订单、支付单、物流单和售后单数据
+
+## 2026-07-26 订单超时关闭与库存释放
+
+- 新增交易订单配置 `trade.order`，支持配置待付款超时时间、自动关闭任务开关、单次处理批量和任务间隔
+- 新增待付款订单自动关闭定时任务，默认每 60 秒扫描一次超时未支付订单
+- `trade_order` 新增 `expire_time`、`close_time`、`close_reason` 字段，并新增 `idx_expire_status` 索引
+- 提交订单时写入待付款过期时间，默认 30 分钟后超时
+- 用户主动取消和系统超时关闭统一走同一套关闭逻辑：只有 `待付款 + 未支付` 状态更新成功后才回补库存、关闭待支付支付单
+- 支付成功改为条件更新，只有数据库当前仍是 `待付款 + 未支付` 的订单才能变为待发货，避免支付确认与超时任务并发覆盖状态
+- 商品扣库存与回补库存改为 SQL 原子增减，降低并发超卖和库存覆盖风险
+- 已同步本地 `shop-mysql` 数据库表结构
+- 已验证：创建订单后库存从 10 扣到 8，手动置为过期后自动关闭，库存回补到 10，支付单变为已关闭
+- 已验证：已超时关闭订单再次支付返回失败，且定时任务重复扫描不会重复回补库存
+- 已清理本次接口测试用户、购物车、地址、订单、支付单和测试商品数据
+
+## 2026-07-26 订单状态日志
+
+- 新增 `trade_order_log` 订单操作日志表，并同步本地 `shop-mysql` 数据库
+- 新增订单日志实体、Mapper 和 `TradeOrderLogService`
+- 订单详情接口新增 `orderLogs`，可返回订单操作时间线
+- 已接入关键状态变化日志：提交订单、支付成功、用户取消、系统超时关闭、模拟发货、确认收货、申请售后、退款完成
+- 日志记录操作来源、操作人、操作动作、订单状态前后值、支付状态前后值和操作说明
+- 已验证：完整流程“提交订单 -> 支付成功 -> 发货 -> 确认收货 -> 申请售后 -> 退款完成”生成 6 条连续日志
+- 已验证：取消流程“提交订单 -> 用户取消”生成 2 条连续日志
+- 已清理本次接口测试用户、购物车、地址、订单、支付单、物流单、售后单、订单日志和测试商品数据
+
+## 2026-07-26 交易模块剩余工作梳理
+
+- 新增交易模块剩余工作正式清单：`docs/superpowers/plans/2026-07-26-trade-remaining-work.md`
+- 按企业交付视角区分测试阶段与正式交付要求
+- 按 P0/P1/P2 梳理剩余工作、必要性、验收标准和建议顺序
+- 明确下一步优先推进管理端最小订单处理接口：订单列表、订单详情、发货、售后列表、售后同意/拒绝
+
+## 2026-07-26 交易闭环 P0 企业验收项完成
+
+- 新增管理端订单处理接口：
+  - `/admin-api/trade/order/list`
+  - `/admin-api/trade/order/detail`
+  - `/admin-api/trade/order/ship`
+- 新增管理端售后处理接口：
+  - `/admin-api/trade/after-sale/list`
+  - `/admin-api/trade/after-sale/approve`
+  - `/admin-api/trade/after-sale/reject`
+- 新增用户撤销售后接口：`/app-api/order/refund/cancel`
+- `trade_after_sale` 补齐 `before_order_status`、`reject_reason`、`reject_time`、`cancel_time` 字段，并同步本地 `shop-mysql`
+- 售后状态补齐：处理中、已退款、已拒绝、已撤销；拒绝和撤销后订单会恢复到申请售后前状态
+- 小程序订单列表/详情默认隐藏“模拟发货”“模拟退款通过”等开发按钮，统一由 `TradeDevActionEnabled` 控制
+- 小程序订单列表/详情新增“撤销申请”，订单详情展示售后拒绝原因
+- 新增交易验收文档：`docs/superpowers/plans/2026-07-26-trade-acceptance.md`
+- 新增自动验收脚本：`scripts/verify-trade-flow.ps1`
+- 已验证：`cd shop-backend && mvn clean install -DskipTests` 构建通过
+- 已验证：`.\scripts\verify-trade-flow.ps1 -BaseUrl "http://localhost:8085"` 自动跑通下单、支付、管理端发货、确认收货、售后同意、售后拒绝、用户撤销、超时关闭与库存回补
+- 已清理本次验收测试用户、购物车、地址、订单、支付单、物流单、售后单、订单日志和测试商品数据
+
+## 2026-07-26 GitHub 交易协作汇总更新
+
+- 已更新仓库首页 `README.md`，新增“当前已完成内容汇总”
+- 汇总交易闭环 P0 已完成能力、关键接口、关键表和验收脚本
+- 新增“给其他同事的补充方向”，明确商品真实信息、支付、物流、管理后台前端、营销和客户资料对交易模块的影响
+- 修正 README 本地开发口径：后端端口 `8085`、MySQL 端口 `3307`、Redis 端口 `6380`
+
+## 2026-07-27 项目同步与本地容器检查
+
+- 已同步远端 `main` 至 `fff6be5`（交易闭环 P0 企业验收项完成）。
+- 已启动项目专用 `shop-mysql`（本地端口 `3307`）与 `shop-redis`（本地端口 `6380`），并通过 MySQL/Redis 存活检查。
+- 发现当前本地 `shop` 数据库尚缺 `trade_after_sale`、`trade_order_log` 等新交易表；启动新版后端前应以增量迁移方式补齐表结构，避免重跑初始化脚本覆盖已有数据。
+- 本机当前仅安装 JDK 17；后端已配置 Java 25，需安装并配置 JDK 25 后才能完成本地 Maven 构建。
+
+## 2026-07-27 商品真实接口与数据库迁移 Epic 规划
+
+- 新增规格：`docs/superpowers/specs/2026-07-27-product-real-api-and-migration-design.md`。
+- 明确下一 Epic 先建立可重复执行的增量迁移，再切换商品分类、列表、详情和 SKU 库存到数据库读取。
+- 已将实施拆分为迁移机制、商品列表、商品详情与交易快照、验收四个子 Issue；待规格评审后创建实施计划。
+
+## 2026-07-27 数据库增量迁移实施计划
+
+- 新增计划：`docs/superpowers/plans/2026-07-27-database-incremental-migration.md`。
+- 首个子 Issue 聚焦可重复执行的交易 P0 数据库迁移，不修改商品接口，避免与现有 `feat/backend-product-real-api` 独立工作树冲突。
+- 计划已明确迁移历史表、迁移 SQL、PowerShell 执行器、隔离数据库验收和真实本地库升级步骤。
+
+## 2026-07-27 数据库增量迁移完成
+
+- 新增 `sql/migrations/V20260727_01__trade_p0_schema.sql`，补齐交易 P0 的订单超时字段与索引、订单日志表、售后表和退款支付状态定义。
+- 新增 `scripts/migrate-db.ps1`：按版本与 SHA-256 校验和执行迁移，并写入 `schema_migration_history`；重复执行会安全跳过已完成版本。
+- 新增 `scripts/verify-db-migration.ps1`：在隔离临时数据库中验证首次迁移、结构完整性和重复执行幂等性。
+- 已备份并升级本地 `shop` 数据库，确认 `trade_after_sale`、`trade_order_log`、`idx_expire_status` 和版本 `20260727_01` 存在。
+- 本机已安装 Temurin JDK 25；Spring Boot 从 3.2.5 升级至 3.5.16 以支持 Java 25，后端全量 Maven 构建及可执行 JAR 打包完成。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -250,10 +378,18 @@
 | 2026-07-16 | 后续阶段按“交易闭环优先”推进 | 当前项目已具备高保真 Demo，最大缺口是真实后端交易链路，先完成登录、商品、购物车、订单、支付适配，再推进会员营销和管理后台 |
 | 2026-07-24 | 后端 userInfo 字段名与前端对齐 | 后端返回 nickName/avatarUrl，前端期望 nickname/avatar，统一为小写 |
 
+## 2026-07-24 Agent Loop Skill
+
+- 新增项目内 `skills/agent-loop/`，用于以目标、行动、观察和调整的闭环推进多步骤任务。
+- 该版本面向团队协作：执行前读取项目规则、计划和状态；完成后更新状态。
+- 同时在 `C:\Users\Tim\.codex\skills\agent-loop\` 维护独立的个人全局版本；两份 skill 均引用 OpenAI 的 Codex Agent Loop 原文。
+
 ## 下一步行动
 
-登录与会话子阶段已完成并通过真实微信联调。下一步：
-1. 推进 Phase 1 子阶段 2：商品真实接口（从 MockData 切换到数据库查询）
+交易闭环 P0 企业验收项已完成并通过自动验收。下一步：
+1. 交易侧进入 P1：支付状态机文档化、库存边界与商品模块对接、订单搜索索引补强
+2. 等商品同事提供真实商品/SKU 接口后，交易侧对接 SKU 库存扣减与商品快照服务
+3. 等客户提供微信商户资料后，替换当前 Mock 支付为微信支付 V3 与真实退款
 
 ---
 

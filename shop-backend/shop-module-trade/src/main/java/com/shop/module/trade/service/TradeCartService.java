@@ -24,12 +24,28 @@ public class TradeCartService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> addCart(Long userId, Long goodsId, Long productId, int number) {
+        return addCart(userId, goodsId, productId, number, false);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> addBuyNow(Long userId, Long goodsId, Long productId, int number) {
+        return addCart(userId, goodsId, productId, number, true);
+    }
+
+    private Map<String, Object> addCart(Long userId, Long goodsId, Long productId, int number, boolean buyNow) {
         if (number <= 0) {
             throw new ServerException(400, "商品数量必须大于 0");
         }
         TradeProductSnapshot snapshot = tradeProductService.getSnapshot(goodsId, productId);
         if (snapshot.getStock() < number) {
             throw new ServerException(1201, "商品库存不足");
+        }
+
+        if (buyNow) {
+            tradeCartMapper.update(null, new LambdaUpdateWrapper<TradeCartDO>()
+                    .eq(TradeCartDO::getUserId, userId)
+                    .eq(TradeCartDO::getChecked, 1)
+                    .set(TradeCartDO::getChecked, 0));
         }
 
         TradeCartDO cart = tradeCartMapper.selectOne(new LambdaQueryWrapper<TradeCartDO>()
@@ -48,7 +64,7 @@ public class TradeCartService {
             cart.setChecked(1);
             tradeCartMapper.insert(cart);
         } else {
-            cart.setCount(cart.getCount() + number);
+            cart.setCount(buyNow ? number : cart.getCount() + number);
             cart.setChecked(1);
             tradeCartMapper.updateById(cart);
         }

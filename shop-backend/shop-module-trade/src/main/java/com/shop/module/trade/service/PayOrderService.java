@@ -1,6 +1,7 @@
 package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.shop.common.exception.ServerException;
 import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
 import com.shop.module.trade.dal.mysql.PayOrderMapper;
@@ -23,9 +24,21 @@ public class PayOrderService {
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> prepay(Long userId, Long orderId) {
         TradeOrderDO order = tradeOrderService.getUserOrder(userId, orderId);
+        if (order.getPayStatus() != null && order.getPayStatus() == 1) {
+            throw new ServerException(400, "订单已支付");
+        }
+        if (order.getStatus() == null || order.getStatus() != 0) {
+            throw new ServerException(400, "当前订单不能支付");
+        }
+        if (order.getActualPrice() == null || order.getActualPrice() <= 0) {
+            throw new ServerException(400, "订单金额异常");
+        }
         PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getOrderId, orderId)
                 .eq(PayOrderDO::getUserId, userId));
+        if (payOrder != null && payOrder.getStatus() != null && payOrder.getStatus() == 1) {
+            throw new ServerException(400, "支付单已完成");
+        }
         if (payOrder == null) {
             payOrder = new PayOrderDO();
             payOrder.setPaySn(generatePaySn());
