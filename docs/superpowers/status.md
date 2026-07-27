@@ -11,6 +11,7 @@
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **下一 Epic 规格**: [product-real-api-and-migration-design.md](specs/2026-07-27-product-real-api-and-migration-design.md)
+**当前实施计划**: [database-incremental-migration.md](plans/2026-07-27-database-incremental-migration.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -344,6 +345,12 @@
 - 新增规格：`docs/superpowers/specs/2026-07-27-product-real-api-and-migration-design.md`。
 - 明确下一 Epic 先建立可重复执行的增量迁移，再切换商品分类、列表、详情和 SKU 库存到数据库读取。
 - 已将实施拆分为迁移机制、商品列表、商品详情与交易快照、验收四个子 Issue；待规格评审后创建实施计划。
+
+## 2026-07-27 数据库增量迁移实施计划
+
+- 新增计划：`docs/superpowers/plans/2026-07-27-database-incremental-migration.md`。
+- 首个子 Issue 聚焦可重复执行的交易 P0 数据库迁移，不修改商品接口，避免与现有 `feat/backend-product-real-api` 独立工作树冲突。
+- 计划已明确迁移历史表、迁移 SQL、PowerShell 执行器、隔离数据库验收和真实本地库升级步骤。
 
 ## 决策记录
 
