@@ -360,6 +360,13 @@
 - 已备份并升级本地 `shop` 数据库，确认 `trade_after_sale`、`trade_order_log`、`idx_expire_status` 和版本 `20260727_01` 存在。
 - 本机已安装 Temurin JDK 25；Spring Boot 从 3.2.5 升级至 3.5.16 以支持 Java 25，后端全量 Maven 构建及可执行 JAR 打包完成。
 
+## 2026-07-27 商品真实接口合并与联调完成
+
+- 已将 `feat/backend-product-real-api` 与当前 `main` 的交易迁移内容合并，冲突仅涉及 `.gitignore` 和状态文档，均保留双方有效记录。
+- 商品分类、分页列表、关键词筛选和商品详情接口已接入本地 MySQL；商品详情会返回 SKU 数据。
+- 在 Temurin JDK 25 环境中，Maven 全模块测试通过，商品模块 `AppProductResponseAssemblerTest` 通过；完整打包生成可执行 JAR。
+- 本地联调确认 `goods/count`、`catalog/index`、`goods/list` 和 `goods/detail` 均返回 `code: 0`，列表总数为 4，关键词“阿胶”可命中商品。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
