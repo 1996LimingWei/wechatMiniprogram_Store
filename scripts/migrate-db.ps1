@@ -63,7 +63,11 @@ foreach ($migration in $migrations) {
 
     $version = $Matches.version
     $description = $Matches.description
-    $checksum = (Get-FileHash -Path $migration.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    $sql = (Get-Content -Path $migration.FullName -Raw -Encoding utf8) -replace "`r`n", "`n"
+    $checksumBytes = [System.Text.Encoding]::UTF8.GetBytes($sql)
+    $checksum = [System.BitConverter]::ToString(
+        [System.Security.Cryptography.SHA256]::Create().ComputeHash($checksumBytes)
+    ).Replace('-', '').ToLowerInvariant()
     $recordedChecksum = Invoke-MysqlQuery "SELECT checksum FROM schema_migration_history WHERE version = '$version';"
     if ($recordedChecksum) {
         if ($recordedChecksum -ne $checksum) {
@@ -73,7 +77,6 @@ foreach ($migration in $migrations) {
         continue
     }
 
-    $sql = Get-Content -Path $migration.FullName -Raw -Encoding utf8
     Invoke-MigrationSql -Sql $sql -MigrationName $migration.Name
     Invoke-MysqlQuery "INSERT INTO schema_migration_history(version, description, checksum) VALUES ('$version', '$description', '$checksum');" | Out-Null
     Write-Host "已执行迁移：$($migration.Name)"
