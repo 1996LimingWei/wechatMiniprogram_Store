@@ -24,7 +24,7 @@ class AppProductQueryServiceTest {
         ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         ProductSpuDO spu = new ProductSpuDO();
-        spu.setId(1L); spu.setStatus(1); spu.setName("测试商品"); spu.setPicUrl("pic"); spu.setPrice(9900); spu.setMarketPrice(10900); spu.setSalesCount(2);
+        spu.setId(1L); spu.setCategoryId(1L); spu.setStatus(1); spu.setName("测试商品"); spu.setPicUrl("pic"); spu.setPrice(9900); spu.setMarketPrice(10900); spu.setSalesCount(2);
         when(spuMapper.selectById(1L)).thenReturn(spu);
         when(skuMapper.selectList(any())).thenReturn(List.of());
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(2);
