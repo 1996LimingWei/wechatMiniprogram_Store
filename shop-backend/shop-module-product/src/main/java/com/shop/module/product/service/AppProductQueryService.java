@@ -60,7 +60,7 @@ public class AppProductQueryService {
         Map<String, Object> comment = new LinkedHashMap<>();
         comment.put("count", commentCount == null ? 0 : commentCount);
         if (!comments.isEmpty()) {
-            Map<String, Object> latest = comments.get(0);
+            Map<String, Object> latest = new LinkedHashMap<>(comments.get(0));
             latest.put("picList", List.of());
             comment.put("data", latest);
         }
