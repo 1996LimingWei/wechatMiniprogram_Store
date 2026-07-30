@@ -26,7 +26,11 @@ public class AppInteractionController {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM member_collect WHERE user_id=? AND spu_id=? AND deleted=0", Integer.class, userId, valueId);
         String type;
         if (count != null && count > 0) { jdbc.update("UPDATE member_collect SET deleted=1 WHERE user_id=? AND spu_id=? AND deleted=0", userId, valueId); type = "delete"; }
-        else { jdbc.update("INSERT INTO member_collect(user_id,spu_id) VALUES (?,?)", userId, valueId); type = "add"; }
+        else {
+            int restored = jdbc.update("UPDATE member_collect SET deleted=0, update_time=CURRENT_TIMESTAMP WHERE user_id=? AND spu_id=? AND deleted=1", userId, valueId);
+            if (restored == 0) jdbc.update("INSERT INTO member_collect(user_id,spu_id) VALUES (?,?)", userId, valueId);
+            type = "add";
+        }
         return ok(Map.of("type", type));
     }
 
@@ -62,7 +66,7 @@ public class AppInteractionController {
 
     @PostMapping("/footprint/record")
     @Transactional
-    public Map<String,Object> recordFootprint(@RequestParam Long goodsId) { Long user=userId(); requireGoods(goodsId); int updated=jdbc.update("UPDATE member_footprint SET update_time=CURRENT_TIMESTAMP WHERE user_id=? AND spu_id=? AND browse_date=? AND deleted=0",user,goodsId,LocalDate.now()); if(updated==0) jdbc.update("INSERT INTO member_footprint(user_id,spu_id,browse_date) VALUES (?,?,?)",user,goodsId,LocalDate.now()); return ok(Map.of()); }
+    public Map<String,Object> recordFootprint(@RequestParam Long goodsId) { Long user=userId(); requireGoods(goodsId); int updated=jdbc.update("UPDATE member_footprint SET update_time=CURRENT_TIMESTAMP WHERE user_id=? AND spu_id=? AND browse_date=? AND deleted=0",user,goodsId,LocalDate.now()); if(updated==0) { int restored=jdbc.update("UPDATE member_footprint SET deleted=0, update_time=CURRENT_TIMESTAMP WHERE user_id=? AND spu_id=? AND browse_date=? AND deleted=1",user,goodsId,LocalDate.now()); if(restored==0) jdbc.update("INSERT INTO member_footprint(user_id,spu_id,browse_date) VALUES (?,?,?)",user,goodsId,LocalDate.now()); } return ok(Map.of()); }
 
     private Long userId() { Authentication a=SecurityContextHolder.getContext().getAuthentication(); if(a!=null&&a.getPrincipal() instanceof LoginUser u) return u.getUserId(); throw new ServerException(401,"请先登录"); }
     private void requireGoods(Long id) { Integer count=jdbc.queryForObject("SELECT COUNT(*) FROM product_spu WHERE id=? AND status=1 AND deleted=0",Integer.class,id); if(count==null||count==0) throw new ServerException(404,"商品不存在或已下架"); }
