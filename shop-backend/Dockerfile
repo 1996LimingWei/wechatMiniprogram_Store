@@ -13,4 +13,5 @@ FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 COPY --from=build /app/shop-server/target/*.jar app.jar
 EXPOSE 8085
-ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-jar", "app.jar", "--spring.profiles.active=prod"]
+ENV SPRING_PROFILES_ACTIVE=prod
+ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]

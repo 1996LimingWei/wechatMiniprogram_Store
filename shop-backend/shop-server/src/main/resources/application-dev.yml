@@ -18,7 +18,12 @@ wx:
     secret:
     mock-enabled: true
 
+shop:
+  mock:
+    enabled: true
+
 trade:
+  dev-actions-enabled: true
   order:
     unpaid-timeout-minutes: 30
     expire-job-enabled: true

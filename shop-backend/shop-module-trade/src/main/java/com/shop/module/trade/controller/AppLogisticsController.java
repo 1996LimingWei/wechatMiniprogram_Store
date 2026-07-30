@@ -1,6 +1,7 @@
 package com.shop.module.trade.controller;
 
 import com.shop.common.pojo.CommonResult;
+import com.shop.module.trade.config.TradeDevActionGuard;
 import com.shop.module.trade.service.TradeLogisticsService;
 import com.shop.module.trade.util.TradeRequestUtils;
 import com.shop.module.trade.util.TradeSecurityUtils;
@@ -14,6 +15,7 @@ import java.util.Map;
 public class AppLogisticsController {
 
     private final TradeLogisticsService tradeLogisticsService;
+    private final TradeDevActionGuard tradeDevActionGuard;
 
     @RequestMapping("/app-api/order/logistics")
     public CommonResult<Map<String, Object>> logistics(@RequestBody(required = false) String rawBody,
@@ -28,6 +30,7 @@ public class AppLogisticsController {
     @RequestMapping("/app-api/order/mock-ship")
     public CommonResult<Map<String, Object>> mockShip(@RequestBody(required = false) String rawBody,
                                                       @RequestParam Map<String, Object> params) {
+        tradeDevActionGuard.checkEnabled();
         Long userId = TradeSecurityUtils.getRequiredUserId();
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);

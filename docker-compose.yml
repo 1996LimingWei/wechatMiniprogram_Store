@@ -45,7 +45,7 @@ services:
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      WX_MA_MOCK_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       TZ: Asia/Shanghai
     ports:
       - "${BACKEND_PORT:-8085}:8085"

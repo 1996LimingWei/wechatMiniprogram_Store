@@ -1,5 +1,6 @@
 package com.shop.module.product.controller;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -8,6 +9,7 @@ import java.util.*;
  * 分类/专题/购物车等页面 mock 接口 - 开发阶段使用
  */
 @RestController
+@ConditionalOnProperty(prefix = "shop.mock", name = "enabled", havingValue = "true")
 public class AppMockController {
 
     private static final String IMG = MockData.CATEGORY_BANNERS.get(1L);
