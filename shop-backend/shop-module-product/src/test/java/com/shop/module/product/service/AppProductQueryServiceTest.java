@@ -32,7 +32,10 @@ class AppProductQueryServiceTest {
                 sku(3L, "[{\"id\":20,\"name\":\"Color\",\"valueId\":202,\"valueName\":\"Blue\"},{\"id\":10,\"name\":\"Size\",\"valueId\":102,\"valueName\":\"Large\"}]", 1500, 1800, 5, "blue-large"),
                 sku(1L, "[{\"id\":10,\"name\":\"Size\",\"valueId\":101,\"valueName\":\"Small\"},{\"id\":20,\"name\":\"Color\",\"valueId\":201,\"valueName\":\"Red\"}]", 1200, 1600, 3, "red-small"),
                 sku(2L, "[{\"id\":10,\"name\":\"Size\",\"valueId\":101,\"valueName\":\"Small\"},{\"id\":20,\"name\":\"Color\",\"valueId\":202,\"valueName\":\"Blue\"}]", 1300, 1700, 0, "blue-small"),
-                sku(4L, "{not-json", 999, 999, 1, "broken")
+                sku(4L, "{not-json", 999, 999, 1, "broken"),
+                sku(5L, null, 999, 999, 1, "null-properties"),
+                sku(6L, "[]", 999, 999, 1, "empty-properties"),
+                sku(7L, "[{\"id\":10.5,\"name\":\"Size\",\"valueId\":101,\"valueName\":\"Broken\"}]", 999, 999, 1, "decimal-id")
         ));
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(0);
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of());
@@ -50,11 +53,18 @@ class AppProductQueryServiceTest {
         assertEquals("101_201", inStockSku.get("goodsSpecificationIds"));
         assertEquals(List.of(101L, 201L), inStockSku.get("specificationValueIds"));
         assertEquals("12.00", inStockSku.get("retailPrice"));
+        assertEquals("16.00", inStockSku.get("counterPrice"));
         assertEquals("red-small", inStockSku.get("picUrl"));
+        assertEquals(3, inStockSku.get("goodsNumber"));
         assertEquals(3, inStockSku.get("stock"));
+        assertEquals(List.of(101L, 201L), ((List<Map<String, Object>>) inStockSku.get("properties")).stream().map(item -> item.get("valueId")).toList());
         assertTrue((Boolean) inStockSku.get("available"));
         assertFalse((Boolean) soldOutSku.get("available"));
-        assertEquals("", products.stream().filter(item -> item.get("id").equals(4L)).findFirst().orElseThrow().get("goodsSpecificationIds"));
+        for (Long invalidId : List.of(4L, 5L, 6L, 7L)) {
+            Map<String, Object> invalidSku = products.stream().filter(item -> item.get("id").equals(invalidId)).findFirst().orElseThrow();
+            assertEquals("", invalidSku.get("goodsSpecificationIds"));
+            assertEquals(List.of(), invalidSku.get("specificationValueIds"));
+        }
     }
 
     @Test

@@ -375,6 +375,13 @@
 - `shop-module-product` 单元测试已覆盖首页内容排序/过滤、评论响应契约和商品详情互动摘要，并通过 `mvn test -pl shop-module-product -am`。
 - 草稿 PR #13 汇总以上改动；Issue #11、#12 保持开放，关闭条件仍为 Docker 数据库迁移与真实接口联调通过。
 
+## 2026-07-31 Issue #15 商品多规格与库存可售性读模型完成
+
+- 新增 [规格](specs/2026-07-31-product-sku-read-model.md) 与 [实施记录](plans/2026-07-31-product-sku-read-model.md)，明确只改商品模块和商品详情页，不触及 Issue #14 的交易模块或迁移文件。
+- 商品详情接口现已解析全部 SKU 规格属性，返回稳定排序的规格维度、精确 SKU 矩阵、价格、图片、库存和可售状态，并保留 `goodsSpecificationIds`、`goodsNumber` 兼容字段。
+- 商品详情页支持精确 SKU 匹配、缺货组合禁用、库存数量上限、SKU 价格/图片切换；旧接口和 Mock 字段会被归一化，黄金搭档主商品加购也会复用当前选中 SKU。
+- 已在 JDK 25 下执行 `mvn test -pl shop-module-product -am`，8 个测试全部通过；直接 MySQL/Redis 环境的 `goods/detail` 冒烟返回成功并含完整 SKU 字段。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
