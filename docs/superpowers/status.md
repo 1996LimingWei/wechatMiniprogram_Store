@@ -368,6 +368,13 @@
 - 在 Temurin JDK 25 环境中，Maven 全模块测试通过，商品模块 `AppProductResponseAssemblerTest` 通过；完整打包生成可执行 JAR。
 - 本地联调确认 `goods/count`、`catalog/index`、`goods/list` 和 `goods/detail` 均返回 `code: 0`，列表总数为 4，关键词“阿胶”可命中商品。
 
+## 2026-07-30 首页内容与用户互动真实化推进
+
+- Issue #11：已在 `feat/home-content-real-api` 实现首页 Banner、频道、品牌、专题、新品、热销和分类楼层的数据库查询、内容种子和迁移；模块测试与全量构建通过，待 Docker 恢复后执行迁移和接口联调。
+- Issue #12：已在 `feat/user-interaction-mvp` 实现收藏、浏览足迹和商品评论的真实接口、数据迁移、小程序足迹接入，以及商品详情的收藏状态和评论摘要。
+- `shop-module-product` 单元测试已覆盖首页内容排序/过滤、评论响应契约和商品详情互动摘要，并通过 `mvn test -pl shop-module-product -am`。
+- 草稿 PR #13 汇总以上改动；Issue #11、#12 保持开放，关闭条件仍为 Docker 数据库迁移与真实接口联调通过。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
