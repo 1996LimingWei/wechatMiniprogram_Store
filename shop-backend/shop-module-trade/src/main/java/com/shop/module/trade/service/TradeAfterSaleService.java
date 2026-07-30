@@ -1,6 +1,7 @@
 package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shop.common.exception.ServerException;
 import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeAfterSaleDO;
@@ -35,13 +36,13 @@ public class TradeAfterSaleService {
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> apply(Long userId, Long orderId, Map<String, Object> request) {
         TradeOrderDO order = getUserOrder(userId, orderId);
-        if (order.getPayStatus() == null || order.getPayStatus() != 1) {
+        if (order.getPayStatus() == null || order.getPayStatus() != TradeOrderPayStatus.PAID) {
             throw new ServerException(400, "未支付订单不能申请退款");
         }
         if (order.getStatus() == null || order.getStatus() == 0 || order.getStatus() == 4) {
             throw new ServerException(400, "当前订单不能申请售后");
         }
-        if (order.getPayStatus() == 2) {
+        if (order.getPayStatus() == TradeOrderPayStatus.REFUNDED) {
             throw new ServerException(400, "订单已退款");
         }
         TradeAfterSaleDO existed = getAfterSale(orderId);
@@ -172,30 +173,60 @@ public class TradeAfterSaleService {
         if (afterSale.getStatus() == 1) {
             return toResp(afterSale);
         }
-        if (order.getPayStatus() == null || order.getPayStatus() != 1) {
+        if (order.getPayStatus() == null || order.getPayStatus() != TradeOrderPayStatus.PAID) {
             throw new ServerException(400, "当前订单不能退款");
         }
 
-        afterSale.setStatus(1);
-        afterSale.setAuditTime(LocalDateTime.now());
-        tradeAfterSaleMapper.updateById(afterSale);
+        PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getOrderId, orderId)
+                .eq(PayOrderDO::getUserId, order.getUserId())
+                .orderByDesc(PayOrderDO::getUpdateTime)
+                .last("LIMIT 1"));
+        if (payOrder == null || payOrder.getStatus() == null || payOrder.getStatus() != PayOrderStatus.PAID) {
+            throw new ServerException(400, "支付单当前不能退款");
+        }
+        if (payOrder.getAmount() == null || !payOrder.getAmount().equals(afterSale.getRefundAmount())) {
+            throw new ServerException(400, "退款金额与支付单金额不一致");
+        }
+
+        int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                .eq(TradeAfterSaleDO::getStatus, 0)
+                .set(TradeAfterSaleDO::getStatus, 1)
+                .set(TradeAfterSaleDO::getAuditTime, LocalDateTime.now()));
+        if (afterSaleUpdated != 1) {
+            TradeAfterSaleDO latest = getAfterSale(orderId);
+            if (latest != null && latest.getStatus() != null && latest.getStatus() == 1) {
+                return toResp(latest);
+            }
+            throw new ServerException(400, "售后单状态已变更，不能退款");
+        }
+
+        int payOrderUpdated = payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getId, payOrder.getId())
+                .eq(PayOrderDO::getStatus, PayOrderStatus.PAID)
+                .set(PayOrderDO::getStatus, PayOrderStatus.REFUNDED));
+        if (payOrderUpdated != 1) {
+            throw new ServerException(400, "支付单状态已变更，不能退款");
+        }
 
         Integer fromStatus = order.getStatus();
         Integer fromPayStatus = order.getPayStatus();
-        order.setPayStatus(2);
+        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, order.getId())
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                .set(TradeOrderDO::getPayStatus, TradeOrderPayStatus.REFUNDED)
+                .set(TradeOrderDO::getStatus, 5));
+        if (orderUpdated != 1) {
+            throw new ServerException(400, "订单状态已变更，不能退款");
+        }
+        afterSale.setStatus(1);
+        afterSale.setAuditTime(LocalDateTime.now());
+        order.setPayStatus(TradeOrderPayStatus.REFUNDED);
         order.setStatus(5);
-        tradeOrderMapper.updateById(order);
         tradeOrderLogService.recordPayChanged(order, operatorType, operatorId,
                 "REFUND_SUCCESS", fromStatus, order.getStatus(), fromPayStatus, order.getPayStatus(),
                 "Mock 退款审核通过");
-
-        PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
-                .eq(PayOrderDO::getOrderId, orderId)
-                .eq(PayOrderDO::getUserId, userId));
-        if (payOrder != null) {
-            payOrder.setStatus(3);
-            payOrderMapper.updateById(payOrder);
-        }
         return toResp(afterSale);
     }
 

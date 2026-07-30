@@ -71,7 +71,7 @@ public class TradeOrderService {
         order.setOrderSn(generateOrderSn());
         order.setUserId(userId);
         order.setStatus(0);
-        order.setPayStatus(0);
+        order.setPayStatus(TradeOrderPayStatus.UNPAID);
         order.setGoodsPrice(goodsTotalPrice);
         order.setFreightPrice(freightPrice);
         order.setCouponPrice(couponPrice);
@@ -114,7 +114,7 @@ public class TradeOrderService {
             if (status < 0) {
                 wrapper.and(w -> w.eq(TradeOrderDO::getStatus, 5)
                         .or()
-                        .eq(TradeOrderDO::getPayStatus, 2));
+                        .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.REFUNDED));
             } else {
                 wrapper.eq(TradeOrderDO::getStatus, status);
             }
@@ -222,7 +222,7 @@ public class TradeOrderService {
     @Transactional(rollbackFor = Exception.class)
     public void markPaid(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
-        if (order.getPayStatus() == 1) {
+        if (order.getPayStatus() == TradeOrderPayStatus.PAID) {
             return;
         }
         if (order.getStatus() != 0) {
@@ -232,19 +232,19 @@ public class TradeOrderService {
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
                 .eq(TradeOrderDO::getStatus, 0)
-                .eq(TradeOrderDO::getPayStatus, 0)
-                .set(TradeOrderDO::getPayStatus, 1)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
+                .set(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
                 .set(TradeOrderDO::getStatus, 1)
                 .set(TradeOrderDO::getPayTime, LocalDateTime.now()));
         if (updated == 1) {
             order.setStatus(1);
-            order.setPayStatus(1);
+            order.setPayStatus(TradeOrderPayStatus.PAID);
             tradeOrderLogService.recordPayChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
                     "PAY_SUCCESS", 0, 1, 0, 1, "Mock 支付成功");
             return;
         }
         TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
-        if (latest != null && latest.getPayStatus() != null && latest.getPayStatus() == 1) {
+        if (latest != null && latest.getPayStatus() != null && latest.getPayStatus() == TradeOrderPayStatus.PAID) {
             return;
         }
         if (latest != null && latest.getStatus() != null && latest.getStatus() == 4) {
@@ -268,7 +268,7 @@ public class TradeOrderService {
         int batchSize = Math.max(1, tradeOrderProperties.getExpireBatchSize());
         List<TradeOrderDO> expiredOrders = tradeOrderMapper.selectList(new LambdaQueryWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getStatus, 0)
-                .eq(TradeOrderDO::getPayStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
                 .and(wrapper -> wrapper.le(TradeOrderDO::getExpireTime, now)
                         .or()
                         .isNull(TradeOrderDO::getExpireTime)
@@ -351,11 +351,11 @@ public class TradeOrderService {
         option.put("ship", order.getStatus() == 1);
         option.put("logistics", order.getStatus() == 2 || order.getStatus() == 3);
         option.put("confirm", order.getStatus() == 2);
-        option.put("refund", order.getPayStatus() != null && order.getPayStatus() == 1
+        option.put("refund", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null && (order.getStatus() == 1 || order.getStatus() == 2 || order.getStatus() == 3));
-        option.put("refundApprove", order.getPayStatus() != null && order.getPayStatus() == 1
+        option.put("refundApprove", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null && order.getStatus() == 5);
-        option.put("refundCancel", order.getPayStatus() != null && order.getPayStatus() == 1
+        option.put("refundCancel", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null && order.getStatus() == 5);
         return option;
     }
@@ -372,7 +372,7 @@ public class TradeOrderService {
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
                 .eq(TradeOrderDO::getStatus, 0)
-                .eq(TradeOrderDO::getPayStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
                 .set(TradeOrderDO::getStatus, 4)
                 .set(TradeOrderDO::getCloseTime, LocalDateTime.now())
                 .set(TradeOrderDO::getCloseReason, closeReason));
@@ -388,13 +388,13 @@ public class TradeOrderService {
         payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getOrderId, orderId)
                 .eq(PayOrderDO::getUserId, userId)
-                .eq(PayOrderDO::getStatus, 0)
-                .set(PayOrderDO::getStatus, 2));
+                .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
+                .set(PayOrderDO::getStatus, PayOrderStatus.CLOSED));
         return true;
     }
 
     private String getOrderStatusText(TradeOrderDO order) {
-        if (order.getPayStatus() != null && order.getPayStatus() == 2) {
+        if (order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.REFUNDED) {
             return "已退款";
         }
         Integer status = order.getStatus();
@@ -425,6 +425,7 @@ public class TradeOrderService {
         result.put("amount", TradeMoneyUtils.formatYuan(payOrder.getAmount()));
         result.put("channel", payOrder.getChannel());
         result.put("status", payOrder.getStatus());
+        result.put("statusText", PayOrderStatus.getText(payOrder.getStatus()));
         result.put("payTime", payOrder.getPayTime() == null ? "" : payOrder.getPayTime().format(TIME_FORMATTER));
         return result;
     }

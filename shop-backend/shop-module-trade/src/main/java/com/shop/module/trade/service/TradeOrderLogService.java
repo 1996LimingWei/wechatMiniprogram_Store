@@ -127,9 +127,9 @@ public class TradeOrderLogService {
             return "";
         }
         return switch (status) {
-            case 0 -> "未支付";
-            case 1 -> "已支付";
-            case 2 -> "已退款";
+            case TradeOrderPayStatus.UNPAID -> "未支付";
+            case TradeOrderPayStatus.PAID -> "已支付";
+            case TradeOrderPayStatus.REFUNDED -> "已退款";
             default -> "未知";
         };
     }

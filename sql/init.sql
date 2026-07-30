@@ -325,7 +325,7 @@ CREATE TABLE `pay_order` (
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_pay_sn` (`pay_sn`),
-    KEY `idx_order_id` (`order_id`)
+    UNIQUE KEY `uk_order_id` (`order_id`)
 ) ENGINE=InnoDB COMMENT='支付单表';
 
 CREATE TABLE `trade_order_logistics` (

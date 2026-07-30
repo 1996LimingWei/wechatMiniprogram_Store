@@ -6,6 +6,7 @@
 
 $ErrorActionPreference = "Stop"
 $TestDatabase = "shop_migration_verify_$(Get-Date -Format 'yyyyMMddHHmmssfff')"
+$ExpectedMigrationCount = (Get-ChildItem -Path (Join-Path $PSScriptRoot '..\sql\migrations') -File -Filter 'V*__*.sql').Count
 
 function Invoke-Mysql {
     param(
@@ -49,10 +50,12 @@ try {
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'trade_after_sale' AND column_name = 'cancel_time';") 1 "售后表应支持撤销时间"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COLUMN_COMMENT LIKE '%3=%' FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pay_order' AND column_name = 'status';") 1 "支付状态定义应包含退款状态"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260727_01';") 1 "应记录已执行迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'pay_order' AND index_name = 'uk_order_id';") 1 "支付单应按订单唯一约束"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260730_03';") 1 "应记录支付状态机迁移"
 
     & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
     Assert-Equal $LASTEXITCODE 0 "重复执行迁移应成功"
-    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history;") 1 "重复执行不得重复记录迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history;") $ExpectedMigrationCount "重复执行不得重复记录迁移"
 }
 finally {
     Invoke-Mysql "mysql" ("DROP DATABASE IF EXISTS {0};" -f $TestDatabase) | Out-Null
