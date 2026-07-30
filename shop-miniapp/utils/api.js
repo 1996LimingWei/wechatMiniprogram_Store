@@ -71,6 +71,7 @@ module.exports = {
 
 	FootprintList: 'footprint/list', //足迹列表
 	FootprintDelete: 'footprint/delete', //删除足迹
+	FootprintRecord: 'footprint/record', //记录商品浏览足迹
 
 	FeedbackAdd: 'feedback/save', //添加反馈
 	SmsCode: 'user/smscode', //发送短信

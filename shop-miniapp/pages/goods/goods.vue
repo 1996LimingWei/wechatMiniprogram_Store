@@ -310,6 +310,9 @@ export default {
 					this.userHasCollect = res.data.userHasCollect;
 					this.setDefSpecInfo(this.specificationList);
 					this.collectBackImage = this.userHasCollect == 1 ? this.hasCollectImage : this.noCollectImage;
+					if (util.getToken()) {
+						util.request(api.FootprintRecord, { goodsId: this.id }, 'POST', 'application/json', false, true).catch(() => {});
+					}
 					this.getGoodsRelated();
 					this.initScienceInfo(this.id);
 				}
