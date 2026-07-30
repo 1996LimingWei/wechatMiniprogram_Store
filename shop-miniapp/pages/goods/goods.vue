@@ -270,6 +270,7 @@ export default {
 			id: 0,
 			goods: {},
 			gallery: [],
+			baseGallery: [],
 			attribute: [],
 			issueList: [],
 			comment: [],
@@ -304,13 +305,14 @@ export default {
 				if (res.code === 0) {
 					this.baseGoods = res.data.info;
 					this.goods = Object.assign({}, this.baseGoods);
-					this.gallery = res.data.gallery;
+					this.baseGallery = res.data.gallery || [];
+					this.gallery = this.baseGallery;
 					this.attribute = res.data.attribute;
 					this.issueList = res.data.issue;
 					this.comment = res.data.comment;
 					this.brand = res.data.brand;
 					this.specificationList = res.data.specificationList;
-					this.productList = res.data.productList;
+					this.productList = (res.data.productList || []).map(product => this.normalizeProduct(product));
 					this.userHasCollect = res.data.userHasCollect;
 					this.setDefSpecInfo(this.specificationList);
 					this.refreshSkuState();
@@ -349,12 +351,17 @@ export default {
 		},
 		addComboToCart() {
 			if (!this.comboData) return;
-			let that = this;
-			let currentProductId = 1;
-			if (this.productList && this.productList.length > 0) {
-				currentProductId = this.productList[0].id;
+			if (!this.isCheckedAllSpec() || !this.selectedSku) {
+				this.switchAttrPop();
+				uni.showToast({ title: '请先选择完整规格', icon: 'none' });
+				return;
 			}
-			util.request(api.CartAdd, { goodsId: this.goods.id, number: 1, productId: currentProductId }, 'POST', 'application/json').then(res => {
+			if (this.selectedSku.stock < 1) {
+				uni.showToast({ title: '所选规格暂时缺货', icon: 'none' });
+				return;
+			}
+			let that = this;
+			util.request(api.CartAdd, { goodsId: this.goods.id, number: 1, productId: this.selectedSku.id }, 'POST', 'application/json').then(res => {
 				if (res.code === 0) {
 					util.request(api.CartAdd, { goodsId: this.comboData.partnerId, number: 1, productId: 1 }, 'POST', 'application/json').then(resPartner => {
 						if (resPartner.code === 0) {
@@ -433,6 +440,23 @@ export default {
 				return skuIds.length === ids.length && ids.every(id => skuIds.indexOf(id) !== -1);
 			});
 		},
+		normalizeProduct(product) {
+			let valueIds = Array.isArray(product.specificationValueIds)
+				? product.specificationValueIds.map(Number).filter(Number.isFinite)
+				: String(product.goodsSpecificationIds || '').split('_').map(Number).filter(Number.isFinite);
+			let rawStock = product.stock !== undefined && product.stock !== null ? product.stock : product.goodsNumber;
+			let parsedStock = Number(rawStock);
+			let stock = Number.isFinite(parsedStock) ? Math.max(0, Math.floor(parsedStock)) : 0;
+			return Object.assign({}, product, {
+				specificationValueIds: valueIds,
+				stock: stock,
+				available: typeof product.available === 'boolean' ? product.available : stock > 0,
+				retailPrice: product.retailPrice === undefined || product.retailPrice === null || product.retailPrice === '' ? this.baseGoods.retailPrice : product.retailPrice,
+				counterPrice: product.counterPrice === undefined || product.counterPrice === null || product.counterPrice === '' ? this.baseGoods.counterPrice : product.counterPrice,
+				hasSkuPic: Boolean(product.picUrl),
+				picUrl: product.picUrl || this.baseGoods.listPicUrl || this.baseGoods.picUrl || ''
+			});
+		},
 		isValueDisabled(specificationId, valueId) {
 			let selected = this.getCheckedSpecValue().filter(v => v.nameId != specificationId && v.valueId != 0).map(v => Number(v.valueId));
 			selected.push(Number(valueId));
@@ -443,8 +467,12 @@ export default {
 			this.selectedSku = sku && sku.available ? sku : null;
 			if (this.selectedSku) {
 				this.goods = Object.assign({}, this.baseGoods, { retailPrice: sku.retailPrice, counterPrice: sku.counterPrice, listPicUrl: sku.picUrl || this.baseGoods.listPicUrl, picUrl: sku.picUrl || this.baseGoods.picUrl });
+				this.gallery = sku.hasSkuPic ? [{ id: sku.id, imgUrl: sku.picUrl }] : this.baseGallery;
 				this.number = Math.min(this.number, sku.stock);
-			} else this.goods = Object.assign({}, this.baseGoods);
+			} else {
+				this.goods = Object.assign({}, this.baseGoods);
+				this.gallery = this.baseGallery;
+			}
 			for (let i = 0; i < this.specificationList.length; i++) for (let j = 0; j < this.specificationList[i].valueList.length; j++) this.$set(this.specificationList[i].valueList[j], 'disabled', this.isValueDisabled(this.specificationList[i].specificationId, this.specificationList[i].valueList[j].id));
 		},
 		switchAttrPop() {
@@ -488,7 +516,10 @@ export default {
 					return false;
 				}
 				let checkedProduct = that.getCheckedProductItem();
-				if (!checkedProduct || !checkedProduct.available || checkedProduct.stock < that.number) return false;
+				if (!checkedProduct || !checkedProduct.available || checkedProduct.stock < that.number) {
+					uni.showToast({ title: '所选规格库存不足', icon: 'none' });
+					return false;
+				}
 				util.request(api.BuyAdd, { goodsId: that.goods.id, number: that.number, productId: checkedProduct.id }, "POST", 'application/json').then(res => {
 					if (res.code == 0) {
 						that.openAttr = !that.openAttr;
@@ -510,7 +541,10 @@ export default {
 					return false;
 				}
 				let checkedProduct = that.getCheckedProductItem();
-				if (!checkedProduct || !checkedProduct.available || checkedProduct.stock < that.number) return false;
+				if (!checkedProduct || !checkedProduct.available || checkedProduct.stock < that.number) {
+					uni.showToast({ title: '所选规格库存不足', icon: 'none' });
+					return false;
+				}
 				util.request(api.CartAdd, { goodsId: that.goods.id, number: that.number, productId: checkedProduct.id }, 'POST', 'application/json').then(res => {
 					if (res.code == 0) {
 						uni.showToast({ title: '添加成功' });

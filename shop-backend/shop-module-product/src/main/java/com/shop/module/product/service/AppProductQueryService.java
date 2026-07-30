@@ -93,7 +93,16 @@ public class AppProductQueryService {
         ProductSkuDO sku = model.sku(); List<Long> valueIds = model.properties().stream().map(SkuProperty::valueId).toList(); int stock = sku.getStock() == null ? 0 : sku.getStock(); Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", sku.getId()); result.put("goodsSpecificationIds", valueIds.stream().map(String::valueOf).collect(Collectors.joining("_"))); result.put("specificationValueIds", valueIds); result.put("properties", model.properties().stream().map(p -> Map.of("specificationId",p.specificationId(),"valueId",p.valueId(),"name",p.name(),"value",p.valueName())).toList()); result.put("goodsNumber", stock); result.put("stock", stock); result.put("available", stock > 0); result.put("retailPrice", AppProductResponseAssembler.formatPrice(sku.getPrice())); result.put("counterPrice", AppProductResponseAssembler.formatPrice(sku.getMarketPrice())); result.put("picUrl", sku.getPicUrl() == null ? "" : sku.getPicUrl()); return result;
     }
-    private Long longValue(Object value) { if (value instanceof Number number) return number.longValue(); try { return value == null ? null : Long.valueOf(String.valueOf(value)); } catch (NumberFormatException ignored) { return null; } }
+    private Long longValue(Object value) {
+        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) return ((Number) value).longValue();
+        if (value instanceof java.math.BigInteger integer) { try { return integer.longValueExact(); } catch (ArithmeticException ignored) { return null; } }
+        if (value instanceof java.math.BigDecimal decimal) { try { return decimal.longValueExact(); } catch (ArithmeticException ignored) { return null; } }
+        if (value instanceof Number number) {
+            double decimal = number.doubleValue();
+            return Double.isFinite(decimal) && decimal == Math.rint(decimal) && decimal >= Long.MIN_VALUE && decimal <= Long.MAX_VALUE ? number.longValue() : null;
+        }
+        try { return value == null ? null : Long.valueOf(String.valueOf(value)); } catch (NumberFormatException ignored) { return null; }
+    }
     private String stringValue(Object value) { return value == null ? "" : String.valueOf(value).trim(); }
     private record SkuProperty(Long specificationId, Long valueId, String name, String valueName) { }
     private record SkuReadModel(ProductSkuDO sku, List<SkuProperty> properties) { }
