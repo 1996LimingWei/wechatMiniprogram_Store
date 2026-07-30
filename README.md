@@ -95,6 +95,8 @@ wechatMiniprogram_Store/
 
 ## 本地测试流程
 
+完整 Docker 本地启动说明见 [docs/local-development.md](docs/local-development.md)。
+
 ### 环境要求
 
 - JDK 25

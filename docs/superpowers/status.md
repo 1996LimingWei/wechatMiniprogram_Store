@@ -36,6 +36,7 @@
 
 - 需安装 **HBuilderX**（https://www.dcloud.io/hbuilderx.html）才能编译小程序
 - 需安装 **微信开发者工具**（https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html）
+- 本地完整 Docker 编排已补充；当前机器仍需安装并启动 Docker Desktop 后才能运行容器。
 - Node.js 24 与 uni-app Vue2 CLI 构建模式不兼容，须使用 HBuilderX 内置编译器
 
 ## 2026-06-28 迁移记录
