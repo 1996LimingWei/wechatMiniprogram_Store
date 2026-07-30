@@ -347,13 +347,13 @@ public class AppMockController {
 
     // =========== 收藏 ===========
 
-    @RequestMapping("/app-api/collect/addordelete")
+    @RequestMapping("/app-api/mock/collect/addordelete")
     public Map<String, Object> collectAddOrDelete(@RequestParam(value = "typeId", defaultValue = "0") int typeId,
                                                    @RequestParam(value = "valueId", defaultValue = "1") Long valueId) {
         return ok(Map.of("type", "add"));
     }
 
-    @RequestMapping("/app-api/collect/list")
+    @RequestMapping("/app-api/mock/collect/list")
     public Map<String, Object> collectList() {
         return ok(Map.of("collectList", List.of(), "totalPages", 0));
     }
@@ -537,7 +537,7 @@ public class AppMockController {
 
     // =========== 评论 ===========
 
-    @RequestMapping("/app-api/comment/list")
+    @RequestMapping("/app-api/mock/comment/list")
     public Map<String, Object> commentList(
             @RequestParam(value = "valueId", defaultValue = "1") Long valueId,
             @RequestParam(value = "typeId", defaultValue = "0") int typeId,
@@ -578,7 +578,7 @@ public class AppMockController {
 
     // =========== 足迹 ===========
 
-    @RequestMapping("/app-api/footprint/list")
+    @RequestMapping("/app-api/mock/footprint/list")
     public Map<String, Object> footprintList() {
         return ok(Map.of("list", List.of(), "totalPages", 0));
     }
