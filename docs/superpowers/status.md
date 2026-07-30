@@ -6,14 +6,15 @@
 
 ## 当前阶段
 
-**阶段**: Development Roadmap（后续开发路径规划）
+**阶段**: Issue #17 实现完成，待堆叠 PR 评审
 **计划文件**: [next-development-path.md](plans/2026-07-16-next-development-path.md)
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [product-real-api-and-migration-design.md](specs/2026-07-27-product-real-api-and-migration-design.md)
-**当前实施计划**: [2026-07-30-payment-state-machine.md](plans/2026-07-30-payment-state-machine.md)
-**设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
+**当前实施计划**: [2026-07-31-order-query-pagination.md](plans/2026-07-31-order-query-pagination.md)
+**当前设计规格**: [2026-07-31-order-query-pagination-design.md](specs/2026-07-31-order-query-pagination-design.md)
+**整体设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
 
@@ -438,6 +439,25 @@
 - 预支付、支付成功回调、用户取消、超时关闭和退款完成均采用条件更新；重复支付成功和重复退款不会重复写入订单日志。
 - 迁移使用 `V20260730_03__pay_order_state_machine.sql`，避开主干已占用的 `V20260730_02__user_interaction_schema.sql`；迁移校验脚本改为按实际迁移文件数断言历史记录。
 - 已通过 JDK 25 下的 `mvn test -pl shop-module-trade -am`（8 项测试）和 `mvn clean install -DskipTests`（11 个模块）。本机 Docker 守护进程不可用，隔离数据库迁移验收待具备 Docker 的环境执行。
+
+## 2026-07-31 Issue #17 订单搜索与数据库分页性能补强规划
+
+- GitHub 的 #16 已被支付状态机草稿 PR 占用，因此用户口头所称“下一项 Issue 16”顺延为 [Issue #17：订单搜索与数据库分页性能补强](https://github.com/QtImM/wechatMiniprogram_Store/issues/17)。
+- 现有管理端列表已经完成数据库分页和五类筛选，本 Issue 只补创建时间范围、可索引搜索语义、稳定排序、页大小保护、用户端数据库分页、列表批量装配和查询索引，不重复已有实现。
+- 规划分支和独立 worktree 为 `feat/order-query-pagination`；范围只涉及 `shop-module-trade/**`、独立的 `V20260731_01__trade_order_query_indexes.sql`、`sql/init.sql`、查询验收脚本和文档。
+- Issue #15 只修改 `shop-module-product/**` 与 `shop-miniapp/pages/goods/goods.vue`，两者业务代码和文件路径零交集，可并行推进。
+- 数据库合并顺序固定为先合并 PR #16 的 `V20260730_03__pay_order_state_machine.sql`，再执行本 Issue 的 `V20260731_01`。
+
+## 2026-07-31 Issue #17 订单搜索与数据库分页性能补强完成
+
+- 新增 `TradeOrderQueryService`，管理端补齐严格的创建时间闭开区间、订单号精确匹配、纯数字手机号前缀匹配、页大小 1～100 保护，并统一按 `create_time DESC, id DESC` 稳定排序。
+- 用户端订单列表由“查询全量后内存截取”改为 MyBatis-Plus 数据库分页，保留原有 `showType` 状态映射和响应结构。
+- 新增 `TradeOrderListAssembler`，当前页商品、物流和售后各批量查询一次；物流与售后按 `update_time DESC, id DESC` 选择最新记录，空页不查询关联表。
+- 新增 `V20260731_01__trade_order_query_indexes.sql`，落地创建时间、用户、手机号、状态+支付状态、支付状态五个组合索引，并同步 `sql/init.sql`。
+- 新增 `verify-order-query.ps1`，同时扩展通用迁移验收的最小基线和索引断言；一次性 MySQL 8.0.31 实例中，五个迁移版本首次执行、重复执行与校验和检查全部通过。
+- 两万条订单数据的 `EXPLAIN` 验证中，创建时间、用户、手机号前缀、状态组合、支付状态和订单号查询均命中约定索引且无全表扫描。
+- JDK 25 下 `mvn test -pl shop-module-trade -am` 通过：商品模块 7 项、交易模块 18 项；`mvn clean install -DskipTests` 的 11 个模块全部构建成功。
+- 实现分支堆叠在 `feat/payment-state-machine` 上，业务文件未进入 Issue #15 的商品模块或小程序商品详情范围；仅 `status.md` 是所有分支按项目规范都需追加的公共协作文档。
 
 ## 决策记录
 

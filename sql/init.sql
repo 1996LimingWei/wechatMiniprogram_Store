@@ -268,7 +268,12 @@ CREATE TABLE `trade_order` (
     UNIQUE KEY `uk_order_sn` (`order_sn`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`),
-    KEY `idx_expire_status` (`status`, `pay_status`, `expire_time`)
+    KEY `idx_expire_status` (`status`, `pay_status`, `expire_time`),
+    KEY `idx_create_time_id` (`create_time`, `id`),
+    KEY `idx_user_create_time_id` (`user_id`, `create_time`, `id`),
+    KEY `idx_mobile_create_time_id` (`mobile`, `create_time`, `id`),
+    KEY `idx_status_pay_create_time_id` (`status`, `pay_status`, `create_time`, `id`),
+    KEY `idx_pay_status_create_time_id` (`pay_status`, `create_time`, `id`)
 ) ENGINE=InnoDB COMMENT='交易订单表';
 
 CREATE TABLE `trade_order_item` (

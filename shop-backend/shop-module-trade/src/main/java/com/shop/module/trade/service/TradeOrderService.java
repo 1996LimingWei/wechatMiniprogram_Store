@@ -2,8 +2,6 @@ package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.shop.common.pojo.PageResult;
 import com.shop.common.exception.ServerException;
 import com.shop.module.trade.config.TradeOrderProperties;
 import com.shop.module.trade.dal.dataobject.MemberAddressDO;
@@ -105,69 +103,9 @@ public class TradeOrderService {
         return Map.of("orderInfo", Map.of("id", order.getId(), "orderSn", order.getOrderSn()));
     }
 
-    public Map<String, Object> getOrderList(Long userId, int showType, int page, int size) {
-        LambdaQueryWrapper<TradeOrderDO> wrapper = new LambdaQueryWrapper<TradeOrderDO>()
-                .eq(TradeOrderDO::getUserId, userId)
-                .orderByDesc(TradeOrderDO::getCreateTime);
-        Integer status = mapShowTypeToStatus(showType);
-        if (status != null) {
-            if (status < 0) {
-                wrapper.and(w -> w.eq(TradeOrderDO::getStatus, 5)
-                        .or()
-                        .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.REFUNDED));
-            } else {
-                wrapper.eq(TradeOrderDO::getStatus, status);
-            }
-        }
-        List<TradeOrderDO> all = tradeOrderMapper.selectList(wrapper);
-        int fromIndex = Math.min(Math.max(page - 1, 0) * size, all.size());
-        int toIndex = Math.min(fromIndex + size, all.size());
-        List<Map<String, Object>> list = all.subList(fromIndex, toIndex)
-                .stream()
-                .map(this::toOrderListItem)
-                .toList();
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("list", list);
-        result.put("page", page);
-        result.put("total", all.size());
-        return result;
-    }
-
     public Map<String, Object> getOrderDetail(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         return buildOrderDetail(order);
-    }
-
-    public PageResult<Map<String, Object>> getAdminOrderPage(int page, int size, Map<String, Object> request) {
-        LambdaQueryWrapper<TradeOrderDO> wrapper = new LambdaQueryWrapper<TradeOrderDO>()
-                .orderByDesc(TradeOrderDO::getCreateTime);
-        Long userId = getLong(request, "userId", 0L);
-        Long orderId = getLong(request, "orderId", 0L);
-        Integer status = getInteger(request, "status");
-        Integer payStatus = getInteger(request, "payStatus");
-        String orderSn = getString(request, "orderSn");
-        String mobile = getString(request, "mobile");
-        if (userId > 0) {
-            wrapper.eq(TradeOrderDO::getUserId, userId);
-        }
-        if (orderId > 0) {
-            wrapper.eq(TradeOrderDO::getId, orderId);
-        }
-        if (status != null) {
-            wrapper.eq(TradeOrderDO::getStatus, status);
-        }
-        if (payStatus != null) {
-            wrapper.eq(TradeOrderDO::getPayStatus, payStatus);
-        }
-        if (!orderSn.isBlank()) {
-            wrapper.like(TradeOrderDO::getOrderSn, orderSn);
-        }
-        if (!mobile.isBlank()) {
-            wrapper.like(TradeOrderDO::getMobile, mobile);
-        }
-        Page<TradeOrderDO> pageResult = tradeOrderMapper.selectPage(new Page<>(Math.max(page, 1), Math.max(size, 1)), wrapper);
-        return new PageResult<>(pageResult.getRecords().stream().map(this::toOrderListItem).toList(),
-                pageResult.getTotal());
     }
 
     public Map<String, Object> getAdminOrderDetail(Long orderId) {
@@ -283,14 +221,6 @@ public class TradeOrderService {
             }
         }
         return closedCount;
-    }
-
-    private Map<String, Object> toOrderListItem(TradeOrderDO order) {
-        Map<String, Object> item = toOrderInfo(order);
-        item.put("goodsList", getOrderItems(order.getId()).stream().map(this::toOrderGoods).toList());
-        item.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
-        item.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
-        return item;
     }
 
     private Map<String, Object> buildOrderDetail(TradeOrderDO order) {
@@ -428,44 +358,6 @@ public class TradeOrderService {
         result.put("statusText", PayOrderStatus.getText(payOrder.getStatus()));
         result.put("payTime", payOrder.getPayTime() == null ? "" : payOrder.getPayTime().format(TIME_FORMATTER));
         return result;
-    }
-
-    private String getString(Map<String, Object> request, String key) {
-        Object value = request.get(key);
-        return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private Long getLong(Map<String, Object> request, String key, Long defaultValue) {
-        Object value = request.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            return defaultValue;
-        }
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.parseLong(String.valueOf(value));
-    }
-
-    private Integer getInteger(Map<String, Object> request, String key) {
-        Object value = request.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            return null;
-        }
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return Integer.parseInt(String.valueOf(value));
-    }
-
-    private Integer mapShowTypeToStatus(int showType) {
-        return switch (showType) {
-            case 1 -> 0;
-            case 2 -> 1;
-            case 3 -> 2;
-            case 4 -> 3;
-            case 5 -> -1;
-            default -> null;
-        };
     }
 
     private String generateOrderSn() {

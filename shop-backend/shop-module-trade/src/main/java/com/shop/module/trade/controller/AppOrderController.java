@@ -1,6 +1,7 @@
 package com.shop.module.trade.controller;
 
 import com.shop.common.pojo.CommonResult;
+import com.shop.module.trade.service.TradeOrderQueryService;
 import com.shop.module.trade.service.TradeOrderService;
 import com.shop.module.trade.util.TradeRequestUtils;
 import com.shop.module.trade.util.TradeSecurityUtils;
@@ -14,6 +15,7 @@ import java.util.Map;
 public class AppOrderController {
 
     private final TradeOrderService tradeOrderService;
+    private final TradeOrderQueryService tradeOrderQueryService;
 
     @RequestMapping("/app-api/order/submit")
     public CommonResult<Map<String, Object>> submit(@RequestBody(required = false) String rawBody,
@@ -32,7 +34,7 @@ public class AppOrderController {
                                                    @RequestParam(value = "size", required = false) Integer size) {
         Long userId = TradeSecurityUtils.getRequiredUserId();
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
-        return CommonResult.success(tradeOrderService.getOrderList(
+        return CommonResult.success(tradeOrderQueryService.getOrderList(
                 userId,
                 showType != null ? showType : TradeRequestUtils.getInt(request, "showType", 0),
                 page != null ? page : TradeRequestUtils.getInt(request, "page", 1),

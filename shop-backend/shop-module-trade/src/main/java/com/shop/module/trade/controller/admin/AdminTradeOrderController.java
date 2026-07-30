@@ -3,6 +3,7 @@ package com.shop.module.trade.controller.admin;
 import com.shop.common.pojo.CommonResult;
 import com.shop.common.pojo.PageResult;
 import com.shop.module.trade.service.TradeLogisticsService;
+import com.shop.module.trade.service.TradeOrderQueryService;
 import com.shop.module.trade.service.TradeOrderService;
 import com.shop.module.trade.util.TradeRequestUtils;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class AdminTradeOrderController {
 
     private final TradeOrderService tradeOrderService;
+    private final TradeOrderQueryService tradeOrderQueryService;
     private final TradeLogisticsService tradeLogisticsService;
 
     @RequestMapping("/list")
@@ -26,7 +28,7 @@ public class AdminTradeOrderController {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         int finalPage = page != null ? page : TradeRequestUtils.getInt(request, "page", 1);
         int finalSize = size != null ? size : TradeRequestUtils.getInt(request, "size", 10);
-        return CommonResult.success(tradeOrderService.getAdminOrderPage(finalPage, finalSize, request));
+        return CommonResult.success(tradeOrderQueryService.getAdminOrderPage(finalPage, finalSize, request));
     }
 
     @RequestMapping("/detail")
