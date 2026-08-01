@@ -1,8 +1,4 @@
-const mock = require('./mock.js');
-
 const utils = {
-	// 是否使用本地Mock数据（true=纯前端演示，false=连接后端）
-	useMock: false,
 	// 域名
 	domain: 'http://127.0.0.1:8085/',
 	//接口地址
@@ -71,21 +67,6 @@ const utils = {
 	 *  false:显示
 	 */
 	request: function (url, postData = {}, method = "POST", contentType = "application/x-www-form-urlencoded", isDelay, hideLoading) {
-		// Mock模式：直接返回本地数据
-		if (utils.useMock) {
-			return new Promise((resolve) => {
-				setTimeout(() => {
-					const result = mock.handleMock(url, postData);
-					if (result) {
-						resolve(result);
-					} else {
-						console.warn('[Mock] 未匹配接口:', url);
-						resolve({ code: 0, msg: 'success', data: {} });
-					}
-				}, 100);
-			});
-		}
-
 		//接口请求
 		let loadding = false;
 		utils.delayed && uni.hideLoading();
@@ -116,8 +97,13 @@ const utils = {
 					if (loadding && !hideLoading) {
 						uni.hideLoading()
 					}
-					if (res.statusCode === 200) {
-						if (res.data.code === 401) {
+					if (res.statusCode !== 200) {
+						utils.toast('服务暂时不可用，请稍后再试')
+						reject(res)
+						return
+					}
+					const data = res.data || { code: 500, msg: '接口返回为空' }
+					if (data.code === 401) {
 							// 尝试刷新 Token
 							const oldToken = utils.getToken();
 							if (oldToken && !url.includes('auth/refresh-token')) {
@@ -127,40 +113,29 @@ const utils = {
 										utils.request(url, postData, method, contentType, isDelay, hideLoading).then(resolve).catch(reject);
 									} else {
 										utils._handleUnauthorized();
+										resolve(data);
 									}
 								}).catch(() => {
 									utils._handleUnauthorized();
+									resolve(data);
 								});
 							} else {
 								utils._handleUnauthorized();
+								resolve(data);
 							}
-						} else if (res.data.code === 500) {
-							utils.toast(res.data.msg)
-						} else if (res.data.code === 404) {
-							utils.toast(res.data.msg)
 						} else {
-							resolve(res.data);
+							if (data.code !== 0) utils.toast(data.msg || '请求失败')
+							resolve(data);
 						}
-					} else {
-						reject(res.data.msg);
-					}
 				},
 				fail: (res) => {
 					utils.toast("网络不给力，请稍后再试~")
 					reject(res)
 				},
-				complete: function (res) {
+				complete: function () {
 					clearTimeout(utils.delayed)
 					utils.delayed = null;
-					if (res.statusCode === 200) {
-						if (res.data.code === 0 || res.data.code === 401) {
-							uni.hideLoading()
-						} else {
-							utils.toast(res.data.msg)
-						}
-					} else {
-						utils.toast('服务器开小差了~')
-					}
+					uni.hideLoading()
 				}
 			})
 		})
@@ -190,7 +165,8 @@ const utils = {
 						//返回图片地址
 						resolve(data)
 					} else {
-						that.toast(res.msg);
+						utils.toast(data.msg || '上传失败');
+						reject(data);
 					}
 				},
 				fail: function (res) {
@@ -406,18 +382,6 @@ const utils = {
 	 */
 	payOrder: function (orderId) {
 		return new Promise(function (resolve, reject) {
-			// Mock模式：跳转到仿微信支付页面，由用户点击确认后 resolve
-			if (utils.useMock) {
-				const app = getApp();
-				app.globalData._payResolve = resolve;
-				app.globalData._payReject = reject;
-				// 从购物车总金额或传入参数获取金额
-				const amount = app.globalData._payAmount || '0.00';
-				uni.navigateTo({
-					url: '/pages/payMock/payMock?orderId=' + orderId + '&amount=' + amount
-				});
-				return;
-			}
 			utils.request('pay/prepay', {
 				orderId: orderId
 			}, 'POST').then((res) => {

@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
+**当前实施计划**: [2026-08-01-miniapp-product-api-acceptance.md](plans/2026-08-01-miniapp-product-api-acceptance.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -35,8 +35,7 @@
 
 ## 阻塞项
 
-- 需安装 **HBuilderX**（https://www.dcloud.io/hbuilderx.html）才能编译小程序
-- 需安装 **微信开发者工具**（https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html）
+- 当前无开发环境阻塞；HBuilderX、微信开发者工具、Docker Desktop、WSL 2 与 Ubuntu 24.04 均已可用。
 - Docker Desktop、WSL 2 与 Ubuntu 24.04 已可用；Docker/Ubuntu 虚拟磁盘、项目数据库、Redis 和项目 Maven 缓存均落在 D 盘。
 - Node.js 24 与 uni-app Vue2 CLI 构建模式不兼容，须使用 HBuilderX 内置编译器
 
@@ -481,6 +480,13 @@
 - [PR #28](https://github.com/QtImM/wechatMiniprogram_Store/pull/28) 已合并到 `main`，Issue #24 已自动关闭；合并提交为 `cca579e`。
 - 下一项切换到 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)。
 
+## 2026-08-01 Issue #25 小程序商品正式 API 收口
+
+- 小程序请求层已删除本地 `utils/mock.js` 和 `useMock` 分支，商品内容统一请求正式 `/app-api/**`；后端明确返回的受控 Mock 支付适配保持不变。
+- 首页频道与分类、分类页、商品详情、收藏、足迹和评论已清除硬编码业务数据与固定 SKU 快捷加购，补齐失败态、重试和登录引导。
+- 新增商品正式 API 静态边界验收与 Docker HTTP 全链路验收，覆盖首页、分类、搜索、二维多规格、缺货、收藏、足迹和评论，并自动清理测试数据。
+- 商品模块 23 项测试、前端静态验收、SKU 验收、Docker HTTP 验收和 HBuilderX 微信小程序编译均通过；微信开发者工具已识别项目 AppID 并成功打开源码项目。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -510,7 +516,7 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 商品负责人已完成 Issue #22、#15、#23 和 #24，下一项执行 `#25`。
+1. 商品负责人 Issue #22、#15、#23、#24 和 #25 已完成开发与自动验收，本阶段商品真实化链路闭环。
 2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
 3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 

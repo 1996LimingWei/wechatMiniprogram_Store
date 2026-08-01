@@ -26,6 +26,7 @@
 				<text class="empty-text">暂无评论</text>
 			</view>
 		</view>
+		<view class="post-entry" @tap="goToPost">发表评价</view>
 	</view>
 </template>
 
@@ -49,6 +50,15 @@
 			}
 		},
 		methods: {
+			refreshComments: function() {
+				this.comments = [];
+				this.allCommentList = [];
+				this.picCommentList = [];
+				this.allPage = 1;
+				this.picPage = 1;
+				this.getCommentCount();
+				this.getCommentList();
+			},
 			getCommentCount: function() {
 				let that = this;
 				util.request(api.CommentCount, { valueId: that.valueId, typeId: that.typeId }).then(function(res) {
@@ -90,13 +100,27 @@
 				if (this.comments.length === 0) {
 					this.getCommentList();
 				}
+			},
+			goToPost: function() {
+				if (!util.getToken()) {
+					util.modal('温馨提示', '登录后才能发表评论，是否去登录？', true, confirm => {
+						if (!confirm) return;
+						uni.setStorageSync('navUrl', '/pages/comment/comment?valueId=' + this.valueId + '&typeId=' + this.typeId);
+						uni.navigateTo({ url: '/pages/auth/btnAuth/btnAuth' });
+					});
+					return;
+				}
+				uni.navigateTo({
+					url: '/pages/commentPost/commentPost?valueId=' + this.valueId + '&typeId=' + this.typeId
+				});
 			}
 		},
 		onLoad: function(options) {
 			this.typeId = options.typeId;
 			this.valueId = options.valueId;
-			this.getCommentCount();
-			this.getCommentList();
+		},
+		onShow: function() {
+			if (this.valueId) this.refreshComments();
 		},
 		onReachBottom: function() {
 			if (this.showType == 0) {
@@ -227,5 +251,17 @@
 	.empty-text {
 		font-size: 28rpx;
 		color: #999;
+	}
+
+	.post-entry {
+		position: fixed;
+		right: 30rpx;
+		bottom: 40rpx;
+		padding: 20rpx 34rpx;
+		border-radius: 40rpx;
+		font-size: 26rpx;
+		color: #FEFEFC;
+		background: $green;
+		box-shadow: 0 8rpx 20rpx rgba(91, 140, 90, 0.24);
 	}
 </style>
