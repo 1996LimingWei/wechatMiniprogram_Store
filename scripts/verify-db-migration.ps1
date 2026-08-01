@@ -9,7 +9,7 @@ $TestDatabase = "shop_migration_verify_$(Get-Date -Format 'yyyyMMddHHmmssfff')"
 $DatabaseCreated = $false
 
 function Invoke-Mysql {
-﻿param(
+    param(
         [string]$Database,
         [string]$Sql
     )

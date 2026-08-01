@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-trade-security-boundary.md](plans/2026-08-01-trade-security-boundary.md)
+**当前实施计划**: [2026-08-01-product-search-history.md](plans/2026-08-01-product-search-history.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -441,6 +441,16 @@
 - 新建 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)，建议分支 `feat/miniapp-product-api-acceptance`。
 - 商品负责人建议执行顺序：`#22 → #15 → #23 → #24 → #25`；每张 Issue 独立分支、测试、提交、推送与合并，避免商品查询、详情装配和前端页面产生交叉冲突。
 
+## 2026-08-01 Issue #22 商品搜索与搜索历史真实化
+
+- 新增迁移 `V20260801_01__product_search_history.sql` 和搜索历史 DO/Mapper，按用户与关键词唯一约束实现重复搜索幂等更新和清空后恢复。
+- `/app-api/search/index`、`helper`、`clearhistory` 已从 `AppMockController` 迁移到正式搜索 Controller；热门词、默认词和联想词均读取已上架数据库商品。
+- 商品关键词列表第一页会为当前会员记录规范化搜索历史；匿名用户返回空历史且不写入，管理员身份也不会混入会员历史。
+- 新增 5 项搜索服务测试，商品模块 14 项测试和 Docker 11 模块全量构建通过；4 个数据库迁移版本首次与重复执行通过。
+- 新增 `scripts/verify-product-search.ps1`，双用户搜索历史隔离、重复关键词、清空互不影响、空关键词、下架商品过滤和测试数据自动清理均验收通过。
+- 已创建 [草稿 PR #26](https://github.com/QtImM/wechatMiniprogram_Store/pull/26) 并回写 Issue #22；待合并后自动关闭 Issue。
+- 下一项切换到 [Issue #15：商品多规格与库存可售性读模型](https://github.com/QtImM/wechatMiniprogram_Store/issues/15)。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -470,7 +480,7 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 商品负责人从 Issue #22 开始，依次执行 `#22 → #15 → #23 → #24 → #25`。
+1. 商品负责人完成 Issue #22 后，依次执行 `#15 → #23 → #24 → #25`。
 2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
 3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 
