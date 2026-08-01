@@ -431,6 +431,16 @@
 - `scripts/verify-trade-flow.ps1` 已覆盖匿名/会员/管理员权限、重复购物车删除、真实 SKU、支付金额、无申请退款拒绝、完整履约售后和超时关闭，Docker HTTP 全链路验收通过并自动清理数据。
 - 首页 7 个内容接口以及收藏、足迹、评论接口已完成 Docker/MySQL 联调，Issue #11/#12 的 Docker 阻塞验收项关闭。
 - Dockerfile 已移除强制生产 profile，增加 Maven 持久缓存并在镜像构建中实际执行测试；11 个模块构建成功，商品模块 9 项与交易模块 2 项测试通过，独立生产 profile 容器确认 Mock 写接口返回业务码 `403`。
+
+## 2026-08-01 商品负责人剩余 Issue 规划
+
+- 已复核开放 Issue，确认多规格 SKU 已由 [Issue #15](https://github.com/QtImM/wechatMiniprogram_Store/issues/15) 覆盖，商品 SKU Mock Provider 已由 [Issue #20](https://github.com/QtImM/wechatMiniprogram_Store/issues/20) 覆盖，不重复建单。
+- 新建 [Issue #22：将商品搜索与搜索历史切换为真实数据](https://github.com/QtImM/wechatMiniprogram_Store/issues/22)，建议分支 `feat/product-search-history`。
+- 新建 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，建议分支 `refactor/product-mock-provider-boundary`。
+- 新建 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)，建议分支 `test/product-demo-seed`。
+- 新建 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)，建议分支 `feat/miniapp-product-api-acceptance`。
+- 商品负责人建议执行顺序：`#22 → #15 → #23 → #24 → #25`；每张 Issue 独立分支、测试、提交、推送与合并，避免商品查询、详情装配和前端页面产生交叉冲突。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -460,8 +470,8 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
-2. 补齐 Mock 全页面空态与前端开发文案收口。
+1. 商品负责人从 Issue #22 开始，依次执行 `#22 → #15 → #23 → #24 → #25`。
+2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
 3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 
 ---
