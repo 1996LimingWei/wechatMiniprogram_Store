@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-product-search-history.md](plans/2026-08-01-product-search-history.md)
+**当前实施计划**: [2026-07-31-product-sku-read-model.md](plans/2026-07-31-product-sku-read-model.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -450,6 +450,15 @@
 - 新增 `scripts/verify-product-search.ps1`，双用户搜索历史隔离、重复关键词、清空互不影响、空关键词、下架商品过滤和测试数据自动清理均验收通过。
 - [PR #26](https://github.com/QtImM/wechatMiniprogram_Store/pull/26) 已合并到 `main`，Issue #22 已自动关闭。
 - 下一项切换到 [Issue #15：商品多规格与库存可售性读模型](https://github.com/QtImM/wechatMiniprogram_Store/issues/15)。
+
+## 2026-07-31 Issue #15 商品多规格与库存可售性读模型完成
+
+- 新增 [规格](specs/2026-07-31-product-sku-read-model.md) 与 [实施记录](plans/2026-07-31-product-sku-read-model.md)，明确只改商品模块和商品详情页，不触及 Issue #14 的交易模块或迁移文件。
+- 商品详情接口现已解析全部 SKU 规格属性，返回稳定排序的规格维度、精确 SKU 矩阵、价格、图片、库存和可售状态，并保留 `goodsSpecificationIds`、`goodsNumber` 兼容字段。
+- 无效、非整数或重复维度属性会按整条 SKU 安全降级，不再污染规格列表；完整 SKU 矩阵不依赖数据库返回顺序。
+- 商品详情页按“规格维度 ID + 规格值 ID”精确匹配 SKU，支持缺货组合禁用、库存数量上限和 SKU 价格/图片切换；旧接口与 Mock 字段保持兼容。
+- Docker 11 模块全量构建通过，商品模块 15 项与交易模块 2 项测试通过；前端 SKU 独立脚本和真实 MySQL/Redis 多规格详情 HTTP 验收均通过，测试数据自动清理。
+- [PR #18](https://github.com/QtImM/wechatMiniprogram_Store/pull/18) 等待最终推送与合并，合并后关闭 Issue #15。
 
 ## 决策记录
 

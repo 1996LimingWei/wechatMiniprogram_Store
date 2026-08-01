@@ -208,6 +208,7 @@
 					<view class="sku-meta">
 						<text class="sku-price">¥{{goods.retailPrice}}</text>
 						<text class="sku-selected">{{checkedSpecText}}</text>
+						<text class="sku-stock">库存 {{ selectedSku ? selectedSku.stock : '-' }}</text>
 					</view>
 				</view>
 				<view class="sku-body">
@@ -216,7 +217,7 @@
 						<view class="sku-values">
 							<view
 								class="sku-value"
-								:class="{selected: vitem.checked}"
+								:class="{selected: vitem.checked, disabled: vitem.disabled}"
 								v-for="(vitem, vindex) in item.valueList"
 								:key="vitem.id"
 								@tap="clickSkuValue(item.specificationId, vitem.id)"
@@ -259,6 +260,7 @@
 <script>
 const util = require('@/utils/util.js');
 const api = require('@/utils/api.js');
+const skuUtil = require('@/utils/sku.js');
 import uParse from '@/components/uParse/src/wxParse';
 
 export default {
@@ -269,12 +271,15 @@ export default {
 			id: 0,
 			goods: {},
 			gallery: [],
+			baseGallery: [],
 			attribute: [],
 			issueList: [],
 			comment: [],
 			brand: {},
 			specificationList: [],
 			productList: [],
+			baseGoods: {},
+			selectedSku: null,
 			relatedGoods: [],
 			cartGoodsCount: 0,
 			userHasCollect: 0,
@@ -299,16 +304,19 @@ export default {
 		getGoodsInfo() {
 			util.request(api.GoodsDetail, { id: this.id }).then(res => {
 				if (res.code === 0) {
-					this.goods = res.data.info;
-					this.gallery = res.data.gallery;
+					this.baseGoods = res.data.info;
+					this.goods = Object.assign({}, this.baseGoods);
+					this.baseGallery = res.data.gallery || [];
+					this.gallery = this.baseGallery;
 					this.attribute = res.data.attribute;
 					this.issueList = res.data.issue;
 					this.comment = res.data.comment;
 					this.brand = res.data.brand;
 					this.specificationList = res.data.specificationList;
-					this.productList = res.data.productList;
+					this.productList = (res.data.productList || []).map(product => this.normalizeProduct(product));
 					this.userHasCollect = res.data.userHasCollect;
 					this.setDefSpecInfo(this.specificationList);
+					this.refreshSkuState();
 					this.collectBackImage = this.userHasCollect == 1 ? this.hasCollectImage : this.noCollectImage;
 					if (util.getToken()) {
 						util.request(api.FootprintRecord, { goodsId: this.id }, 'POST', 'application/json', false, true).catch(() => {});
@@ -344,12 +352,17 @@ export default {
 		},
 		addComboToCart() {
 			if (!this.comboData) return;
-			let that = this;
-			let currentProductId = 1;
-			if (this.productList && this.productList.length > 0) {
-				currentProductId = this.productList[0].id;
+			if (!this.isCheckedAllSpec() || !this.selectedSku) {
+				this.switchAttrPop();
+				uni.showToast({ title: '请先选择完整规格', icon: 'none' });
+				return;
 			}
-			util.request(api.CartAdd, { goodsId: this.goods.id, number: 1, productId: currentProductId }, 'POST', 'application/json').then(res => {
+			if (this.selectedSku.stock < 1) {
+				uni.showToast({ title: '所选规格暂时缺货', icon: 'none' });
+				return;
+			}
+			let that = this;
+			util.request(api.CartAdd, { goodsId: this.goods.id, number: 1, productId: this.selectedSku.id }, 'POST', 'application/json').then(res => {
 				if (res.code === 0) {
 					util.request(api.CartAdd, { goodsId: this.comboData.partnerId, number: 1, productId: 1 }, 'POST', 'application/json').then(resPartner => {
 						if (resPartner.code === 0) {
@@ -369,6 +382,7 @@ export default {
 			});
 		},
 		clickSkuValue(specNameId, specValueId) {
+			if (this.isValueDisabled(specNameId, specValueId)) return;
 			let _specificationList = this.specificationList;
 			for (let i = 0; i < _specificationList.length; i++) {
 				if (_specificationList[i].specificationId == specNameId) {
@@ -405,10 +419,6 @@ export default {
 		isCheckedAllSpec() {
 			return !this.getCheckedSpecValue().some(v => v.valueId == 0);
 		},
-		getCheckedSpecKey() {
-			let checkedValue = this.getCheckedSpecValue().map(v => v.valueId);
-			return checkedValue.join('_');
-		},
 		changeSpecInfo() {
 			let checkedNameValue = this.getCheckedSpecValue();
 			let checkedValue = checkedNameValue.filter(v => v.valueId != 0).map(v => v.valueText);
@@ -417,9 +427,36 @@ export default {
 			} else {
 				this.checkedSpecText = '请选择规格数量';
 			}
+			this.refreshSkuState();
 		},
-		getCheckedProductItem(key) {
-			return this.productList.filter(v => v.goodsSpecificationIds.indexOf(key) > -1);
+		getCheckedProductItem() {
+			let selected = this.getCheckedSpecValue().filter(v => v.valueId != 0);
+			if (selected.length !== this.specificationList.length) return null;
+			return this.productList.find(product => this.productMatchesSelection(product, selected, true));
+		},
+		normalizeProduct(product) {
+			return skuUtil.normalizeProduct(product, this.baseGoods);
+		},
+		productMatchesSelection(product, selected, requireComplete) {
+			return skuUtil.productMatchesSelection(product, selected, requireComplete);
+		},
+		isValueDisabled(specificationId, valueId) {
+			let selected = this.getCheckedSpecValue().filter(v => v.nameId != specificationId && v.valueId != 0);
+			selected.push({ nameId: Number(specificationId), valueId: Number(valueId) });
+			return !this.productList.some(product => product.available && this.productMatchesSelection(product, selected, false));
+		},
+		refreshSkuState() {
+			let sku = this.getCheckedProductItem();
+			this.selectedSku = sku && sku.available ? sku : null;
+			if (this.selectedSku) {
+				this.goods = Object.assign({}, this.baseGoods, { retailPrice: sku.retailPrice, counterPrice: sku.counterPrice, listPicUrl: sku.picUrl || this.baseGoods.listPicUrl, picUrl: sku.picUrl || this.baseGoods.picUrl });
+				this.gallery = sku.hasSkuPic ? [{ id: sku.id, imgUrl: sku.picUrl }] : this.baseGallery;
+				this.number = Math.min(this.number, sku.stock);
+			} else {
+				this.goods = Object.assign({}, this.baseGoods);
+				this.gallery = this.baseGallery;
+			}
+			for (let i = 0; i < this.specificationList.length; i++) for (let j = 0; j < this.specificationList[i].valueList.length; j++) this.$set(this.specificationList[i].valueList[j], 'disabled', this.isValueDisabled(this.specificationList[i].specificationId, this.specificationList[i].valueList[j].id));
 		},
 		switchAttrPop() {
 			if (this.openAttr == false) {
@@ -461,10 +498,12 @@ export default {
 					uni.showToast({ title: '请选择规格数量', icon: 'none' });
 					return false;
 				}
-				let checkedProduct = that.getCheckedProductItem(that.getCheckedSpecKey());
-				if (!checkedProduct || checkedProduct.length <= 0) return false;
-				if (checkedProduct.goodsNumber < that.number) return false;
-				util.request(api.BuyAdd, { goodsId: that.goods.id, number: that.number, productId: checkedProduct[0].id }, "POST", 'application/json').then(res => {
+				let checkedProduct = that.getCheckedProductItem();
+				if (!checkedProduct || !checkedProduct.available || checkedProduct.stock < that.number) {
+					uni.showToast({ title: '所选规格库存不足', icon: 'none' });
+					return false;
+				}
+				util.request(api.BuyAdd, { goodsId: that.goods.id, number: that.number, productId: checkedProduct.id }, "POST", 'application/json').then(res => {
 					if (res.code == 0) {
 						that.openAttr = !that.openAttr;
 						uni.navigateTo({ url: '/pages/shopping/checkout/checkout?isBuy=true' });
@@ -484,10 +523,12 @@ export default {
 					uni.showToast({ title: '请选择完整规格', icon: 'none' });
 					return false;
 				}
-				let checkedProduct = that.getCheckedProductItem(that.getCheckedSpecKey());
-				if (!checkedProduct || checkedProduct.length <= 0) return false;
-				if (checkedProduct.goodsNumber < that.number) return false;
-				util.request(api.CartAdd, { goodsId: that.goods.id, number: that.number, productId: checkedProduct[0].id }, 'POST', 'application/json').then(res => {
+				let checkedProduct = that.getCheckedProductItem();
+				if (!checkedProduct || !checkedProduct.available || checkedProduct.stock < that.number) {
+					uni.showToast({ title: '所选规格库存不足', icon: 'none' });
+					return false;
+				}
+				util.request(api.CartAdd, { goodsId: that.goods.id, number: that.number, productId: checkedProduct.id }, 'POST', 'application/json').then(res => {
 					if (res.code == 0) {
 						uni.showToast({ title: '添加成功' });
 						that.openAttr = !that.openAttr;
@@ -503,7 +544,8 @@ export default {
 			this.number = (this.number - 1 > 1) ? this.number - 1 : 1;
 		},
 		addNumber() {
-			this.number = this.number + 1;
+			if (!this.selectedSku) return;
+			this.number = Math.min(this.number + 1, this.selectedSku.stock);
 		},
 		setDefSpecInfo(specificationList) {
 			let that = this;
@@ -1033,6 +1075,12 @@ export default {
 	margin-top: 12rpx;
 }
 
+.sku-stock {
+	font-size: 24rpx;
+	color: $text-secondary;
+	margin-top: 8rpx;
+}
+
 .sku-body {
 	padding: 10rpx 0;
 }
@@ -1075,6 +1123,13 @@ export default {
 		color: $green;
 		background: $green-light;
 		font-weight: 600;
+	}
+
+	&.disabled {
+		border-color: #eeeeee;
+		color: $text-hint;
+		background: #f5f5f5;
+		opacity: 0.55;
 	}
 }
 
