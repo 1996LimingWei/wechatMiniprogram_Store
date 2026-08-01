@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $MigrationDirectory = Join-Path $PSScriptRoot "..\sql\migrations"
 
 function Invoke-MysqlQuery {
-﻿param(
+    param(
         [string]$Sql
     )
 

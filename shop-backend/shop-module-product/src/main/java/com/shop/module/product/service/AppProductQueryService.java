@@ -29,6 +29,7 @@ public class AppProductQueryService {
     private final ProductSpuMapper productSpuMapper;
     private final ProductSkuMapper productSkuMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final ProductSearchService productSearchService;
 
     public Map<String, Object> catalogIndex() {
         List<CategoryDO> roots = categories().stream().filter(c -> c.getParentId() == 0).toList();
@@ -46,7 +47,11 @@ public class AppProductQueryService {
         Set<Long> ids = categoryIds(categoryId);
         all = all.stream().filter(s -> ids.isEmpty() || ids.contains(s.getCategoryId())).filter(s -> keyword == null || keyword.isBlank() || (s.getName()+s.getKeyword()+s.getIntroduction()).contains(keyword)).sorted(isNew == 1 ? Comparator.comparing(ProductSpuDO::getCreateTime).reversed() : Comparator.comparing(ProductSpuDO::getSalesCount, Comparator.nullsLast(Integer::compareTo)).reversed()).toList();
         int from = Math.min(Math.max(page - 1, 0) * size, all.size()), to = Math.min(from + size, all.size());
-        return Map.of("goodsList", Map.of("records", all.subList(from, to).stream().map(this::goods).toList(), "current", page, "size", size, "total", all.size(), "pages", (all.size()+size-1)/size), "filterCategory", categories().stream().filter(c -> c.getParentId()==0).map(c -> Map.of("id",c.getId(),"name",c.getName(),"checked",Objects.equals(c.getId(),categoryId))).toList());
+        Map<String, Object> result = Map.of("goodsList", Map.of("records", all.subList(from, to).stream().map(this::goods).toList(), "current", page, "size", size, "total", all.size(), "pages", (all.size()+size-1)/size), "filterCategory", categories().stream().filter(c -> c.getParentId()==0).map(c -> Map.of("id",c.getId(),"name",c.getName(),"checked",Objects.equals(c.getId(),categoryId))).toList());
+        if (page <= 1) {
+            productSearchService.record(keyword);
+        }
+        return result;
     }
     public Map<String,Object> detail(Long id) {
         ProductSpuDO s = productSpuMapper.selectById(id); if (s == null || s.getStatus() != 1) throw new ServerException(ErrorCode.PRODUCT_NOT_EXISTS);
