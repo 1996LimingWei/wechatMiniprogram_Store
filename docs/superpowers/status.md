@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [product-real-api-and-migration-design.md](specs/2026-07-27-product-real-api-and-migration-design.md)
-**当前实施计划**: [database-incremental-migration.md](plans/2026-07-27-database-incremental-migration.md)
+**当前实施计划**: [2026-08-01-product-trade-delivery-roadmap.md](plans/2026-08-01-product-trade-delivery-roadmap.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -389,6 +389,10 @@
 - 本次审计测试数据已全部清理，临时后端已删除，MySQL/Redis 已恢复为停止状态。
 - 交易侧下一步应先处理安全止血和数据一致性，再继续微信支付、营销或物流扩展。
 
+## 2026-08-01 商品与交易可交付化规划
+
+- 新增商品与交易可交付化实施计划，按“P0 安全止血 → 真实 SKU/库存 → 交易一致性 → 真实支付上线准备”推进。
+- 商品负责人优先负责真实 SKU、规格选择、商品快照和库存协作；在真实商品链路完成前，不再扩展基于 MockData 的交易功能。
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
