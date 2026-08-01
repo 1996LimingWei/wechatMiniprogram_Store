@@ -17,4 +17,3 @@ public class ProductSearchHistoryDO extends BaseDO {
     private Long userId;
     private String keyword;
 }
-

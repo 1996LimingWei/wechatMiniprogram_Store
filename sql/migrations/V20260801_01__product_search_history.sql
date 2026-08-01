@@ -9,4 +9,3 @@ CREATE TABLE IF NOT EXISTS `product_search_history` (
     UNIQUE KEY `uk_user_keyword` (`user_id`, `keyword`),
     KEY `idx_user_update_time` (`user_id`, `update_time`)
 ) ENGINE=InnoDB COMMENT='会员商品搜索历史表';
-

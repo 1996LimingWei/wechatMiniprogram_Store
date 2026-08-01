@@ -24,4 +24,3 @@ public interface ProductSearchHistoryMapper extends BaseMapperX<ProductSearchHis
             """)
     int clearByUserId(@Param("userId") Long userId);
 }
-
