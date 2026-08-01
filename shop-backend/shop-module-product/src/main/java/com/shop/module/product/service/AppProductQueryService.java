@@ -56,7 +56,7 @@ public class AppProductQueryService {
     public Map<String,Object> detail(Long id) {
         ProductSpuDO s = productSpuMapper.selectById(id); if (s == null || s.getStatus() != 1) throw new ServerException(ErrorCode.PRODUCT_NOT_EXISTS);
         List<ProductSkuDO> skus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>().eq(ProductSkuDO::getSpuId,id));
-        List<SkuReadModel> skuModels = skus.stream().map(this::skuReadModel).toList();
+        List<SkuReadModel> skuModels = skus.stream().map(this::skuReadModel).sorted(this::compareSkuModels).toList();
         List<Map<String, Object>> specifications = specificationList(skuModels);
         Long userId = currentUserId();
         if (userId != null) recordFootprint(userId, id);
@@ -91,8 +91,18 @@ public class AppProductQueryService {
     }
     private SkuReadModel skuReadModel(ProductSkuDO sku) {
         List<SkuProperty> properties = new ArrayList<>();
-        try { for (Map<String, Object> item : OBJECT_MAPPER.readValue(sku.getProperties(), new TypeReference<List<Map<String, Object>>>() {})) { Long specificationId = longValue(item.get("id")); Long valueId = longValue(item.get("valueId")); String name = stringValue(item.get("name")); String valueName = stringValue(item.get("valueName")); if (specificationId != null && valueId != null && !name.isBlank() && !valueName.isBlank()) properties.add(new SkuProperty(specificationId, valueId, name, valueName)); } } catch (Exception ignored) { }
+        Set<Long> specificationIds = new HashSet<>();
+        try { for (Map<String, Object> item : OBJECT_MAPPER.readValue(sku.getProperties(), new TypeReference<List<Map<String, Object>>>() {})) { Long specificationId = longValue(item.get("id")); Long valueId = longValue(item.get("valueId")); String name = stringValue(item.get("name")); String valueName = stringValue(item.get("valueName")); if (specificationId == null || valueId == null || name.isBlank() || valueName.isBlank() || !specificationIds.add(specificationId)) return new SkuReadModel(sku, List.of()); properties.add(new SkuProperty(specificationId, valueId, name, valueName)); } } catch (Exception ignored) { return new SkuReadModel(sku, List.of()); }
         properties.sort(Comparator.comparing(SkuProperty::specificationId).thenComparing(SkuProperty::valueId)); return new SkuReadModel(sku, properties);
+    }
+    private int compareSkuModels(SkuReadModel left, SkuReadModel right) {
+        for (int index = 0; index < Math.min(left.properties().size(), right.properties().size()); index++) {
+            SkuProperty leftProperty = left.properties().get(index); SkuProperty rightProperty = right.properties().get(index);
+            int dimensionComparison = leftProperty.specificationId().compareTo(rightProperty.specificationId()); if (dimensionComparison != 0) return dimensionComparison;
+            int valueComparison = leftProperty.valueId().compareTo(rightProperty.valueId()); if (valueComparison != 0) return valueComparison;
+        }
+        int sizeComparison = Integer.compare(left.properties().size(), right.properties().size()); if (sizeComparison != 0) return sizeComparison;
+        return Comparator.nullsLast(Long::compareTo).compare(left.sku().getId(), right.sku().getId());
     }
     private Map<String, Object> product(SkuReadModel model) {
         ProductSkuDO sku = model.sku(); List<Long> valueIds = model.properties().stream().map(SkuProperty::valueId).toList(); int stock = sku.getStock() == null ? 0 : sku.getStock(); Map<String, Object> result = new LinkedHashMap<>();

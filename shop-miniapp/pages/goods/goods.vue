@@ -260,6 +260,7 @@
 <script>
 const util = require('@/utils/util.js');
 const api = require('@/utils/api.js');
+const skuUtil = require('@/utils/sku.js');
 import uParse from '@/components/uParse/src/wxParse';
 
 export default {
@@ -418,10 +419,6 @@ export default {
 		isCheckedAllSpec() {
 			return !this.getCheckedSpecValue().some(v => v.valueId == 0);
 		},
-		getCheckedSpecKey() {
-			let checkedValue = this.getCheckedSpecValue().map(v => v.valueId);
-			return checkedValue.join('_');
-		},
 		changeSpecInfo() {
 			let checkedNameValue = this.getCheckedSpecValue();
 			let checkedValue = checkedNameValue.filter(v => v.valueId != 0).map(v => v.valueText);
@@ -433,34 +430,20 @@ export default {
 			this.refreshSkuState();
 		},
 		getCheckedProductItem() {
-			let ids = this.getCheckedSpecValue().map(v => v.valueId).filter(v => v != 0).map(v => Number(v));
-			if (ids.length !== this.specificationList.length) return null;
-			return this.productList.find(v => {
-				let skuIds = Array.isArray(v.specificationValueIds) ? v.specificationValueIds.map(Number) : [];
-				return skuIds.length === ids.length && ids.every(id => skuIds.indexOf(id) !== -1);
-			});
+			let selected = this.getCheckedSpecValue().filter(v => v.valueId != 0);
+			if (selected.length !== this.specificationList.length) return null;
+			return this.productList.find(product => this.productMatchesSelection(product, selected, true));
 		},
 		normalizeProduct(product) {
-			let valueIds = Array.isArray(product.specificationValueIds)
-				? product.specificationValueIds.map(Number).filter(Number.isFinite)
-				: String(product.goodsSpecificationIds || '').split('_').map(Number).filter(Number.isFinite);
-			let rawStock = product.stock !== undefined && product.stock !== null ? product.stock : product.goodsNumber;
-			let parsedStock = Number(rawStock);
-			let stock = Number.isFinite(parsedStock) ? Math.max(0, Math.floor(parsedStock)) : 0;
-			return Object.assign({}, product, {
-				specificationValueIds: valueIds,
-				stock: stock,
-				available: typeof product.available === 'boolean' ? product.available : stock > 0,
-				retailPrice: product.retailPrice === undefined || product.retailPrice === null || product.retailPrice === '' ? this.baseGoods.retailPrice : product.retailPrice,
-				counterPrice: product.counterPrice === undefined || product.counterPrice === null || product.counterPrice === '' ? this.baseGoods.counterPrice : product.counterPrice,
-				hasSkuPic: Boolean(product.picUrl),
-				picUrl: product.picUrl || this.baseGoods.listPicUrl || this.baseGoods.picUrl || ''
-			});
+			return skuUtil.normalizeProduct(product, this.baseGoods);
+		},
+		productMatchesSelection(product, selected, requireComplete) {
+			return skuUtil.productMatchesSelection(product, selected, requireComplete);
 		},
 		isValueDisabled(specificationId, valueId) {
-			let selected = this.getCheckedSpecValue().filter(v => v.nameId != specificationId && v.valueId != 0).map(v => Number(v.valueId));
-			selected.push(Number(valueId));
-			return !this.productList.some(product => product.available && Array.isArray(product.specificationValueIds) && selected.every(id => product.specificationValueIds.map(Number).indexOf(id) !== -1));
+			let selected = this.getCheckedSpecValue().filter(v => v.nameId != specificationId && v.valueId != 0);
+			selected.push({ nameId: Number(specificationId), valueId: Number(valueId) });
+			return !this.productList.some(product => product.available && this.productMatchesSelection(product, selected, false));
 		},
 		refreshSkuState() {
 			let sku = this.getCheckedProductItem();
