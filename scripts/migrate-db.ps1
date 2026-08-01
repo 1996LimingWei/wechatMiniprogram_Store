@@ -33,7 +33,10 @@ function Invoke-MigrationSql {
 
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    $Sql | & docker exec -i $MysqlContainer mysql "-u$MysqlUser" "-p$MysqlPassword" $Database 2>$null
+    # PowerShell 5.1 的原生命令管道会按系统代码页转码，先转 Base64 可确保 SQL 以 UTF-8 原字节进入 MySQL。
+    $encodedSql = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($Sql))
+    $mysqlCommand = 'base64 -d | mysql --default-character-set=utf8mb4 -u"$1" -p"$2" "$3"'
+    $encodedSql | & docker exec -i $MysqlContainer sh -c $mysqlCommand migration $MysqlUser $MysqlPassword $Database 2>$null
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
     if ($exitCode -ne 0) {

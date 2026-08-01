@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
+**当前实施计划**: [2026-08-01-product-demo-seed.md](plans/2026-08-01-product-demo-seed.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -470,6 +470,14 @@
 - Docker 11 模块全量构建通过，商品模块 23 项、交易模块 2 项测试通过；Mock、数据库和生产三模式 HTTP 验收通过。
 - [PR #27](https://github.com/QtImM/wechatMiniprogram_Store/pull/27) 已合并到 `main`，Issue #23 已自动关闭；合并提交为 `ab31cd7`。
 - 下一项切换到 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)。
+
+## 2026-08-01 Issue #24 商品内容演示种子与自动验收数据集
+
+- 新增独立迁移 `V20260801_02__product_demo_seed.sql`，以稳定 `24xxxx` ID 幂等写入 7 个分类、6 件商品、10 个 SKU、首页内容和一组演示评论。
+- 数据集覆盖上架/下架、热销/新品、二维多规格、部分组合缺货、全部缺货、SKU 差异价格与图片，并保持商品、分类、SKU、内容、会员和评论关联完整。
+- 修复 PowerShell 5.1 向 MySQL 传输迁移 SQL 时的系统代码页转码问题，使用 Base64 保持 UTF-8 原字节，并在隔离数据库验收中加入中文字段字节断言。
+- 新增 `scripts/verify-product-demo-seed.ps1`，已通过 D 盘持久化 MySQL/Redis 的迁移幂等、首页、分类、搜索、详情、SKU 可售性与评论 HTTP 验收。
+- 商品模块 23 项测试、交易模块 2 项测试、Docker 11 模块全量构建及隔离数据库迁移重放均已通过；待提交 PR 并合并关闭 Issue #24。
 
 ## 决策记录
 

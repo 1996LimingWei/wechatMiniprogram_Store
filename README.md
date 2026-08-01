@@ -153,6 +153,13 @@ docker exec shop-mysql mysqldump -uroot -proot shop | Set-Content -Encoding utf8
 
 增量迁移文件位于 `sql/migrations/`。脚本会在 `schema_migration_history` 中保存版本和校验和；已执行迁移会被跳过，修改已记录迁移文件会终止执行。
 
+最新演示种子同样由增量迁移维护。可运行以下命令验证隔离数据库迁移、强制重放幂等性，以及当前 `shop` 数据库的商品页面数据：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-db-migration.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-product-demo-seed.ps1
+```
+
 ### 第三步：启动后端服务
 
 ```bash
