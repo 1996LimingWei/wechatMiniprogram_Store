@@ -436,8 +436,8 @@
 
 - 已复核开放 Issue，确认多规格 SKU 已由 [Issue #15](https://github.com/QtImM/wechatMiniprogram_Store/issues/15) 覆盖，商品 SKU Mock Provider 已由 [Issue #20](https://github.com/QtImM/wechatMiniprogram_Store/issues/20) 覆盖，不重复建单。
 - 新建 [Issue #22：将商品搜索与搜索历史切换为真实数据](https://github.com/QtImM/wechatMiniprogram_Store/issues/22)，建议分支 `feat/product-search-history`。
-- 新建 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，建议分支 `refactor/product-mock-provider-boundary`。
-- 新建 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)，建议分支 `test/product-demo-seed`。
+- 新建 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，建议分支 `feat/product-mock-provider-boundary`。
+- 新建 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)，建议分支 `feat/product-demo-seed`。
 - 新建 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)，建议分支 `feat/miniapp-product-api-acceptance`。
 - 商品负责人建议执行顺序：`#22 → #15 → #23 → #24 → #25`；每张 Issue 独立分支、测试、提交、推送与合并，避免商品查询、详情装配和前端页面产生交叉冲突。
 
