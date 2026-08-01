@@ -12,5 +12,4 @@ public class TradeProductSnapshot {
     private String specName;
     private Integer price;
     private Integer stock;
-    private boolean databaseProduct;
 }

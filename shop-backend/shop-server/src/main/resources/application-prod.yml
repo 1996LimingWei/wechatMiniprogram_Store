@@ -24,6 +24,15 @@ wx:
     secret: ${WX_MA_SECRET:}
     mock-enabled: false
 
+trade:
+  mock-actions-enabled: false
+
+admin:
+  auth:
+    user-id: ${ADMIN_USER_ID:1}
+    username: ${ADMIN_USERNAME:}
+    password: ${ADMIN_PASSWORD:}
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

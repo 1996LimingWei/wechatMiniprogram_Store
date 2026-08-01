@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BaseUrl = "http://localhost:8085",
     [string]$MysqlContainer = "shop-mysql",
     [string]$MysqlDatabase = "shop",
@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $env:NO_PROXY = "localhost,127.0.0.1"
 $env:no_proxy = "localhost,127.0.0.1"
 $ProductId = 9000260726
+$SkuId = 9000260726001
 $ProductName = "交易验收测试商品"
 $RunCodePrefix = "trade_acceptance_"
 
@@ -25,8 +26,12 @@ function Assert-True([object]$Condition, [string]$Message) {
 }
 
 function Invoke-Sql([string]$Sql) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     $result = & docker exec $MysqlContainer mysql "-u$MysqlUser" "-p$MysqlPassword" $MysqlDatabase -N -B -e $Sql 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($exitCode -ne 0) {
         throw "SQL 执行失败：$Sql"
     }
     return $result
@@ -38,9 +43,37 @@ function Invoke-Api([string]$Path, [object]$Body = @{}, [string]$Token = "") {
         $headers["Authorization"] = "Bearer $Token"
     }
     $json = $Body | ConvertTo-Json -Depth 8 -Compress
-    $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers -ContentType "application/json" -Body $json -NoProxy
+    $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers -ContentType "application/json" -Body $json
     Assert-True ($response.code -eq 0) "$Path 返回失败：$($response.msg)"
     return $response.data
+}
+
+function Assert-HttpDenied([string]$Path, [string]$Token = "") {
+    $headers = @{}
+    if ($Token) {
+        $headers["Authorization"] = "Bearer $Token"
+    }
+    try {
+        $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers -ContentType "application/json" -Body "{}"
+        if ($response.code -eq 401 -or $response.code -eq 403) {
+            return
+        }
+        throw "验收失败：$Path 应拒绝访问"
+    } catch {
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+            Assert-True ($statusCode -eq 401 -or $statusCode -eq 403) "$Path 应返回 401/403，实际为 $statusCode"
+            return
+        }
+        throw
+    }
+}
+
+function Assert-ApiRejected([string]$Path, [object]$Body, [string]$Token) {
+    $headers = @{ Authorization = "Bearer $Token" }
+    $json = $Body | ConvertTo-Json -Depth 8 -Compress
+    $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers -ContentType "application/json" -Body $json
+    Assert-True ($response.code -ne 0) "$Path 应拒绝当前操作"
 }
 
 function Cleanup-TestData {
@@ -65,6 +98,7 @@ DELETE FROM trade_order WHERE user_id IN (SELECT id FROM member_user WHERE openi
 DELETE FROM trade_cart WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%');
 DELETE FROM member_address WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%');
 DELETE FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%';
+DELETE FROM product_sku WHERE id = $SkuId AND spu_id = $ProductId;
 DELETE FROM product_spu WHERE id = $ProductId AND name = '$ProductName';
 "@
     Invoke-Sql $sql | Out-Null
@@ -77,6 +111,10 @@ INSERT INTO product_spu
   (id, category_id, name, keyword, introduction, description, pic_url, slider_pic_urls, type, price, market_price, stock, sales_count, sort, status)
 VALUES
   ($ProductId, 1, '$ProductName', 'trade acceptance', '交易验收专用商品', '交易验收专用商品', 'https://example.com/trade-acceptance.png', '[]', 1, 9900, 12900, 30, 0, 0, 1);
+INSERT INTO product_sku
+  (id, spu_id, properties, price, market_price, stock, pic_url)
+VALUES
+  ($SkuId, $ProductId, '[{"id":1,"name":"规格","valueId":1,"valueName":"验收规格"}]', 9900, 12900, 30, 'https://example.com/trade-acceptance.png');
 "@
     Invoke-Sql $sql | Out-Null
 }
@@ -112,10 +150,13 @@ function Save-TestAddress([string]$Token, [long]$UserId) {
 function New-PaidOrder([string]$Scene) {
     $user = New-TestUser $Scene
     $addressId = Save-TestAddress $user.Token $user.UserId
-    Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = 1; number = 1 } $user.Token | Out-Null
+    Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $user.Token | Out-Null
     $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId } $user.Token
     $orderId = [long]$submit.orderInfo.id
     Invoke-Api "/app-api/pay/prepay" @{ orderId = $orderId } $user.Token | Out-Null
+    $amounts = Invoke-Sql "SELECT CONCAT(p.amount, ',', o.actual_price) FROM pay_order p JOIN trade_order o ON o.id=p.order_id WHERE p.order_id=$orderId;"
+    $amountParts = $amounts.Split(',')
+    Assert-True ($amountParts[0] -eq $amountParts[1]) "支付单金额应与订单实付金额一致，实际为 $amounts"
     Invoke-Api "/app-api/pay/mock-success" @{ orderId = $orderId } $user.Token | Out-Null
     Assert-Order $orderId 1 1 "支付成功后订单应为待发货且已支付"
     return @{
@@ -128,7 +169,7 @@ function New-PaidOrder([string]$Scene) {
 function New-UnpaidOrder([string]$Scene) {
     $user = New-TestUser $Scene
     $addressId = Save-TestAddress $user.Token $user.UserId
-    Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = 1; number = 1 } $user.Token | Out-Null
+    Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $user.Token | Out-Null
     $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId } $user.Token
     $orderId = [long]$submit.orderInfo.id
     Assert-Order $orderId 0 0 "提交订单后应为待付款且未支付"
@@ -155,21 +196,42 @@ function Assert-LogExists([long]$OrderId, [string]$Action) {
 }
 
 try {
-    Invoke-RestMethod -Uri "$BaseUrl/app-api/product/category/list" -Method Get -NoProxy | Out-Null
+    Invoke-RestMethod -Uri "$BaseUrl/app-api/product/category/list" -Method Get | Out-Null
     Cleanup-TestData
     Seed-TestProduct
 
+    Write-Step "验收：管理端鉴权边界"
+    Assert-HttpDenied "/admin-api/trade/order/list?page=1&size=10"
+    $memberForAuth = New-TestUser "member_auth"
+    Assert-HttpDenied "/admin-api/trade/order/list?page=1&size=10" $memberForAuth.Token
+    $adminLogin = Invoke-Api "/admin-api/auth/login" @{ username = "admin"; password = "admin123" }
+    $adminToken = [string]$adminLogin.token
+    Assert-True ($adminToken) "管理员登录未返回 token"
+
+    Write-Step "验收：购物车重复加入与删除"
+    $cartUser = New-TestUser "cart_repeat"
+    Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $cartUser.Token | Out-Null
+    Invoke-Api "/app-api/cart/delete" @{ productIds = "$SkuId" } $cartUser.Token | Out-Null
+    Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $cartUser.Token | Out-Null
+    Invoke-Api "/app-api/cart/delete" @{ productIds = "$SkuId" } $cartUser.Token | Out-Null
+    Assert-True ([int](Invoke-Sql "SELECT COUNT(*) FROM trade_cart WHERE user_id = $($cartUser.UserId) AND sku_id = $SkuId;") -eq 0) "购物车物理删除后仍有遗留记录"
+
+    Write-Step "验收：无售后申请不能直接退款"
+    $noApplyFlow = New-PaidOrder "no_apply_refund"
+    Assert-ApiRejected "/admin-api/trade/after-sale/approve" @{ orderId = $noApplyFlow.OrderId } $adminToken
+    Assert-Order $noApplyFlow.OrderId 1 1 "无售后申请时订单状态不应变化"
+
     Write-Step "验收：下单、支付、管理端发货、确认收货"
     $shipFlow = New-PaidOrder "ship"
-    $adminList = Invoke-Api "/admin-api/trade/order/list?page=1&size=10&orderId=$($shipFlow.OrderId)"
+    $adminList = Invoke-Api "/admin-api/trade/order/list?page=1&size=10&orderId=$($shipFlow.OrderId)" @{} $adminToken
     Assert-True ([int]$adminList.total -eq 1) "管理端订单列表未查到测试订单"
-    $adminDetail = Invoke-Api "/admin-api/trade/order/detail?orderId=$($shipFlow.OrderId)"
+    $adminDetail = Invoke-Api "/admin-api/trade/order/detail?orderId=$($shipFlow.OrderId)" @{} $adminToken
     Assert-True ($adminDetail.orderInfo.id -eq $shipFlow.OrderId) "管理端订单详情订单 ID 不匹配"
     Invoke-Api "/admin-api/trade/order/ship" @{
         orderId = $shipFlow.OrderId
         logisticsCompany = "顺丰速运"
         logisticsNo = "SFTRADE$($shipFlow.OrderId)"
-    } | Out-Null
+    } $adminToken | Out-Null
     Assert-Order $shipFlow.OrderId 2 1 "管理端发货后订单应为待收货"
     Assert-LogExists $shipFlow.OrderId "SHIP_ORDER"
     $logistics = Invoke-Api "/app-api/order/logistics" @{ orderId = $shipFlow.OrderId } $shipFlow.Token
@@ -182,17 +244,22 @@ try {
     $approveFlow = New-PaidOrder "approve"
     Invoke-Api "/app-api/order/refund/apply" @{ orderId = $approveFlow.OrderId; reason = "验收同意退款" } $approveFlow.Token | Out-Null
     Assert-Order $approveFlow.OrderId 5 1 "申请售后后订单应为退款中"
-    $afterSaleList = Invoke-Api "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($approveFlow.OrderId)"
+    $stockBeforeRefund = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
+    $afterSaleList = Invoke-Api "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($approveFlow.OrderId)" @{} $adminToken
     Assert-True ([int]$afterSaleList.total -eq 1) "管理端售后列表未查到处理中售后单"
-    Invoke-Api "/admin-api/trade/after-sale/approve" @{ orderId = $approveFlow.OrderId } | Out-Null
+    Invoke-Api "/admin-api/trade/after-sale/approve" @{ orderId = $approveFlow.OrderId } $adminToken | Out-Null
     Assert-Order $approveFlow.OrderId 5 2 "同意退款后订单支付状态应为已退款"
     Assert-AfterSale $approveFlow.OrderId 1 "同意退款后售后单应为已退款"
     Assert-LogExists $approveFlow.OrderId "REFUND_SUCCESS"
+    Assert-True ([int](Invoke-Sql "SELECT status FROM pay_order WHERE order_id = $($approveFlow.OrderId);") -eq 3) "退款后支付单应为已退款"
+    Assert-True ([int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;") -eq ($stockBeforeRefund + 1)) "待发货退款后 SKU 库存未回补"
+    $refundQuery = Invoke-Api "/app-api/pay/query" @{ orderId = $approveFlow.OrderId } $approveFlow.Token
+    Assert-True ($refundQuery.orderStatus -eq "refunded") "退款后支付查询未返回 refunded"
 
     Write-Step "验收：管理端拒绝售后"
     $rejectFlow = New-PaidOrder "reject"
     Invoke-Api "/app-api/order/refund/apply" @{ orderId = $rejectFlow.OrderId; reason = "验收拒绝退款" } $rejectFlow.Token | Out-Null
-    Invoke-Api "/admin-api/trade/after-sale/reject" @{ orderId = $rejectFlow.OrderId; rejectReason = "验收拒绝原因" } | Out-Null
+    Invoke-Api "/admin-api/trade/after-sale/reject" @{ orderId = $rejectFlow.OrderId; rejectReason = "验收拒绝原因" } $adminToken | Out-Null
     Assert-Order $rejectFlow.OrderId 1 1 "拒绝售后后订单应恢复到待发货"
     Assert-AfterSale $rejectFlow.OrderId 2 "拒绝售后后售后单应为已拒绝"
     $rejectReasonLength = Invoke-Sql "SELECT CHAR_LENGTH(reject_reason) FROM trade_after_sale WHERE order_id = $($rejectFlow.OrderId) ORDER BY id DESC LIMIT 1;"
@@ -208,9 +275,9 @@ try {
     Assert-LogExists $cancelRefundFlow.OrderId "CANCEL_AFTER_SALE"
 
     Write-Step "验收：待付款超时关闭与库存回补"
-    $stockBeforeTimeout = [int](Invoke-Sql "SELECT stock FROM product_spu WHERE id = $ProductId;")
+    $stockBeforeTimeout = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
     $timeoutFlow = New-UnpaidOrder "timeout"
-    $stockAfterSubmit = [int](Invoke-Sql "SELECT stock FROM product_spu WHERE id = $ProductId;")
+    $stockAfterSubmit = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
     Assert-True ($stockAfterSubmit -eq ($stockBeforeTimeout - 1)) "待付款订单创建后库存未扣减"
     Invoke-Sql "UPDATE trade_order SET expire_time = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = $($timeoutFlow.OrderId);" | Out-Null
     $deadline = (Get-Date).AddSeconds($TimeoutWaitSeconds)
@@ -222,7 +289,7 @@ try {
         }
     } while ((Get-Date) -lt $deadline)
     Assert-Order $timeoutFlow.OrderId 4 0 "超时任务应关闭待付款订单"
-    $stockAfterTimeout = [int](Invoke-Sql "SELECT stock FROM product_spu WHERE id = $ProductId;")
+    $stockAfterTimeout = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
     Assert-True ($stockAfterTimeout -eq $stockBeforeTimeout) "超时关闭后库存未回补"
     Assert-LogExists $timeoutFlow.OrderId "SYSTEM_CLOSE"
 

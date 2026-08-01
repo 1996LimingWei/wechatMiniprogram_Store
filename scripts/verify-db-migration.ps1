@@ -6,6 +6,7 @@
 
 $ErrorActionPreference = "Stop"
 $TestDatabase = "shop_migration_verify_$(Get-Date -Format 'yyyyMMddHHmmssfff')"
+$DatabaseCreated = $false
 
 function Invoke-Mysql {
     param(
@@ -35,9 +36,25 @@ function Assert-Equal {
 }
 
 try {
+    $deadline = (Get-Date).AddSeconds(60)
+    do {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        & docker exec $MysqlContainer mysqladmin "-u$MysqlUser" "-p$MysqlPassword" ping --silent 2>$null | Out-Null
+        $pingExitCode = $LASTEXITCODE
+        $ErrorActionPreference = $previousErrorActionPreference
+        if ($pingExitCode -eq 0) { break }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $deadline)
+    if ($pingExitCode -ne 0) {
+        throw "MySQL 容器未在 60 秒内就绪：$MysqlContainer"
+    }
+
     Invoke-Mysql 'mysql' "CREATE DATABASE $TestDatabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" | Out-Null
+    $DatabaseCreated = $true
     Invoke-Mysql $TestDatabase "CREATE TABLE trade_order (id bigint NOT NULL AUTO_INCREMENT, order_sn varchar(32) NOT NULL, user_id bigint NOT NULL, status tinyint NOT NULL DEFAULT 0, pay_status tinyint NOT NULL DEFAULT 0, PRIMARY KEY (id), UNIQUE KEY uk_order_sn (order_sn), KEY idx_user_id (user_id), KEY idx_status (status)) ENGINE=InnoDB;" | Out-Null
     Invoke-Mysql $TestDatabase "CREATE TABLE pay_order (id bigint NOT NULL AUTO_INCREMENT, pay_sn varchar(32) NOT NULL, order_id bigint NOT NULL, user_id bigint NOT NULL, amount int NOT NULL, channel varchar(32) NOT NULL DEFAULT 'mock', status tinyint NOT NULL DEFAULT 0, PRIMARY KEY (id), UNIQUE KEY uk_pay_sn (pay_sn), KEY idx_order_id (order_id)) ENGINE=InnoDB;" | Out-Null
+    Invoke-Mysql $TestDatabase "CREATE TABLE content_banner (id bigint NOT NULL AUTO_INCREMENT, title varchar(128) NOT NULL, pic_url varchar(512) NOT NULL, url varchar(512) DEFAULT '', sort int NOT NULL DEFAULT 0, status tinyint NOT NULL DEFAULT 1, create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id)) ENGINE=InnoDB;" | Out-Null
 
     & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
     Assert-Equal $LASTEXITCODE 0 "迁移脚本应执行成功"
@@ -52,8 +69,11 @@ try {
 
     & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
     Assert-Equal $LASTEXITCODE 0 "重复执行迁移应成功"
-    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history;") 1 "重复执行不得重复记录迁移"
+    $migrationCount = (Get-ChildItem (Join-Path $PSScriptRoot "..\sql\migrations") -File -Filter "V*__*.sql").Count
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history;") $migrationCount "重复执行不得重复记录迁移"
 }
 finally {
-    Invoke-Mysql "mysql" ("DROP DATABASE IF EXISTS {0};" -f $TestDatabase) | Out-Null
+    if ($DatabaseCreated) {
+        Invoke-Mysql "mysql" ("DROP DATABASE IF EXISTS {0};" -f $TestDatabase) | Out-Null
+    }
 }

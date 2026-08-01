@@ -83,9 +83,16 @@ public class PayOrderService {
 
     public Map<String, Object> query(Long userId, Long orderId) {
         TradeOrderDO order = tradeOrderService.getUserOrder(userId, orderId);
+        String orderStatus = order.getPayStatus() != null && order.getPayStatus() == 2 ? "refunded"
+                : order.getPayStatus() != null && order.getPayStatus() == 1 ? "paid" : "unpaid";
+        String orderStatusText = switch (orderStatus) {
+            case "refunded" -> "已退款";
+            case "paid" -> "已支付";
+            default -> "未支付";
+        };
         return Map.of(
-                "orderStatus", order.getPayStatus() != null && order.getPayStatus() == 1 ? "paid" : "unpaid",
-                "orderStatusText", order.getPayStatus() != null && order.getPayStatus() == 1 ? "已支付" : "未支付"
+                "orderStatus", orderStatus,
+                "orderStatusText", orderStatusText
         );
     }
 

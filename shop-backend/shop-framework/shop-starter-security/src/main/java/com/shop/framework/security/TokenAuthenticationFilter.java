@@ -10,7 +10,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @RequiredArgsConstructor
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
@@ -25,7 +26,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             LoginUser loginUser = tokenService.getLoginUser(token);
             if (loginUser != null) {
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(loginUser, token, Collections.emptyList());
+                        new UsernamePasswordAuthenticationToken(loginUser, token, List.of(
+                                new SimpleGrantedAuthority(loginUser.getUserType() != null && loginUser.getUserType() == 2
+                                        ? "ROLE_ADMIN" : "ROLE_MEMBER")));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }

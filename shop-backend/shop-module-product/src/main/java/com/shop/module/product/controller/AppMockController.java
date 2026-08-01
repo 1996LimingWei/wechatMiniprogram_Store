@@ -411,39 +411,6 @@ public class AppMockController {
         return ok(Map.of("orderStatus", "paid"));
     }
 
-    // =========== 搜索 ===========
-
-    @RequestMapping("/app-api/search/index")
-    public Map<String, Object> searchIndex() {
-        List<String> historyKeywordList = List.of("阿胶", "枸杞", "人参");
-        List<Map<String, Object>> hotKeywordList = List.of(
-                Map.of("keyword", "阿胶糕", "isHot", 1),
-                Map.of("keyword", "枸杞", "isHot", 1),
-                Map.of("keyword", "黑芝麻丸", "isHot", 0),
-                Map.of("keyword", "人参", "isHot", 0),
-                Map.of("keyword", "蜂蜜", "isHot", 0),
-                Map.of("keyword", "花茶", "isHot", 0)
-        );
-        Map<String, Object> defaultKeyword = Map.of("keyword", "阿胶糕");
-        return ok(Map.of("historyKeywordList", historyKeywordList,
-                "hotKeywordList", hotKeywordList, "defaultKeyword", defaultKeyword));
-    }
-
-    @RequestMapping("/app-api/search/helper")
-    public Map<String, Object> searchHelper(@RequestParam(value = "keyword", defaultValue = "") String keyword) {
-        List<String> data = List.of(keyword + "糕", keyword + "茶", keyword + "丸", keyword + "片");
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("code", 0);
-        result.put("msg", "success");
-        result.put("data", data);
-        return result;
-    }
-
-    @RequestMapping("/app-api/search/clearhistory")
-    public Map<String, Object> searchClearHistory() {
-        return ok(Map.of());
-    }
-
     // =========== 优惠券 ===========
 
     @RequestMapping("/app-api/coupon/list")

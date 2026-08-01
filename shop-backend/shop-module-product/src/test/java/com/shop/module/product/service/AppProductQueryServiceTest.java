@@ -79,7 +79,8 @@ class AppProductQueryServiceTest {
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(2);
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(Map.of("content", "很好", "addTime", "2026-07-30", "nickname", "用户", "avatar", "")));
 
-        Map<String, Object> result = new AppProductQueryService(mock(CategoryMapper.class), spuMapper, skuMapper, jdbc).detail(1L);
+        Map<String, Object> result = new AppProductQueryService(mock(CategoryMapper.class), spuMapper, skuMapper, jdbc,
+                mock(ProductSearchService.class)).detail(1L);
         Map<String, Object> comment = (Map<String, Object>) result.get("comment");
 
         assertEquals(2, comment.get("count"));
