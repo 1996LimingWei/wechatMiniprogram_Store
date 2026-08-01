@@ -6,7 +6,7 @@
 
 - uni-app (Vue2)
 - Vuex 状态管理
-- Mock 数据层（纯前端演示模式）
+- 本地 Docker 正式 API（MySQL 商品与内容数据）
 
 ## 环境准备
 
@@ -75,14 +75,21 @@ shop-miniapp/
 ├── store/               # Vuex 状态
 └── utils/               # 工具函数
     ├── api.js           # API 接口定义
-    ├── mock.js          # Mock 数据
     └── util.js          # 请求封装 + 工具方法
 ```
 
 ## 开发模式
 
-当前默认启用 **Mock 模式**（`utils/util.js` 中 `useMock: true`），无需后端服务即可运行完整前端演示。
+商品与内容页面固定调用 `utils/api.js` 定义的正式 API，不再提供本地商品 Mock 分支。默认后端地址为 `http://127.0.0.1:8085/app-api/`。
 
-切换到真实后端：
-1. 修改 `utils/util.js` 中 `useMock: false`
-2. 配置 `domain` 为后端服务地址
+启动小程序前，在仓库根目录运行：
+
+```powershell
+docker compose up -d --wait mysql redis
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\migrate-db.ps1 -Database shop
+docker compose up -d --build backend
+```
+
+开发环境中的仿微信支付只会在正式预支付接口明确返回 `mockPay=true` 时打开，并继续受后端环境守卫控制；它不影响商品浏览数据来源。
+
+完整的首页、分类、搜索、商品详情、收藏、足迹和评论验收步骤见项目文档 `docs/acceptance/miniapp-product-api.md`。

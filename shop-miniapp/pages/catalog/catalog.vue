@@ -43,14 +43,14 @@
 						<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
 						<view class="goods-info">
 							<text class="goods-name">{{item.name||''}}</text>
-							<text class="goods-brief">甄选原料，适合日常调养与送礼分享</text>
+							<text class="goods-brief">{{item.goodsBrief || ''}}</text>
 							<view class="goods-bottom">
 								<view class="goods-price-wrap">
 									<text class="goods-price">¥{{item.retailPrice}}</text>
 									<text class="goods-price-note">精选价</text>
 								</view>
-								<view class="goods-cart-btn" @tap.stop="quickAddToCart(item, $event)">
-									<text class="goods-cart-btn-icon">+</text>
+								<view class="goods-cart-btn" @tap.stop="goToGoods(item.id)">
+									<text class="goods-cart-btn-icon">选</text>
 								</view>
 							</view>
 						</view>
@@ -61,21 +61,11 @@
 					<text class="load-text">{{noMore ? '— 已加载全部 —' : '加载中...'}}</text>
 				</view>
 				<view class="empty-tip" v-if="goodsList.length === 0 && !loading">
-					<text>该分类暂无商品</text>
+					<text>{{loadFailed ? '加载失败，请检查后端服务后重试' : '该分类暂无商品'}}</text>
 				</view>
 			</scroll-view>
 		</view>
 
-		<!-- 抛物线飞球插槽 -->
-		<view 
-			class="cart-ball" 
-			v-for="ball in cartBalls" 
-			:key="ball.id" 
-			:style="ball.style" 
-			v-if="ball.show"
-		>
-			<view class="inner-ball"></view>
-		</view>
 	</view>
 </template>
 
@@ -97,11 +87,12 @@ export default {
 			totalPages: 1,
 			noMore: false,
 			loading: false,
-			cartBalls: []
+			loadFailed: false
 		}
 	},
 	methods: {
 		getCatalog() {
+			this.loadFailed = false;
 			util.request(api.CatalogList).then(res => {
 				if (res.code === 0) {
 					this.navList = res.data.categoryList;
@@ -114,7 +105,7 @@ export default {
 					}
 					this.loadGoods();
 				}
-			});
+			}).catch(() => { this.loadFailed = true; });
 			util.request(api.GoodsCount).then(res => {
 				if (res.code === 0) this.goodsCount = res.data.goodsCount;
 			});
@@ -132,6 +123,7 @@ export default {
 		loadGoods() {
 			if (this.noMore || this.loading) return;
 			this.loading = true;
+			this.loadFailed = false;
 			util.request(api.GoodsList, {
 				categoryId: this.currentId,
 				page: this.page,
@@ -147,6 +139,9 @@ export default {
 					this.page++;
 				}
 				this.loading = false;
+			}).catch(() => {
+				this.loading = false;
+				this.loadFailed = true;
 			});
 		},
 		loadMore() {
@@ -159,60 +154,6 @@ export default {
 		goToGoods(id) {
 			uni.navigateTo({ url: '/pages/goods/goods?id=' + id });
 		},
-		quickAddToCart(goods, e) {
-			let that = this;
-			let currentProductId = 1;
-			util.request(api.CartAdd, { goodsId: goods.id, number: 1, productId: currentProductId }, 'POST', 'application/json').then(res => {
-				if (res.code === 0) {
-					uni.showToast({
-						title: '已加入购物车',
-						icon: 'none',
-						duration: 1000
-					});
-					
-					let clientX = 100;
-					let clientY = 100;
-					if (e.touches && e.touches.length > 0) {
-						clientX = e.touches[0].clientX;
-						clientY = e.touches[0].clientY;
-					} else if (e.detail) {
-						clientX = e.detail.x || 100;
-						clientY = e.detail.y || 100;
-					}
-
-					const ballId = Date.now();
-					const ball = {
-						id: ballId,
-						show: true,
-						style: `left: ${clientX}px; top: ${clientY}px;`
-					};
-					this.cartBalls.push(ball);
-
-					this.$nextTick(() => {
-						const sysInfo = uni.getSystemInfoSync();
-						const targetX = sysInfo.windowWidth * 0.62;
-						const targetY = sysInfo.windowHeight - 30;
-
-						const index = this.cartBalls.findIndex(b => b.id === ballId);
-						if (index > -1) {
-							this.$set(this.cartBalls, index, {
-								...ball,
-								style: `left: ${targetX}px; top: ${targetY}px;`
-							});
-						}
-					});
-
-					setTimeout(() => {
-						const index = this.cartBalls.findIndex(b => b.id === ballId);
-						if (index > -1) {
-							this.cartBalls[index].show = false;
-						}
-					}, 600);
-				} else {
-					uni.showToast({ image: '/static/images/icon_error.png', title: res.msg, mask: true });
-				}
-			});
-		}
 	},
 	onLoad() {
 		this.calcHeight();
@@ -483,18 +424,4 @@ page {
 }
 
 /* 抛物线飞球样式 */
-.cart-ball {
-	position: fixed;
-	z-index: 9999;
-	transition: left 0.6s linear, top 0.6s cubic-bezier(0.3, -0.2, 1, 0.2);
-	pointer-events: none;
-}
-
-.inner-ball {
-	width: 32rpx;
-	height: 32rpx;
-	border-radius: 50%;
-	background: #36454F;
-	box-shadow: 0 4rpx 10rpx rgba(54, 69, 79, 0.4);
-}
 </style>

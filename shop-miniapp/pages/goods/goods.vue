@@ -3,6 +3,10 @@
 		<scroll-view class="scroll-area" :style="'height:' + winHeight + 'rpx'" :scroll-y="true">
 			<!-- 正常展示模式 -->
 			<view v-if="!openAttr">
+				<view class="detail-error" v-if="loadingFailed">
+					<text>商品加载失败，请检查网络后重试</text>
+					<button class="detail-retry" @tap="getGoodsInfo">重新加载</button>
+				</view>
 				<!-- 商品轮播图 -->
 				<swiper class="gallery-swiper" indicator-dots circular autoplay :interval="3000"
 					indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#FEFEFC">
@@ -63,32 +67,6 @@
 					</view>
 				</view>
 
-				<!-- 药食百科科普看板 -->
-				<view class="science-board-card" v-if="scienceData">
-					<view class="science-header">
-						<view class="science-mark"></view>
-						<text class="science-title">药食同源 · 养生百科</text>
-					</view>
-					<view class="science-grid">
-						<view class="science-item">
-							<text class="sci-label">四气五味</text>
-							<text class="sci-val">{{scienceData.nature}}</text>
-						</view>
-						<view class="science-item">
-							<text class="sci-label">归经</text>
-							<text class="sci-val">{{scienceData.meridian}}</text>
-						</view>
-						<view class="science-item">
-							<text class="sci-label">主要活性成分</text>
-							<text class="sci-val highlight">{{scienceData.components}}</text>
-						</view>
-						<view class="science-item">
-							<text class="sci-label">每日推荐剂量</text>
-							<text class="sci-val">{{scienceData.dosage}}</text>
-						</view>
-					</view>
-				</view>
-
 				<!-- 选择规格 -->
 				<view class="spec-entry" @tap="switchAttrPop">
 					<text class="spec-label">选择</text>
@@ -122,36 +100,6 @@
 						<view class="attr-item" v-for="(item, index) in attribute" :key="item.name">
 							<text class="attr-key">{{item.name}}</text>
 							<text class="attr-val">{{item.value}}</text>
-						</view>
-					</view>
-				</view>
-
-				<!-- 经典膳食推荐搭配 -->
-				<view class="combo-recommend-card" v-if="comboData">
-					<view class="combo-header">
-						<text class="combo-title">膳食养生搭配推荐</text>
-						<text class="combo-subtitle">为这款商品精选一组更顺口的日常组合</text>
-					</view>
-					<view class="combo-body">
-						<view class="combo-goods">
-							<view class="combo-goods-item curr">
-								<image class="combo-img" :src="goods.listPicUrl" mode="aspectFill"></image>
-								<text class="combo-name">{{goods.name}}</text>
-							</view>
-							<text class="combo-plus">+</text>
-							<view class="combo-goods-item partner">
-								<image class="combo-img" :src="comboData.partnerPic" mode="aspectFill"></image>
-								<text class="combo-name">{{comboData.partnerName}}</text>
-							</view>
-						</view>
-						<view class="combo-action-area">
-							<view class="combo-benefit">
-								<text class="combo-tip">双效温补，气血调和</text>
-								<text class="combo-price-tip">搭配购买更省心，也更适合送礼自用</text>
-							</view>
-							<button class="combo-add-btn" @tap="addComboToCart">
-								<text>一键搭配加购</text>
-							</button>
 						</view>
 					</view>
 				</view>
@@ -289,19 +237,12 @@ export default {
 			noCollectImage: '/static/images/icon_collect.png',
 			hasCollectImage: '/static/images/icon_collect_checked.png',
 			collectBackImage: '/static/images/icon_collect.png',
-			scienceData: null,
-			comboData: null,
-			scienceDb: {
-				1: { nature: '性温，味甘', meridian: '归肺、肝、肾经', components: '明胶原蛋白、18种氨基酸、微量元素', dosage: '建议每日 3-9 克', partnerId: 2, partnerName: '同仁堂枸杞', partnerPic: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=150' },
-				2: { nature: '性平，味甘', meridian: '归肝、肾、肺经', components: '枸杞多糖、甜菜碱、胡萝卜素、维C', dosage: '建议每日 10-15 克', partnerId: 7, partnerName: '西洋参切片', partnerPic: 'https://images.unsplash.com/photo-1514733670139-4d87a19b179d?w=150' },
-				3: { nature: '性微温，味甘、微苦', meridian: '归脾、肺、心、肾经', components: '人参皂苷、人参多糖、挥发油、氨基酸', dosage: '建议每日 3-6 克', partnerId: 2, partnerName: '同仁堂枸杞', partnerPic: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=150' },
-				5: { nature: '性平，味甘', meridian: '归脾、胃、肺、大肠经', components: '天然果糖、葡萄糖、活性淀粉酶', dosage: '建议每日 10-20 克', partnerId: 19, partnerName: '薄壳手剥碧根果', partnerPic: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=150' },
-				6: { nature: '性温，味甘、微苦', meridian: '归肝、胃经', components: '三七总皂苷、三七素、槲皮素', dosage: '建议每日 3-6 克', partnerId: 1, partnerName: '东阿阿胶糕', partnerPic: 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=150' }
-			}
+			loadingFailed: false
 		}
 	},
 	methods: {
 		getGoodsInfo() {
+			this.loadingFailed = false;
 			util.request(api.GoodsDetail, { id: this.id }).then(res => {
 				if (res.code === 0) {
 					this.baseGoods = res.data.info;
@@ -319,61 +260,14 @@ export default {
 					this.refreshSkuState();
 					this.collectBackImage = this.userHasCollect == 1 ? this.hasCollectImage : this.noCollectImage;
 					if (util.getToken()) {
-						util.request(api.FootprintRecord, { goodsId: this.id }, 'POST', 'application/json', false, true).catch(() => {});
+						util.request(api.FootprintRecord, { goodsId: this.id }, 'POST', 'application/x-www-form-urlencoded', false, true).catch(() => {});
 					}
 					this.getGoodsRelated();
-					this.initScienceInfo(this.id);
+				} else {
+					this.loadingFailed = true;
 				}
-			});
-		},
-		initScienceInfo(goodsId) {
-			const data = this.scienceDb[goodsId];
-			if (data) {
-				this.scienceData = {
-					nature: data.nature,
-					meridian: data.meridian,
-					components: data.components,
-					dosage: data.dosage
-				};
-				this.comboData = {
-					partnerId: data.partnerId,
-					partnerName: data.partnerName,
-					partnerPic: data.partnerPic
-				};
-			} else {
-				this.scienceData = {
-					nature: '性平，味甘',
-					meridian: '归脾、胃、肺经',
-					components: '活性多糖、膳食纤维、微量矿物质',
-					dosage: '建议日常随膳食适量食用'
-				};
-				this.comboData = null;
-			}
-		},
-		addComboToCart() {
-			if (!this.comboData) return;
-			if (!this.isCheckedAllSpec() || !this.selectedSku) {
-				this.switchAttrPop();
-				uni.showToast({ title: '请先选择完整规格', icon: 'none' });
-				return;
-			}
-			if (this.selectedSku.stock < 1) {
-				uni.showToast({ title: '所选规格暂时缺货', icon: 'none' });
-				return;
-			}
-			let that = this;
-			util.request(api.CartAdd, { goodsId: this.goods.id, number: 1, productId: this.selectedSku.id }, 'POST', 'application/json').then(res => {
-				if (res.code === 0) {
-					util.request(api.CartAdd, { goodsId: this.comboData.partnerId, number: 1, productId: 1 }, 'POST', 'application/json').then(resPartner => {
-						if (resPartner.code === 0) {
-							uni.showToast({
-								title: '黄金搭档搭配加购成功',
-								icon: 'success'
-							});
-							that.cartGoodsCount = resPartner.data.cartTotal.goodsCount;
-						}
-					});
-				}
+			}).catch(() => {
+				this.loadingFailed = true;
 			});
 		},
 		getGoodsRelated() {
@@ -470,7 +364,7 @@ export default {
 				that.openAttr = false;
 				that.collectBackImage = that.userHasCollect == 1 ? that.hasCollectImage : that.noCollectImage;
 			} else {
-				util.request(api.CollectAddOrDelete, { typeId: 0, valueId: that.id }, "POST", "application/json").then(res => {
+				util.request(api.CollectAddOrDelete, { typeId: 0, valueId: that.id }).then(res => {
 					if (res.code == 0) {
 						if (res.data.type == 'add') {
 							that.userHasCollect = 1;
@@ -1264,189 +1158,18 @@ export default {
 	color: #4F6854;
 }
 
-/* 药食百科看板样式 */
-.science-board-card {
-	background:
-		linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.10) 100%),
-		linear-gradient(135deg, #F7FAF6 0%, #FDFDF8 100%);
-	border: 1rpx solid rgba(111, 142, 117, 0.12);
-	border-radius: 24rpx;
-	margin: 20rpx 30rpx;
-	padding: 26rpx 28rpx;
-	box-shadow: 0 12rpx 26rpx rgba(94, 116, 97, 0.05);
-}
-
-.science-header {
-	display: flex;
-	align-items: center;
-	margin-bottom: 22rpx;
-}
-
-.science-mark {
-	width: 18rpx;
-	height: 18rpx;
-	border-radius: 50%;
-	margin-right: 14rpx;
-	background: linear-gradient(135deg, #8EAA92 0%, #6F8E75 100%);
-	box-shadow: 0 0 0 8rpx rgba(111, 142, 117, 0.10);
-}
-
-.science-title {
-	font-size: 26rpx;
-	font-weight: 700;
-	color: #4F6854;
-}
-
-.science-grid {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 16rpx 0;
-}
-
-.science-item {
-	width: 50%;
-	display: flex;
-	flex-direction: column;
-	padding: 8rpx 12rpx 8rpx 0;
-	box-sizing: border-box;
-
-	&:nth-child(2n) {
-		padding-left: 20rpx;
-		padding-right: 0;
-		border-left: 1rpx dashed rgba(111, 142, 117, 0.14);
-	}
-}
-
-.sci-label {
-	font-size: 20rpx;
-	color: $text-hint;
-	margin-bottom: 6rpx;
-}
-
-.sci-val {
-	font-size: 24rpx;
-	color: $text-primary;
-	font-weight: 500;
-	line-height: 1.4;
-
-	&.highlight {
-		color: $green;
-		font-weight: 700;
-	}
-}
-
-/* 经典推荐搭配样式 */
-.combo-recommend-card {
-	background: linear-gradient(180deg, #FEFEFC 0%, #FAFCF9 100%);
-	border-radius: 24rpx;
-	margin: 24rpx 30rpx;
-	padding: 28rpx;
-	border: 1rpx solid rgba(111, 142, 117, 0.10);
-	box-shadow: 0 12rpx 28rpx rgba(88, 109, 93, 0.05);
-}
-
-.combo-header {
-	margin-bottom: 24rpx;
-	display: flex;
-	flex-direction: column;
-}
-
-.combo-title {
-	font-size: 26rpx;
-	font-weight: 700;
-	color: $text-primary;
-}
-
-.combo-subtitle {
-	font-size: 22rpx;
-	color: $text-hint;
-	margin-top: 8rpx;
-}
-
-.combo-body {
-	display: flex;
-	flex-direction: column;
-	gap: 24rpx;
-}
-
-.combo-goods {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 20rpx;
-}
-
-.combo-goods-item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 180rpx;
-}
-
-.combo-img {
-	width: 110rpx;
-	height: 110rpx;
-	border-radius: 12rpx;
-	background: $green-bg;
-}
-
-.combo-name {
-	font-size: 22rpx;
-	color: $text-secondary;
-	margin-top: 10rpx;
+.detail-error {
+	margin: 28rpx;
+	padding: 36rpx;
 	text-align: center;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	width: 100%;
+	color: $text-secondary;
 }
 
-.combo-plus {
-	font-size: 36rpx;
-	color: $text-hint;
-	font-weight: 300;
-}
-
-.combo-action-area {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	background: rgba(232, 236, 232, 0.52);
-	padding: 18rpx 20rpx;
-	border-radius: 16rpx;
-}
-
-.combo-benefit {
-	display: flex;
-	flex-direction: column;
-}
-
-.combo-tip {
-	font-size: 22rpx;
-	font-weight: 700;
-	color: #4F6854;
-}
-
-.combo-price-tip {
-	font-size: 20rpx;
-	color: #879187;
-	margin-top: 4rpx;
-}
-
-.combo-add-btn {
-	background: linear-gradient(135deg, #6F8E75 0%, #5E7B64 100%);
+.detail-retry {
+	margin-top: 20rpx;
+	width: 220rpx;
+	font-size: 26rpx;
 	color: #FEFEFC;
-	font-size: 24rpx;
-	font-weight: 700;
-	height: 64rpx;
-	line-height: 64rpx;
-	padding: 0 24rpx;
-	border-radius: 32rpx;
-	border: none;
-	margin: 0;
-
-	&:active {
-		filter: brightness(0.9);
-	}
+	background: $green;
 }
 </style>
