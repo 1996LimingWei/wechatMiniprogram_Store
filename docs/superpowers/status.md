@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-product-demo-seed.md](plans/2026-08-01-product-demo-seed.md)
+**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -477,7 +477,9 @@
 - 数据集覆盖上架/下架、热销/新品、二维多规格、部分组合缺货、全部缺货、SKU 差异价格与图片，并保持商品、分类、SKU、内容、会员和评论关联完整。
 - 修复 PowerShell 5.1 向 MySQL 传输迁移 SQL 时的系统代码页转码问题，使用 Base64 保持 UTF-8 原字节，并在隔离数据库验收中加入中文字段字节断言。
 - 新增 `scripts/verify-product-demo-seed.ps1`，已通过 D 盘持久化 MySQL/Redis 的迁移幂等、首页、分类、搜索、详情、SKU 可售性与评论 HTTP 验收。
-- 商品模块 23 项测试、交易模块 2 项测试、Docker 11 模块全量构建及隔离数据库迁移重放均已通过；待提交 PR 并合并关闭 Issue #24。
+- 商品模块 23 项测试、交易模块 2 项测试、Docker 11 模块全量构建及隔离数据库迁移重放均已通过。
+- [PR #28](https://github.com/QtImM/wechatMiniprogram_Store/pull/28) 已合并到 `main`，Issue #24 已自动关闭；合并提交为 `cca579e`。
+- 下一项切换到 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)。
 
 ## 决策记录
 
@@ -508,7 +510,7 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 商品负责人已完成 Issue #22、#15 和 #23，下一项依次执行 `#24 → #25`。
+1. 商品负责人已完成 Issue #22、#15、#23 和 #24，下一项执行 `#25`。
 2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
 3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 
