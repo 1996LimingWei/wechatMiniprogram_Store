@@ -5,7 +5,7 @@
 ## 阶段 1：冻结契约与安全边界
 
 - [ ] 为商品/SKU、库存、支付、物流定义服务接口、响应对象、错误码和契约测试。
-- [ ] 将现有 `MockData` 从 Controller/交易服务中抽离为独立 Mock Provider；Controller 和前端接口保持不变。
+- [x] 将现有 `MockData` 从 Controller/交易服务中抽离为独立 Mock Provider；Controller 和前端接口保持不变。
 - [x] 收紧管理端鉴权；按环境禁用 Mock 支付、发货和退款写操作。
 - [x] 修复迁移验收脚本和 Docker 配置，保证隔离环境可重复启动。
 

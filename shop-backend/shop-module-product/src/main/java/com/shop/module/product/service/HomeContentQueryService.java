@@ -2,6 +2,7 @@ package com.shop.module.product.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.shop.common.exception.ServerException;
 import com.shop.module.product.dal.dataobject.*;
 import com.shop.module.product.dal.mysql.*;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +72,47 @@ public class HomeContentQueryService {
         return Map.of("categoryList", floors);
     }
 
+    public Map<String, Object> goodsHot() {
+        return Map.of("bannerInfo", Map.of("imgUrl", "https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=750&auto=format&fit=crop", "name", "热销爆款"));
+    }
+
+    public Map<String, Object> goodsNew() {
+        return Map.of("bannerInfo", Map.of("imgUrl", "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=750&auto=format&fit=crop", "name", "新品推荐"));
+    }
+
+    public Map<String, Object> brandList() {
+        List<Map<String, Object>> records = brands().stream().map(item -> Map.<String, Object>of(
+                "id", item.getId(), "name", item.getName(), "picUrl", safe(item.getPicUrl()),
+                "floorPrice", AppProductResponseAssembler.formatPrice(item.getFloorPrice()))).toList();
+        return Map.of("brandList", records, "totalPages", records.isEmpty() ? 0 : 1);
+    }
+
+    public Map<String, Object> brandDetail(Long id) {
+        ContentBrandDO item = brands().stream().filter(brand -> Objects.equals(brand.getId(), id)).findFirst()
+                .orElseThrow(() -> new ServerException(404, "品牌不存在"));
+        return Map.of("brand", Map.of("id", item.getId(), "name", item.getName(), "picUrl", safe(item.getPicUrl()),
+                "simpleDesc", item.getName() + "，品质保证，值得信赖"));
+    }
+
+    public Map<String, Object> topicList(int page, int size) {
+        List<Map<String, Object>> source = topics().stream().map(this::topicItem).toList();
+        int safePage = Math.max(page, 1), safeSize = Math.max(size, 1);
+        int from = Math.min((safePage - 1) * safeSize, source.size()), to = Math.min(from + safeSize, source.size());
+        return Map.of("records", source.subList(from, to), "total", source.size(), "pages", (source.size() + safeSize - 1) / safeSize);
+    }
+
+    public Map<String, Object> topicDetail(Long id) {
+        ContentTopicDO item = topics().stream().filter(topic -> Objects.equals(topic.getId(), id)).findFirst()
+                .orElseThrow(() -> new ServerException(404, "专题不存在"));
+        Map<String, Object> result = new LinkedHashMap<>(topicItem(item));
+        result.put("content", "<p>" + safe(item.getSubtitle()) + "</p>");
+        return result;
+    }
+
+    public List<Map<String, Object>> topicRelated(Long id) {
+        return topics().stream().filter(topic -> !Objects.equals(topic.getId(), id)).limit(2).map(this::topicItem).toList();
+    }
+
     private Map<String, Object> categoryFloor(CategoryDO category, Set<Long> categoryIds, List<ProductSpuDO> goods) {
         List<Map<String, Object>> floorGoods = goods.stream().filter(item -> categoryIds.contains(item.getCategoryId()))
                 .sorted(Comparator.comparing(ProductSpuDO::getSort, Comparator.nullsLast(Comparator.reverseOrder()))
@@ -103,5 +145,6 @@ public class HomeContentQueryService {
         return source.stream().filter(item -> status.apply(item) == 1).sorted(Comparator.comparing(sort, Comparator.nullsLast(Comparator.reverseOrder())).thenComparing(id)).toList();
     }
     private Map<String, Object> goods(ProductSpuDO item) { return Map.of("id", item.getId(), "name", item.getName(), "listPicUrl", safe(item.getPicUrl()), "retailPrice", AppProductResponseAssembler.formatPrice(item.getPrice()), "goodsBrief", safe(item.getIntroduction())); }
+    private Map<String, Object> topicItem(ContentTopicDO item) { return Map.of("id", item.getId(), "title", item.getTitle(), "subtitle", safe(item.getSubtitle()), "scenePicUrl", safe(item.getPicUrl()), "priceInfo", safe(item.getPriceInfo())); }
     private String safe(String value) { return value == null ? "" : value; }
 }

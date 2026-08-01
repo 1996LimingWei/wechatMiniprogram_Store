@@ -1,7 +1,7 @@
 package com.shop.module.product.service;
 
 import com.shop.common.exception.ServerException;
-import com.shop.module.product.controller.MockData;
+import com.shop.module.product.fixture.ProductMockFixture;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +19,7 @@ public class MockProductSkuProvider implements ProductSkuProvider {
     private final Map<Long, MockSku> skuCatalog = new ConcurrentHashMap<>();
 
     public MockProductSkuProvider() {
-        for (Map<String, Object> goods : MockData.GOODS_LIST) {
+        for (Map<String, Object> goods : ProductMockFixture.GOODS) {
             Long spuId = Long.valueOf(String.valueOf(goods.get("id")));
             Long skuId = defaultSkuId(spuId);
             skuCatalog.put(skuId, new MockSku(spuId, skuId, String.valueOf(goods.get("name")),
