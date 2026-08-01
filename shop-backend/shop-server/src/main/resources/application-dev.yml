@@ -18,6 +18,10 @@ wx:
     secret:
     mock-enabled: true
 
+# 商品与库存数据提供方。开发阶段默认使用稳定 Mock SKU，后续可切换为 database。
+product:
+  provider: mock
+
 trade:
   order:
     unpaid-timeout-minutes: 30

@@ -48,3 +48,10 @@
 ## 第一张开发任务单
 
 先实施 [Issue #20：商品/SKU Mock Provider 与库存契约](https://github.com/QtImM/wechatMiniprogram_Store/issues/20)：定义稳定 SKU 数据、查询/校验/扣减/回补接口和契约测试；同时替换交易模块直接读取 SPU/回退 `MockData` 的调用。此任务完成后，其他所有交易能力均可在不依赖真实商品库的情况下继续开发。
+
+### Issue #20 实施记录
+
+- [x] 建立 `ProductSkuProvider` 契约、默认 Mock Provider 和可切换的数据库 Provider。
+- [x] 交易模块切换为通过 Provider 查询 SKU、扣减/回补库存，并在结算与下单时重新读取商品快照和价格。
+- [x] 新增 Mock SKU 稳定 ID、库存扣减/回补、非法 SKU 与库存不足测试；模块测试与全量构建通过。
+- [ ] Docker 守护进程恢复后，执行隔离数据库迁移与 `scripts/verify-trade-flow.ps1`，完成接口级验收。

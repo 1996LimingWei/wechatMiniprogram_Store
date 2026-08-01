@@ -56,15 +56,18 @@ public class TradeOrderService {
             throw new ServerException(400, "请选择收货地址");
         }
 
-        Map<String, Object> checkout = tradeCheckoutService.checkout(userId, address.getId());
-        int goodsTotalPrice = (Integer) checkout.get("goodsTotalPriceCent");
-        int freightPrice = (Integer) checkout.get("freightPriceCent");
+        List<TradeProductSnapshot> snapshots = checkedList.stream()
+                .map(cart -> tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId()))
+                .toList();
+        int goodsTotalPrice = java.util.stream.IntStream.range(0, checkedList.size())
+                .map(index -> snapshots.get(index).getPrice() * checkedList.get(index).getCount())
+                .sum();
+        int freightPrice = tradeCheckoutService.calculateFreight(goodsTotalPrice);
         int couponPrice = 0;
-        int actualPrice = (Integer) checkout.get("actualPriceCent");
+        int actualPrice = goodsTotalPrice + freightPrice - couponPrice;
 
-        for (TradeCartDO cart : checkedList) {
-            TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
-            tradeProductService.reduceStock(snapshot, cart.getCount());
+        for (int index = 0; index < checkedList.size(); index++) {
+            tradeProductService.reduceStock(snapshots.get(index), checkedList.get(index).getCount());
         }
 
         TradeOrderDO order = new TradeOrderDO();
@@ -86,18 +89,20 @@ public class TradeOrderService {
         tradeOrderMapper.insert(order);
         tradeOrderLogService.recordCreated(order);
 
-        for (TradeCartDO cart : checkedList) {
+        for (int index = 0; index < checkedList.size(); index++) {
+            TradeCartDO cart = checkedList.get(index);
+            TradeProductSnapshot snapshot = snapshots.get(index);
             TradeOrderItemDO item = new TradeOrderItemDO();
             item.setOrderId(order.getId());
             item.setUserId(userId);
-            item.setSpuId(cart.getSpuId());
-            item.setSkuId(cart.getSkuId());
-            item.setGoodsName(cart.getGoodsName());
-            item.setGoodsPicUrl(cart.getGoodsPicUrl());
-            item.setSpecName(cart.getSpecName());
-            item.setPrice(cart.getPrice());
+            item.setSpuId(snapshot.getSpuId());
+            item.setSkuId(snapshot.getSkuId());
+            item.setGoodsName(snapshot.getName());
+            item.setGoodsPicUrl(snapshot.getPicUrl());
+            item.setSpecName(snapshot.getSpecName());
+            item.setPrice(snapshot.getPrice());
             item.setCount(cart.getCount());
-            item.setTotalPrice(cart.getPrice() * cart.getCount());
+            item.setTotalPrice(snapshot.getPrice() * cart.getCount());
             tradeOrderItemMapper.insert(item);
         }
         tradeCartService.clearCheckedCart(userId);
@@ -383,7 +388,7 @@ public class TradeOrderService {
         tradeOrderLogService.recordStatusChanged(closedOrder, operatorType, operatorId, action,
                 0, 4, closeReason);
         for (TradeOrderItemDO item : getOrderItems(orderId)) {
-            tradeProductService.recoverStock(item.getSpuId(), item.getCount());
+            tradeProductService.recoverStock(item.getSkuId(), item.getCount());
         }
         payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getOrderId, orderId)
