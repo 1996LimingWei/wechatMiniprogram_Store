@@ -36,8 +36,8 @@
 ## 任务 5：交付
 
 - [x] 更新 `status.md` 与本计划实施记录。
-- [ ] 中文提交并推送 `feat/product-search-history`。
-- [ ] 回写并关闭 Issue #22。
+- [x] 中文提交并推送 `feat/product-search-history`。
+- [ ] 回写并关闭 Issue #22（已回写，待草稿 PR #26 合并后自动关闭）。
 
 ## 实施记录
 
@@ -46,3 +46,4 @@
 - 商品列表第一页按当前会员幂等记录规范化关键词，匿名用户不产生搜索历史。
 - 新增 5 项搜索服务测试，商品模块共 14 项测试通过；Docker 11 模块全量构建通过。
 - `scripts/verify-product-search.ps1` 已通过双用户隔离、重复关键词、清空历史、匿名访问、下架过滤与自动清理验收。
+- 已推送提交并创建 [草稿 PR #26](https://github.com/QtImM/wechatMiniprogram_Store/pull/26)，Issue #22 已回写验收结果。

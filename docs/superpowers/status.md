@@ -448,6 +448,7 @@
 - 商品关键词列表第一页会为当前会员记录规范化搜索历史；匿名用户返回空历史且不写入，管理员身份也不会混入会员历史。
 - 新增 5 项搜索服务测试，商品模块 14 项测试和 Docker 11 模块全量构建通过；4 个数据库迁移版本首次与重复执行通过。
 - 新增 `scripts/verify-product-search.ps1`，双用户搜索历史隔离、重复关键词、清空互不影响、空关键词、下架商品过滤和测试数据自动清理均验收通过。
+- 已创建 [草稿 PR #26](https://github.com/QtImM/wechatMiniprogram_Store/pull/26) 并回写 Issue #22；待合并后自动关闭 Issue。
 - 下一项切换到 [Issue #15：商品多规格与库存可售性读模型](https://github.com/QtImM/wechatMiniprogram_Store/issues/15)。
 
 ## 决策记录
