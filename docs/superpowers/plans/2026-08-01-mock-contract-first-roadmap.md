@@ -47,4 +47,4 @@
 
 ## 第一张开发任务单
 
-先实施“商品/SKU Mock Provider 与库存契约”：定义稳定 SKU 数据、查询/校验/扣减/回补接口和契约测试；同时替换交易模块直接读取 SPU/回退 `MockData` 的调用。此任务完成后，其他所有交易能力均可在不依赖真实商品库的情况下继续开发。
+先实施 [Issue #20：商品/SKU Mock Provider 与库存契约](https://github.com/QtImM/wechatMiniprogram_Store/issues/20)：定义稳定 SKU 数据、查询/校验/扣减/回补接口和契约测试；同时替换交易模块直接读取 SPU/回退 `MockData` 的调用。此任务完成后，其他所有交易能力均可在不依赖真实商品库的情况下继续开发。
