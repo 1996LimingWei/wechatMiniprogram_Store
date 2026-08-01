@@ -11,8 +11,8 @@
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
-**下一 Epic 规格**: [2026-08-01-mock-contract-first-design.md](specs/2026-08-01-mock-contract-first-design.md)
-**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
+**下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
+**当前实施计划**: [2026-08-01-trade-security-boundary.md](plans/2026-08-01-trade-security-boundary.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -409,6 +409,11 @@
 - 商品模块新增可替换 `ProductSkuProvider`：开发环境默认启用稳定 Mock SKU/库存，配置 `product.provider=database` 时切换为数据库 SKU 实现。
 - 交易模块不再直接访问 `MockData` 或 SPU 库存；购物车、结算、下单、取消/超时回补统一通过 SKU 契约，订单提交会重新读取当前 SKU 快照与价格。
 - 已通过 `mvn test -pl shop-module-product,shop-module-trade -am`（9 项测试）和 `mvn clean install -DskipTests`（11 个模块）。Docker 守护进程不可达，隔离数据库迁移与交易自动验收待环境恢复后补跑。
+
+## 2026-08-01 合并 SKU Mock 契约与后续 P0 规划
+
+- 已将 `feat/mock-sku-inventory-contract` 合并并推送至 `main`；交易链路已统一通过可替换 SKU/库存契约读取商品快照与库存。
+- 已复核剩余 P0，下一阶段优先处理管理端鉴权、Mock 写操作后端环境隔离、迁移验收基线与安全回归；对应规格与实施计划已创建。
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
