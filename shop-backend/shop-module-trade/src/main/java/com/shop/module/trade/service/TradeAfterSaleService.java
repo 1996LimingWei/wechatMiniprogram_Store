@@ -77,12 +77,12 @@ public class TradeAfterSaleService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> adminApprove(Long orderId) {
-        return approve(null, orderId, TradeOrderLogService.OPERATOR_ADMIN, 0L);
+    public Map<String, Object> adminApprove(Long adminId, Long orderId) {
+        return approve(null, orderId, TradeOrderLogService.OPERATOR_ADMIN, adminId);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> adminReject(Long orderId, String rejectReason) {
+    public Map<String, Object> adminReject(Long adminId, Long orderId, String rejectReason) {
         TradeOrderDO order = getUserOrder(null, orderId);
         TradeAfterSaleDO afterSale = getAfterSale(orderId);
         if (afterSale == null || afterSale.getStatus() == null || afterSale.getStatus() != 0) {
@@ -101,7 +101,7 @@ public class TradeAfterSaleService {
 
         order.setStatus(restoreStatus);
         tradeOrderMapper.updateById(order);
-        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_ADMIN, 0L,
+        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_ADMIN, adminId,
                 "REJECT_AFTER_SALE", fromStatus, order.getStatus(), afterSale.getRejectReason());
         return toResp(afterSale);
     }

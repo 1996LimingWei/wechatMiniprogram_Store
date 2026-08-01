@@ -414,6 +414,13 @@
 
 - 已将 `feat/mock-sku-inventory-contract` 合并并推送至 `main`；交易链路已统一通过可替换 SKU/库存契约读取商品快照与库存。
 - 已复核剩余 P0，下一阶段优先处理管理端鉴权、Mock 写操作后端环境隔离、迁移验收基线与安全回归；对应规格与实施计划已创建。
+
+## 2026-08-01 Issue #21 交易安全边界实现
+
+- 已创建 [Issue #21：收紧交易管理端与 Mock 写操作权限边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/21)，并在 `feat/trade-security-boundary` 实现。
+- 新增配置注入的最小管理员登录与 `ROLE_ADMIN`；`/admin-api/**` 仅管理员可访问，发货与售后审批日志记录管理员 ID。
+- 新增 `trade.mock-actions-enabled` 守卫，生产 profile 强制拒绝 Mock 支付、发货与退款审核；开发环境通过明确配置开启。
+- 已通过 `mvn test -pl shop-module-trade -am` 与 `mvn clean install -DskipTests`。Docker 守护进程不可达，HTTP 鉴权与隔离交易验收待环境恢复补跑。
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -432,6 +439,7 @@
 | 2026-07-16 | 后续阶段按“交易闭环优先”推进 | 当前项目已具备高保真 Demo，最大缺口是真实后端交易链路，先完成登录、商品、购物车、订单、支付适配，再推进会员营销和管理后台 |
 | 2026-07-24 | 后端 userInfo 字段名与前端对齐 | 后端返回 nickName/avatarUrl，前端期望 nickname/avatar，统一为小写 |
 | 2026-08-01 | 采用 Mock 契约优先、可替换数据源架构 | 先完整演示与验证流程，后续替换真实数据源时不重写前端、Controller 或核心交易规则 |
+| 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
 
 ## 2026-07-24 Agent Loop Skill
 

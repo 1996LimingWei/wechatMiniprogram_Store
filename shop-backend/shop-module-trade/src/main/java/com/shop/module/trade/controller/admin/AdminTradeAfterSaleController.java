@@ -3,6 +3,7 @@ package com.shop.module.trade.controller.admin;
 import com.shop.common.pojo.CommonResult;
 import com.shop.module.trade.service.TradeAfterSaleService;
 import com.shop.module.trade.util.TradeRequestUtils;
+import com.shop.module.trade.util.TradeSecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,7 +39,8 @@ public class AdminTradeAfterSaleController {
     public CommonResult<Map<String, Object>> approve(@RequestBody(required = false) String rawBody,
                                                      @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
-        return CommonResult.success(tradeAfterSaleService.adminApprove(TradeRequestUtils.getLong(request, "orderId", 0L)));
+        return CommonResult.success(tradeAfterSaleService.adminApprove(
+                TradeSecurityUtils.getRequiredUserId(), TradeRequestUtils.getLong(request, "orderId", 0L)));
     }
 
     @RequestMapping("/reject")
@@ -46,6 +48,7 @@ public class AdminTradeAfterSaleController {
                                                     @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         return CommonResult.success(tradeAfterSaleService.adminReject(
+                TradeSecurityUtils.getRequiredUserId(),
                 TradeRequestUtils.getLong(request, "orderId", 0L),
                 TradeRequestUtils.getString(request, "rejectReason", "商家拒绝售后申请")
         ));
