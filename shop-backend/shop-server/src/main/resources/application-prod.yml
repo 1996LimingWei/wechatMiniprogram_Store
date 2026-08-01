@@ -24,6 +24,10 @@ wx:
     secret: ${WX_MA_SECRET:}
     mock-enabled: false
 
+product:
+  provider: database
+  mock-endpoints-enabled: false
+
 trade:
   mock-actions-enabled: false
 

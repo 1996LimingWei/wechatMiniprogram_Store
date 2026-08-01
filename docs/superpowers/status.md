@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
+**当前实施计划**: [2026-08-01-product-mock-provider-boundary.md](plans/2026-08-01-product-mock-provider-boundary.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -460,6 +460,15 @@
 - Docker 11 模块全量构建通过，商品模块 15 项与交易模块 2 项测试通过；前端 SKU 独立脚本和真实 MySQL/Redis 多规格详情 HTTP 验收均通过，测试数据自动清理。
 - [PR #18](https://github.com/QtImM/wechatMiniprogram_Store/pull/18) 已合并到 `main`，Issue #15 已自动关闭；合并提交为 `ad925ed`。
 - 下一项切换到 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)。
+
+## 2026-08-01 Issue #23 商品内容 Mock Provider 与正式 API 边界
+
+- 新增商品目录 Provider 契约和配置路由，正式分类、列表、详情与关联商品 API 由 `product.provider` 在 Mock/数据库实现之间切换，Controller 不再感知数据来源。
+- 删除 Controller 包中的 `MockData`；可复现商品种子迁入独立 Fixture，且只由 Mock 商品/SKU Provider 读取。
+- `AppMockController` 现仅保留 `/app-api/mock/**` 兼容路径；热销、新品、品牌、专题与通用支持正式路径已迁入独立正式 Controller。
+- 新增 `product.mock-endpoints-enabled` 统一守卫；开发环境可显式开启，生产 profile 无论开关值如何都返回业务码 `403`。
+- Docker 11 模块全量构建通过，商品模块 23 项、交易模块 2 项测试通过；Mock、数据库和生产三模式 HTTP 验收通过。
+- [PR 待创建](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，合并后关闭 Issue #23。
 
 ## 决策记录
 
