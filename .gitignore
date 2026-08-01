@@ -25,6 +25,8 @@ unpackage/
 .env.*.local
 application-local.yml
 sql/backups/
+.docker-data/
+shop-backend/.mvn/repository/
 
 # IDE
 .vscode/

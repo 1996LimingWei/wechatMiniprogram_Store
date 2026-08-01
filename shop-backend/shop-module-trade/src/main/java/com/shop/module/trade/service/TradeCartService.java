@@ -108,9 +108,7 @@ public class TradeCartService {
     public Map<String, Object> deleteCart(Long userId, String productIds) {
         List<Long> skuIds = parseIds(productIds);
         if (!skuIds.isEmpty()) {
-            tradeCartMapper.delete(new LambdaQueryWrapper<TradeCartDO>()
-                    .eq(TradeCartDO::getUserId, userId)
-                    .in(TradeCartDO::getSkuId, skuIds));
+            tradeCartMapper.physicalDeleteByUserAndSkuIds(userId, skuIds);
         }
         return getCartIndex(userId);
     }
@@ -127,9 +125,7 @@ public class TradeCartService {
     }
 
     public void clearCheckedCart(Long userId) {
-        tradeCartMapper.delete(new LambdaQueryWrapper<TradeCartDO>()
-                .eq(TradeCartDO::getUserId, userId)
-                .eq(TradeCartDO::getChecked, 1));
+        tradeCartMapper.physicalDeleteCheckedByUserId(userId);
     }
 
     public Map<String, Object> toCartItem(TradeCartDO cart) {
