@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-07-31-product-sku-read-model.md](plans/2026-07-31-product-sku-read-model.md)
+**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -458,7 +458,8 @@
 - 无效、非整数或重复维度属性会按整条 SKU 安全降级，不再污染规格列表；完整 SKU 矩阵不依赖数据库返回顺序。
 - 商品详情页按“规格维度 ID + 规格值 ID”精确匹配 SKU，支持缺货组合禁用、库存数量上限和 SKU 价格/图片切换；旧接口与 Mock 字段保持兼容。
 - Docker 11 模块全量构建通过，商品模块 15 项与交易模块 2 项测试通过；前端 SKU 独立脚本和真实 MySQL/Redis 多规格详情 HTTP 验收均通过，测试数据自动清理。
-- [PR #18](https://github.com/QtImM/wechatMiniprogram_Store/pull/18) 等待最终推送与合并，合并后关闭 Issue #15。
+- [PR #18](https://github.com/QtImM/wechatMiniprogram_Store/pull/18) 已合并到 `main`，Issue #15 已自动关闭；合并提交为 `ad925ed`。
+- 下一项切换到 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)。
 
 ## 决策记录
 
@@ -489,7 +490,7 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 商品负责人完成 Issue #22 后，依次执行 `#15 → #23 → #24 → #25`。
+1. 商品负责人已完成 Issue #22 和 #15，下一项依次执行 `#23 → #24 → #25`。
 2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
 3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 
