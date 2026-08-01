@@ -12,7 +12,7 @@
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
 **下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-product-mock-provider-boundary.md](plans/2026-08-01-product-mock-provider-boundary.md)
+**当前实施计划**: [2026-08-01-mock-contract-first-roadmap.md](plans/2026-08-01-mock-contract-first-roadmap.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -468,7 +468,8 @@
 - `AppMockController` 现仅保留 `/app-api/mock/**` 兼容路径；热销、新品、品牌、专题与通用支持正式路径已迁入独立正式 Controller。
 - 新增 `product.mock-endpoints-enabled` 统一守卫；开发环境可显式开启，生产 profile 无论开关值如何都返回业务码 `403`。
 - Docker 11 模块全量构建通过，商品模块 23 项、交易模块 2 项测试通过；Mock、数据库和生产三模式 HTTP 验收通过。
-- [PR 待创建](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，合并后关闭 Issue #23。
+- [PR #27](https://github.com/QtImM/wechatMiniprogram_Store/pull/27) 已合并到 `main`，Issue #23 已自动关闭；合并提交为 `ab31cd7`。
+- 下一项切换到 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)。
 
 ## 决策记录
 
@@ -499,7 +500,7 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 商品负责人已完成 Issue #22 和 #15，下一项依次执行 `#23 → #24 → #25`。
+1. 商品负责人已完成 Issue #22、#15 和 #23，下一项依次执行 `#24 → #25`。
 2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
 3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 
