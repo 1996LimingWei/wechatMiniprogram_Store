@@ -37,7 +37,7 @@
 
 - 需安装 **HBuilderX**（https://www.dcloud.io/hbuilderx.html）才能编译小程序
 - 需安装 **微信开发者工具**（https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html）
-- 本地完整 Docker 编排已补充；当前机器仍需安装并启动 Docker Desktop 后才能运行容器。
+- Docker Desktop、WSL 2 与 Ubuntu 24.04 已可用；Docker/Ubuntu 虚拟磁盘、项目数据库、Redis 和项目 Maven 缓存均落在 D 盘。
 - Node.js 24 与 uni-app Vue2 CLI 构建模式不兼容，须使用 HBuilderX 内置编译器
 
 ## 2026-06-28 迁移记录
@@ -371,10 +371,10 @@
 
 ## 2026-07-30 首页内容与用户互动真实化推进
 
-- Issue #11：已在 `feat/home-content-real-api` 实现首页 Banner、频道、品牌、专题、新品、热销和分类楼层的数据库查询、内容种子和迁移；模块测试与全量构建通过，待 Docker 恢复后执行迁移和接口联调。
+- Issue #11：已实现首页 Banner、频道、品牌、专题、新品、热销和分类楼层的数据库查询、内容种子和迁移；模块测试、全量构建、Docker 迁移和接口联调均通过。
 - Issue #12：已在 `feat/user-interaction-mvp` 实现收藏、浏览足迹和商品评论的真实接口、数据迁移、小程序足迹接入，以及商品详情的收藏状态和评论摘要。
 - `shop-module-product` 单元测试已覆盖首页内容排序/过滤、评论响应契约和商品详情互动摘要，并通过 `mvn test -pl shop-module-product -am`。
-- 草稿 PR #13 汇总以上改动；Issue #11、#12 保持开放，关闭条件仍为 Docker 数据库迁移与真实接口联调通过。
+- 草稿 PR #13 汇总以上改动；Issue #11/#12 的 Docker 数据库迁移与真实接口联调条件已满足。
 
 ## 2026-07-31 交易环节二次自查
 
@@ -414,6 +414,33 @@
 
 - 已将 `feat/mock-sku-inventory-contract` 合并并推送至 `main`；交易链路已统一通过可替换 SKU/库存契约读取商品快照与库存。
 - 已复核剩余 P0，下一阶段优先处理管理端鉴权、Mock 写操作后端环境隔离、迁移验收基线与安全回归；对应规格与实施计划已创建。
+
+## 2026-08-01 Issue #21 交易安全边界实现
+
+- 已创建 [Issue #21：收紧交易管理端与 Mock 写操作权限边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/21)，并在 `feat/trade-security-boundary` 实现。
+- 新增配置注入的最小管理员登录与 `ROLE_ADMIN`；`/admin-api/**` 仅管理员可访问，发货与售后审批日志记录管理员 ID。
+- 新增 `trade.mock-actions-enabled` 守卫，生产 profile 强制拒绝 Mock 支付、发货与退款审核；开发环境通过明确配置开启。
+- 已通过模块测试、全量构建、Docker HTTP 鉴权、生产环境隔离、数据库迁移与完整交易验收。
+
+## 2026-08-01 Docker 恢复与历史 P0 闭环
+
+- Docker Desktop 数据盘已迁移到 `D:\DockerDesktop\data`，Ubuntu 24.04 已迁移到 `D:\WSL\Ubuntu-24.04`；Compose 的 MySQL/Redis 改用仓库下 `.docker-data` 绑定目录，项目 Maven 缓存固定在 `shop-backend/.mvn/repository`，大体积开发数据不再写入 C 盘。
+- 修复 Compose 开发环境配置覆盖：使用 Spring Boot 标准数据源与 Redis 环境变量，启用数据库 SKU Provider、Mock 登录、管理员认证和开发态 Mock 写操作。
+- 修复迁移验收的 MySQL 就绪等待、首页内容基线、动态迁移版本断言与 PowerShell 5.1 UTF-8 兼容；三个迁移版本首次执行和重复幂等执行均通过。
+- 修复购物车逻辑删除唯一键冲突，删除与下单清理均改为物理删除；修复退款支付单查询、待发货退款 SKU 库存回补、无售后申请直接退款和退款查询状态错误。
+- `scripts/verify-trade-flow.ps1` 已覆盖匿名/会员/管理员权限、重复购物车删除、真实 SKU、支付金额、无申请退款拒绝、完整履约售后和超时关闭，Docker HTTP 全链路验收通过并自动清理数据。
+- 首页 7 个内容接口以及收藏、足迹、评论接口已完成 Docker/MySQL 联调，Issue #11/#12 的 Docker 阻塞验收项关闭。
+- Dockerfile 已移除强制生产 profile，增加 Maven 持久缓存并在镜像构建中实际执行测试；11 个模块构建成功，商品模块 9 项与交易模块 2 项测试通过，独立生产 profile 容器确认 Mock 写接口返回业务码 `403`。
+
+## 2026-08-01 商品负责人剩余 Issue 规划
+
+- 已复核开放 Issue，确认多规格 SKU 已由 [Issue #15](https://github.com/QtImM/wechatMiniprogram_Store/issues/15) 覆盖，商品 SKU Mock Provider 已由 [Issue #20](https://github.com/QtImM/wechatMiniprogram_Store/issues/20) 覆盖，不重复建单。
+- 新建 [Issue #22：将商品搜索与搜索历史切换为真实数据](https://github.com/QtImM/wechatMiniprogram_Store/issues/22)，建议分支 `feat/product-search-history`。
+- 新建 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，建议分支 `feat/product-mock-provider-boundary`。
+- 新建 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)，建议分支 `feat/product-demo-seed`。
+- 新建 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)，建议分支 `feat/miniapp-product-api-acceptance`。
+- 商品负责人建议执行顺序：`#22 → #15 → #23 → #24 → #25`；每张 Issue 独立分支、测试、提交、推送与合并，避免商品查询、详情装配和前端页面产生交叉冲突。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -432,6 +459,7 @@
 | 2026-07-16 | 后续阶段按“交易闭环优先”推进 | 当前项目已具备高保真 Demo，最大缺口是真实后端交易链路，先完成登录、商品、购物车、订单、支付适配，再推进会员营销和管理后台 |
 | 2026-07-24 | 后端 userInfo 字段名与前端对齐 | 后端返回 nickName/avatarUrl，前端期望 nickname/avatar，统一为小写 |
 | 2026-08-01 | 采用 Mock 契约优先、可替换数据源架构 | 先完整演示与验证流程，后续替换真实数据源时不重写前端、Controller 或核心交易规则 |
+| 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
 
 ## 2026-07-24 Agent Loop Skill
 
@@ -442,9 +470,9 @@
 ## 下一步行动
 
 下一步按 Mock 契约优先计划实施：
-1. 固化商品/SKU、库存、支付、物流服务契约，收紧管理端与 Mock 写操作安全边界。
-2. 用稳定 Mock SKU 数据跑通完整交易、异常与并发流程。
-3. 在同一契约和验收脚本下，逐项切换 MySQL、物流供应商和微信支付 V3。
+1. 商品负责人从 Issue #22 开始，依次执行 `#22 → #15 → #23 → #24 → #25`。
+2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
+3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
 
 ---
 

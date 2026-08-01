@@ -33,8 +33,8 @@ public class TradeLogisticsService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> adminShip(Long orderId, Map<String, Object> request) {
-        return ship(null, orderId, request, TradeOrderLogService.OPERATOR_ADMIN, 0L);
+    public Map<String, Object> adminShip(Long adminId, Long orderId, Map<String, Object> request) {
+        return ship(null, orderId, request, TradeOrderLogService.OPERATOR_ADMIN, adminId);
     }
 
     private Map<String, Object> ship(Long userId, Long orderId, Map<String, Object> request,

@@ -25,7 +25,8 @@ public class SecurityAutoConfiguration {
             .authorizeHttpRequests(auth -> auth
                 // 开发阶段：放行所有小程序接口
                 .requestMatchers("/app-api/**").permitAll()
-                .requestMatchers("/admin-api/**").permitAll()
+                .requestMatchers("/admin-api/auth/login").permitAll()
+                .requestMatchers("/admin-api/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
