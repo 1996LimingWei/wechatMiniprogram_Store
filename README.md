@@ -169,18 +169,18 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-product
 
 ```bash
 cd shop-backend
-# 设置 JAVA_HOME 指向 Java 25（如果默认 Java 版本不是 25）
-export JAVA_HOME=/path/to/jdk-25
 # 全量构建（必须，确保所有子模块编译到本地仓库）
 mvn install -DskipTests -q
 # 启动后端（开发环境，使用 Mock 微信登录）
-cd shop-server
-mvn spring-boot:run
+mvn spring-boot:run -pl shop-server
 ```
+
+> **注意**：由于项目配置了 `.mvn/maven.config`（自定义本地仓库路径），`mvn spring-boot:run` **必须从 `shop-backend/` 根目录运行**并加 `-pl shop-server`，否则会找不到 trade 等模块的依赖。
+> 默认 Java 已是 25 则无需手动设置 `JAVA_HOME`；如不是，请先切换至 Java 25。
 
 > 如需测试**真实微信登录**，先配置 `application-local.yml`（填入真实 AppID/Secret，已 gitignore），然后用双 profile 启动：
 > ```bash
-> mvn spring-boot:run -Dspring-boot.run.profiles=dev,local
+> mvn spring-boot:run -pl shop-server -Dspring-boot.run.profiles=dev,local
 > ```
 > 注意：修改子模块代码后需重新执行 `mvn install -DskipTests -q` 才能生效。
 

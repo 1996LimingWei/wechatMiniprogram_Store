@@ -1,3 +1,7 @@
+# IDE & Tools
+.qoder/
+.lingma/
+
 # Java
 target/
 **/target-direct-deps.txt
