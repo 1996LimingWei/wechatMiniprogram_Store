@@ -6,7 +6,7 @@
 
 - **后端**: Java 25 + Spring Boot 3.5.16 + MyBatis-Plus 3.5.6 + MySQL 8 + Redis 7
 - **小程序**: uni-app (Vue2)（基于开源 wx-mall uni-mall 版本，35 页面）
-- **管理后台**: Vue3 + Element Plus（待开发）
+- **管理后台**: Vue3 + Vite + Element Plus + TypeScript（基于 [vue-pure-admin](https://github.com/pure-admin/pure-admin-thin)）
 - **部署**: 微信云托管（Docker 容器）
 
 ## 项目结构
@@ -36,6 +36,11 @@ wechatMiniprogram_Store/
 │   ├── static/images/             # 图标资源
 │   ├── store/                     # Vuex 状态管理
 │   └── pages.json                 # 小程序全局配置
+├── shop-admin/                    # Vue3 管理后台（vue-pure-admin thin）
+│   ├── src/api/                   # 接口层（按业务模块拆分）
+│   ├── src/views/                 # 业务页面
+│   ├── src/router/modules/        # 静态路由（5 个菜单模块）
+│   └── vite.config.ts             # Vite 配置
 ├── sql/                           # 数据库初始化脚本
 │   └── init.sql
 └── README.md
@@ -219,6 +224,20 @@ curl http://localhost:8085/app-api/product/spu/page?pageNo=1&pageSize=10
 
 > 注意：后端目前已有首页、分类、商品详情等核心 mock 接口，购物车/订单/收藏等接口待补全。
 
+### 第五步：启动管理后台
+
+```bash
+cd shop-admin
+pnpm install   # 首次安装依赖（需要 pnpm，没有则 npm install -g pnpm）
+pnpm dev       # 启动开发服务，访问 http://localhost:8848
+```
+
+- 开发环境自动将 `/admin-api` 代理到后端 `http://localhost:8085`，无需额外配置
+- 登录账号使用后端配置的管理员用户名密码（默认 `admin/admin123`，可在 `application.yml` 的 `admin.auth` 中修改）
+- 生产构建：`pnpm build`，输出到 `shop-admin/dist/`，用 Nginx 部署即可
+
+详细技术说明见 [docs/admin-framework.md](docs/admin-framework.md)。
+
 ### 测试验证清单
 
 | 验证项 | 预期结果 |
@@ -230,6 +249,8 @@ curl http://localhost:8085/app-api/product/spu/page?pageNo=1&pageSize=10
 | 小程序分类页 | 左侧分类 + 右侧子分类 |
 | 小程序商品详情 | 轮播图 + 商品参数 + 常见问题 |
 | 小程序购物车 | 真实交易接口可用，可加购、删除、勾选、结算 |
+| 管理后台启动（端口 8848） | 浏览器可访问登录页 |
+| 管理后台登录 | 使用管理员账号登录成功，左侧菜单可见 |
 | 交易验收脚本 | 自动验收通过并清理测试数据 |
 
 ## 许可证

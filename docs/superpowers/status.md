@@ -6,13 +6,11 @@
 
 ## 当前阶段
 
-**阶段**: Development Roadmap（后续开发路径规划）
-**计划文件**: [next-development-path.md](plans/2026-07-16-next-development-path.md)
+**阶段**: 管理后台搭建（Admin Frontend）
+**管理后台计划**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
-**下一 Epic 规格**: [2026-08-01-trade-security-boundary-design.md](specs/2026-08-01-trade-security-boundary-design.md)
-**当前实施计划**: [2026-08-01-miniapp-product-api-acceptance.md](plans/2026-08-01-miniapp-product-api-acceptance.md)
 **设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
@@ -507,6 +505,7 @@
 | 2026-07-24 | 后端 userInfo 字段名与前端对齐 | 后端返回 nickName/avatarUrl，前端期望 nickname/avatar，统一为小写 |
 | 2026-08-01 | 采用 Mock 契约优先、可替换数据源架构 | 先完整演示与验证流程，后续替换真实数据源时不重写前端、Controller 或核心交易规则 |
 | 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
+| 2026-08-03 | 管理后台基座搭建（Issue #1）完成 | 基于 vue-pure-admin thin 搭建 shop-admin/，完成 API 对接层、认证体系简化、路由骨架和 11 个占位页面 |
 
 ## 2026-07-24 Agent Loop Skill
 
@@ -516,10 +515,11 @@
 
 ## 下一步行动
 
-下一步按 Mock 契约优先计划实施：
-1. 商品负责人 Issue #22、#15、#23、#24 和 #25 已完成开发与自动验收，本阶段商品真实化链路闭环。
-2. 交易负责人固化支付与物流服务契约，补齐重复支付、关闭后回调和并发状态竞争测试。
-3. 在现有商品/SKU 契约和验收脚本下，继续替换物流供应商与微信支付 V3。
+管理后台 Issue #1 基座已完成，下一步按 9 个 Issue 并行推进：
+1. Issue #2：管理员登录页定制 + 基础框架主题（依赖 #1）
+2. Issue #3~#7：商品/订单/售后/内容/会员各业务页面开发（依赖 #2，可多人并行）
+3. Issue #8：数据看板首页（依赖 #3~#7 部分完成）
+4. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 

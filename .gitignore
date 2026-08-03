@@ -20,7 +20,6 @@ unpackage/
 *.local
 
 # Environment
-.env
 .env.local
 .env.*.local
 application-local.yml
