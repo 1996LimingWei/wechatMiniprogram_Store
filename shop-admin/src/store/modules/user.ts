@@ -9,7 +9,13 @@ import {
 } from "../utils";
 import { type LoginParams, type LoginResult, loginApi } from "@/api/user";
 import { useMultiTagsStoreHook } from "./multiTags";
-import { type DataInfo, setToken, removeToken, userKey } from "@/utils/auth";
+import {
+  type DataInfo,
+  setToken,
+  removeToken,
+  userKey
+} from "@/utils/auth";
+import { logoutApi } from "@/api/auth";
 
 export const useUserStore = defineStore("pure-user", {
   state: (): userType => ({
@@ -59,8 +65,13 @@ export const useUserStore = defineStore("pure-user", {
       return result;
     },
     /** 退出登录 */
-    logOut() {
+    async logOut() {
+      // 调用退出接口（当前为前端操作，后续可替换为后端接口）
+      await logoutApi();
+      // 清除所有用户状态
+      this.avatar = "";
       this.username = "";
+      this.nickname = "";
       this.roles = [];
       this.permissions = [];
       removeToken();

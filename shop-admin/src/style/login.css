@@ -15,6 +15,7 @@
   grid-template-columns: repeat(2, 1fr);
   grid-gap: 18rem;
   padding: 0 2rem;
+  background: linear-gradient(135deg, #f5f7f6 0%, #e8ede9 100%);
 }
 
 .img {
@@ -38,19 +39,44 @@
   width: 360px;
 }
 
-.avatar {
-  width: 350px;
-  height: 80px;
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.brand-logo img {
+  width: 48px;
+  height: 48px;
+}
+
+.brand-logo span {
+  font-size: 22px;
+  font-weight: 600;
+  color: #3d5c4a;
+  letter-spacing: 2px;
 }
 
 .login-form h2 {
-  text-transform: uppercase;
-  margin: 15px 0;
+  margin: 0 0 28px;
+  font-size: 15px;
+  font-weight: 400;
   color: #999;
-  font:
-    bold 200% Consolas,
-    Monaco,
-    monospace;
+  letter-spacing: 1px;
+}
+
+/* 登录按钮使用品牌色 */
+.login-form .el-button--primary {
+  background-color: #6b8f7a;
+  border-color: #6b8f7a;
+}
+
+.login-form .el-button--primary:hover,
+.login-form .el-button--primary:focus {
+  background-color: #7da38c;
+  border-color: #7da38c;
 }
 
 @media screen and (max-width: 1180px) {
@@ -63,17 +89,21 @@
   }
 
   .login-form h2 {
-    font-size: 2.4rem;
-    margin: 8px 0;
+    font-size: 14px;
+    margin: 0 0 20px;
   }
 
   .img img {
     width: 360px;
   }
 
-  .avatar {
-    width: 280px;
-    height: 80px;
+  .brand-logo img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .brand-logo span {
+    font-size: 18px;
   }
 }
 
