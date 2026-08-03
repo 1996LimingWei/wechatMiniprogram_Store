@@ -6,6 +6,7 @@ import com.shop.module.trade.service.TradeLogisticsService;
 import com.shop.module.trade.service.TradeOrderQueryService;
 import com.shop.module.trade.service.TradeOrderService;
 import com.shop.module.trade.util.TradeRequestUtils;
+import com.shop.module.trade.util.TradeSecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +47,6 @@ public class AdminTradeOrderController {
                                                   @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);
-        return CommonResult.success(tradeLogisticsService.adminShip(orderId, request));
+        return CommonResult.success(tradeLogisticsService.adminShip(TradeSecurityUtils.getRequiredUserId(), orderId, request));
     }
 }

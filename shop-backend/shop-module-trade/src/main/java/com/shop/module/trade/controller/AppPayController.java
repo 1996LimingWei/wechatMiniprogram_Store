@@ -1,8 +1,8 @@
 package com.shop.module.trade.controller;
 
 import com.shop.common.pojo.CommonResult;
-import com.shop.module.trade.config.TradeDevActionGuard;
 import com.shop.module.trade.service.PayOrderService;
+import com.shop.module.trade.service.TradeMockActionGuard;
 import com.shop.module.trade.util.TradeRequestUtils;
 import com.shop.module.trade.util.TradeSecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ import java.util.Map;
 public class AppPayController {
 
     private final PayOrderService payOrderService;
-    private final TradeDevActionGuard tradeDevActionGuard;
+    private final TradeMockActionGuard tradeMockActionGuard;
 
     @RequestMapping("/app-api/pay/prepay")
     public CommonResult<Map<String, Object>> prepay(@RequestBody(required = false) String rawBody,
@@ -38,7 +38,7 @@ public class AppPayController {
     @RequestMapping("/app-api/pay/mock-success")
     public CommonResult<Boolean> mockSuccess(@RequestBody(required = false) String rawBody,
                                              @RequestParam Map<String, Object> params) {
-        tradeDevActionGuard.checkEnabled();
+        tradeMockActionGuard.checkEnabled();
         Long userId = TradeSecurityUtils.getRequiredUserId();
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);

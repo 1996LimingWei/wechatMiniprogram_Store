@@ -10,7 +10,7 @@ services:
     ports:
       - "${MYSQL_PORT:-3307}:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./.docker-data/mysql:/var/lib/mysql
       - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
@@ -26,7 +26,7 @@ services:
     ports:
       - "${REDIS_PORT:-6380}:6379"
     volumes:
-      - redis-data:/data
+      - ./.docker-data/redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -40,12 +40,17 @@ services:
     container_name: shop-backend
     restart: unless-stopped
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/shop?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
-      DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/shop?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      WX_MA_MOCK_ENABLED: "true"
+      PRODUCT_PROVIDER: database
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      TRADE_MOCK_ACTIONS_ENABLED: "true"
       TZ: Asia/Shanghai
     ports:
       - "${BACKEND_PORT:-8085}:8085"
@@ -54,7 +59,3 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-
-volumes:
-  mysql-data:
-  redis-data:

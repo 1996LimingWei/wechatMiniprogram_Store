@@ -31,7 +31,7 @@
 					typeId: that.typeId,
 					valueId: that.valueId,
 					content: that.content
-				}, 'POST', 'application/json').then(function(res) {
+				}).then(function(res) {
 					if (res.code === 0) {
 						uni.showToast({
 							title: '评论成功',

@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: shop_backend/server
-title: Shop 后端服务启动与装配核心
-scope:
-    - shop-backend/shop-server/
-source_files: []
-depends_on: []
-related_to: []

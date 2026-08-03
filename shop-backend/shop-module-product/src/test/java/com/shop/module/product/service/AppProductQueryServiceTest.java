@@ -35,12 +35,14 @@ class AppProductQueryServiceTest {
                 sku(4L, "{not-json", 999, 999, 1, "broken"),
                 sku(5L, null, 999, 999, 1, "null-properties"),
                 sku(6L, "[]", 999, 999, 1, "empty-properties"),
-                sku(7L, "[{\"id\":10.5,\"name\":\"Size\",\"valueId\":101,\"valueName\":\"Broken\"}]", 999, 999, 1, "decimal-id")
+                sku(7L, "[{\"id\":10.5,\"name\":\"Size\",\"valueId\":101,\"valueName\":\"Broken\"}]", 999, 999, 1, "decimal-id"),
+                sku(8L, "[{\"id\":10,\"name\":\"Size\",\"valueId\":103,\"valueName\":\"Broken\"},{\"id\":10,\"name\":\"Size\",\"valueId\":104,\"valueName\":\"Duplicate\"}]", 999, 999, 1, "duplicate-dimension")
         ));
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(0);
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of());
 
-        Map<String, Object> result = new AppProductQueryService(mock(CategoryMapper.class), spuMapper, skuMapper, jdbc).detail(1L);
+        Map<String, Object> result = new AppProductQueryService(mock(CategoryMapper.class), spuMapper, skuMapper, jdbc,
+                mock(ProductSearchService.class)).detail(1L);
         List<Map<String, Object>> specifications = (List<Map<String, Object>>) result.get("specificationList");
         List<Map<String, Object>> products = (List<Map<String, Object>>) result.get("productList");
 
@@ -60,7 +62,8 @@ class AppProductQueryServiceTest {
         assertEquals(List.of(101L, 201L), ((List<Map<String, Object>>) inStockSku.get("properties")).stream().map(item -> item.get("valueId")).toList());
         assertTrue((Boolean) inStockSku.get("available"));
         assertFalse((Boolean) soldOutSku.get("available"));
-        for (Long invalidId : List.of(4L, 5L, 6L, 7L)) {
+        assertEquals(List.of(1L, 2L, 3L), products.stream().filter(item -> !((List<?>) item.get("specificationValueIds")).isEmpty()).map(item -> (Long) item.get("id")).toList());
+        for (Long invalidId : List.of(4L, 5L, 6L, 7L, 8L)) {
             Map<String, Object> invalidSku = products.stream().filter(item -> item.get("id").equals(invalidId)).findFirst().orElseThrow();
             assertEquals("", invalidSku.get("goodsSpecificationIds"));
             assertEquals(List.of(), invalidSku.get("specificationValueIds"));
@@ -79,7 +82,8 @@ class AppProductQueryServiceTest {
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(2);
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(Map.of("content", "很好", "addTime", "2026-07-30", "nickname", "用户", "avatar", "")));
 
-        Map<String, Object> result = new AppProductQueryService(mock(CategoryMapper.class), spuMapper, skuMapper, jdbc).detail(1L);
+        Map<String, Object> result = new AppProductQueryService(mock(CategoryMapper.class), spuMapper, skuMapper, jdbc,
+                mock(ProductSearchService.class)).detail(1L);
         Map<String, Object> comment = (Map<String, Object>) result.get("comment");
 
         assertEquals(2, comment.get("count"));

@@ -6,15 +6,12 @@
 
 ## 当前阶段
 
-**阶段**: Issue #17 实现完成，待堆叠 PR 评审
-**计划文件**: [next-development-path.md](plans/2026-07-16-next-development-path.md)
+**阶段**: 管理后台搭建（Admin Frontend）
+**管理后台计划**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
-**下一 Epic 规格**: [product-real-api-and-migration-design.md](specs/2026-07-27-product-real-api-and-migration-design.md)
-**当前实施计划**: [2026-07-31-order-query-pagination.md](plans/2026-07-31-order-query-pagination.md)
-**当前设计规格**: [2026-07-31-order-query-pagination-design.md](specs/2026-07-31-order-query-pagination-design.md)
-**整体设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
+**设计规格**: [shop-miniprogram-design.md](specs/2026-06-22-shop-miniprogram-design.md)
 
 ## 进度概览
 
@@ -36,9 +33,8 @@
 
 ## 阻塞项
 
-- 需安装 **HBuilderX**（https://www.dcloud.io/hbuilderx.html）才能编译小程序
-- 需安装 **微信开发者工具**（https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html）
-- 本地完整 Docker 编排已补充；当前机器仍需安装并启动 Docker Desktop 后才能运行容器。
+- 当前无开发环境阻塞；HBuilderX、微信开发者工具、Docker Desktop、WSL 2 与 Ubuntu 24.04 均已可用。
+- Docker Desktop、WSL 2 与 Ubuntu 24.04 已可用；Docker/Ubuntu 虚拟磁盘、项目数据库、Redis 和项目 Maven 缓存均落在 D 盘。
 - Node.js 24 与 uni-app Vue2 CLI 构建模式不兼容，须使用 HBuilderX 内置编译器
 
 ## 2026-06-28 迁移记录
@@ -372,10 +368,10 @@
 
 ## 2026-07-30 首页内容与用户互动真实化推进
 
-- Issue #11：已在 `feat/home-content-real-api` 实现首页 Banner、频道、品牌、专题、新品、热销和分类楼层的数据库查询、内容种子和迁移；模块测试与全量构建通过，待 Docker 恢复后执行迁移和接口联调。
+- Issue #11：已实现首页 Banner、频道、品牌、专题、新品、热销和分类楼层的数据库查询、内容种子和迁移；模块测试、全量构建、Docker 迁移和接口联调均通过。
 - Issue #12：已在 `feat/user-interaction-mvp` 实现收藏、浏览足迹和商品评论的真实接口、数据迁移、小程序足迹接入，以及商品详情的收藏状态和评论摘要。
 - `shop-module-product` 单元测试已覆盖首页内容排序/过滤、评论响应契约和商品详情互动摘要，并通过 `mvn test -pl shop-module-product -am`。
-- 草稿 PR #13 汇总以上改动；Issue #11、#12 保持开放，关闭条件仍为 Docker 数据库迁移与真实接口联调通过。
+- 草稿 PR #13 汇总以上改动；Issue #11/#12 的 Docker 数据库迁移与真实接口联调条件已满足。
 
 ## 2026-07-31 交易环节二次自查
 
@@ -390,74 +386,105 @@
 - 本次审计测试数据已全部清理，临时后端已删除，MySQL/Redis 已恢复为停止状态。
 - 交易侧下一步应先处理安全止血和数据一致性，再继续微信支付、营销或物流扩展。
 
-## 2026-07-31 交易升级能力复查
+## 2026-08-01 商品与交易可交付化规划
 
-- 业务模型缺口：商品已经有实物/虚拟类型，但订单与订单明细没有履约类型；结算始终要求地址和运费，支付后统一进入待发货，尚不支持课程支付后自动生成学习权益。
-- 定价模型缺口：购物车价格直接参与下单，优惠券参数未被后端消费；缺少服务端报价版本、优惠分摊、会员价/活动价明细和价格变化二次确认。
-- 库存模型缺口：交易仍使用 SPU 总库存，没有真实 SKU 库存预占、释放、扣减流水和对账机制；取消、超时、退款、退货对库存的处理规则尚未统一。
-- 状态模型缺口：订单、支付、履约、售后状态使用数字散落在业务代码中；除支付与超时竞争外，多数流转没有条件更新或版本控制，也没有自动收货与状态补偿任务。
-- 支付可靠性缺口：支付单缺少“一订单一有效支付单”的唯一约束、渠道交易号、回调通知流水、签名验真、退款单与定时对账；跨模块副作用没有事件表或 Outbox 兜底。
-- 售后能力缺口：当前只能整单售后，不能按订单明细和数量部分退款，也没有退货物流、凭证、仓库收货、实际退款流水及多次售后记录。
-- 接口契约缺口：交易 Controller 普遍使用无方法限制的 `@RequestMapping`，通过原始字符串和 `Map` 解析参数；缺少 ReqVO/RespVO、Bean Validation、明确 HTTP 动词、分页上限和稳定错误码。
-- 查询性能缺口：用户订单与管理端售后先查全量再内存分页；订单列表逐单查询明细、物流和售后，存在 N+1；数据库缺少用户状态时间、售后状态时间等组合索引。
-- 隐私与运维缺口：订单地址和手机号未脱敏/加密；缺少订单号、支付单号贯穿的结构化日志、交易指标告警、任务互斥、失败重试和人工补偿台账。
-- 前端体验缺口：提交订单没有防重复点击和请求幂等；课程订单仍显示地址/物流；列表翻页没有结束条件；“去评价”和“再次购买”仍未形成真实闭环。
-- 质量保障缺口：交易模块没有单元、集成、并发和故障注入测试；现有验收脚本偏顺向成功路径，尚不能作为真实支付上线门禁。
-- 推荐升级顺序：先完成安全止血与数据一致性，再补交易状态机、SKU 库存与幂等基础，随后接入微信支付 V3/退款/对账，最后扩展虚拟课程履约、营销定价、细粒度售后和体验功能。
+- 新增商品与交易可交付化实施计划，按“P0 安全止血 → 真实 SKU/库存 → 交易一致性 → 真实支付上线准备”推进。
+- 商品负责人优先负责真实 SKU、规格选择、商品快照和库存协作；在真实商品链路完成前，不再扩展基于 MockData 的交易功能。
 
-## 2026-07-31 微信小程序生产就绪整改启动
+## 2026-08-01 Mock 契约优先决策与规划
 
-- 项目目标由“交易 MVP”提升为“可提审、可真实收款、可持续运营”的正式微信小程序。
-- 新增生产就绪规格：`docs/superpowers/specs/2026-07-31-wechat-production-readiness.md`。
-- 新增分阶段实施计划：`docs/superpowers/plans/2026-07-31-wechat-production-readiness.md`。
-- 整改范围覆盖主体类目与资质、隐私合规、身份权限、环境配置、商品库存、订单支付、退款售后、课程履约、小程序体验、性能、监控运维和测试门禁。
-- 当前处于第一阶段：先完成管理接口、Mock 能力、正式域名配置和交易一致性的 P0 止血。
-- 商户号、证书、正式域名、行业资质和隐私主体信息属于外部上线阻断项；资料缺失时不得宣称可正式上线。
+- 决定采用“先完整 Mock、后逐项替换真实数据源”模式；Mock 仅替代数据来源，鉴权、金额校验、库存幂等、状态机和订单日志从第一天按真实规则执行。
+- 新增对应设计规格和实施计划；首个开发任务为商品/SKU Mock Provider 与库存契约，后续以同一组自动验收逐项替换数据库、物流和微信支付实现。
 
-## 2026-07-27 SKU 库存服务基础完成
+## 2026-08-01 Mock 契约优先首个 Issue
 
-- 新增商品模块 `ProductInventoryService`，集中提供真实 SKU 快照、商品上架与 SKU 归属校验、SKU 原子扣减和回补能力。
-- 本阶段仅完成商品模块库存能力；交易订单下单、取消与超时关闭调用会在下一最小提交中接入。
-- 售后退款仍不自动回补库存，等待未来“退货入库”流程按实际入库数量处理。
+- 已创建 [Issue #20：建立商品 SKU Mock Provider 与库存契约](https://github.com/QtImM/wechatMiniprogram_Store/issues/20)，建议分支为 `feat/mock-sku-inventory-contract`。
+- Issue 覆盖 Mock SKU/库存数据、商品与库存服务契约、交易调用切换及契约测试；不改变小程序 API，也不提前接入真实支付或物流。
+
+## 2026-08-01 Issue #20 实现与验证
+
+- 商品模块新增可替换 `ProductSkuProvider`：开发环境默认启用稳定 Mock SKU/库存，配置 `product.provider=database` 时切换为数据库 SKU 实现。
+- 交易模块不再直接访问 `MockData` 或 SPU 库存；购物车、结算、下单、取消/超时回补统一通过 SKU 契约，订单提交会重新读取当前 SKU 快照与价格。
+- 已通过 `mvn test -pl shop-module-product,shop-module-trade -am`（9 项测试）和 `mvn clean install -DskipTests`（11 个模块）。Docker 守护进程不可达，隔离数据库迁移与交易自动验收待环境恢复后补跑。
+
+## 2026-08-01 合并 SKU Mock 契约与后续 P0 规划
+
+- 已将 `feat/mock-sku-inventory-contract` 合并并推送至 `main`；交易链路已统一通过可替换 SKU/库存契约读取商品快照与库存。
+- 已复核剩余 P0，下一阶段优先处理管理端鉴权、Mock 写操作后端环境隔离、迁移验收基线与安全回归；对应规格与实施计划已创建。
+
+## 2026-08-01 Issue #21 交易安全边界实现
+
+- 已创建 [Issue #21：收紧交易管理端与 Mock 写操作权限边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/21)，并在 `feat/trade-security-boundary` 实现。
+- 新增配置注入的最小管理员登录与 `ROLE_ADMIN`；`/admin-api/**` 仅管理员可访问，发货与售后审批日志记录管理员 ID。
+- 新增 `trade.mock-actions-enabled` 守卫，生产 profile 强制拒绝 Mock 支付、发货与退款审核；开发环境通过明确配置开启。
+- 已通过模块测试、全量构建、Docker HTTP 鉴权、生产环境隔离、数据库迁移与完整交易验收。
+
+## 2026-08-01 Docker 恢复与历史 P0 闭环
+
+- Docker Desktop 数据盘已迁移到 `D:\DockerDesktop\data`，Ubuntu 24.04 已迁移到 `D:\WSL\Ubuntu-24.04`；Compose 的 MySQL/Redis 改用仓库下 `.docker-data` 绑定目录，项目 Maven 缓存固定在 `shop-backend/.mvn/repository`，大体积开发数据不再写入 C 盘。
+- 修复 Compose 开发环境配置覆盖：使用 Spring Boot 标准数据源与 Redis 环境变量，启用数据库 SKU Provider、Mock 登录、管理员认证和开发态 Mock 写操作。
+- 修复迁移验收的 MySQL 就绪等待、首页内容基线、动态迁移版本断言与 PowerShell 5.1 UTF-8 兼容；三个迁移版本首次执行和重复幂等执行均通过。
+- 修复购物车逻辑删除唯一键冲突，删除与下单清理均改为物理删除；修复退款支付单查询、待发货退款 SKU 库存回补、无售后申请直接退款和退款查询状态错误。
+- `scripts/verify-trade-flow.ps1` 已覆盖匿名/会员/管理员权限、重复购物车删除、真实 SKU、支付金额、无申请退款拒绝、完整履约售后和超时关闭，Docker HTTP 全链路验收通过并自动清理数据。
+- 首页 7 个内容接口以及收藏、足迹、评论接口已完成 Docker/MySQL 联调，Issue #11/#12 的 Docker 阻塞验收项关闭。
+- Dockerfile 已移除强制生产 profile，增加 Maven 持久缓存并在镜像构建中实际执行测试；11 个模块构建成功，商品模块 9 项与交易模块 2 项测试通过，独立生产 profile 容器确认 Mock 写接口返回业务码 `403`。
+
+## 2026-08-01 商品负责人剩余 Issue 规划
+
+- 已复核开放 Issue，确认多规格 SKU 已由 [Issue #15](https://github.com/QtImM/wechatMiniprogram_Store/issues/15) 覆盖，商品 SKU Mock Provider 已由 [Issue #20](https://github.com/QtImM/wechatMiniprogram_Store/issues/20) 覆盖，不重复建单。
+- 新建 [Issue #22：将商品搜索与搜索历史切换为真实数据](https://github.com/QtImM/wechatMiniprogram_Store/issues/22)，建议分支 `feat/product-search-history`。
+- 新建 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)，建议分支 `feat/product-mock-provider-boundary`。
+- 新建 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)，建议分支 `feat/product-demo-seed`。
+- 新建 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)，建议分支 `feat/miniapp-product-api-acceptance`。
+- 商品负责人建议执行顺序：`#22 → #15 → #23 → #24 → #25`；每张 Issue 独立分支、测试、提交、推送与合并，避免商品查询、详情装配和前端页面产生交叉冲突。
+
+## 2026-08-01 Issue #22 商品搜索与搜索历史真实化
+
+- 新增迁移 `V20260801_01__product_search_history.sql` 和搜索历史 DO/Mapper，按用户与关键词唯一约束实现重复搜索幂等更新和清空后恢复。
+- `/app-api/search/index`、`helper`、`clearhistory` 已从 `AppMockController` 迁移到正式搜索 Controller；热门词、默认词和联想词均读取已上架数据库商品。
+- 商品关键词列表第一页会为当前会员记录规范化搜索历史；匿名用户返回空历史且不写入，管理员身份也不会混入会员历史。
+- 新增 5 项搜索服务测试，商品模块 14 项测试和 Docker 11 模块全量构建通过；4 个数据库迁移版本首次与重复执行通过。
+- 新增 `scripts/verify-product-search.ps1`，双用户搜索历史隔离、重复关键词、清空互不影响、空关键词、下架商品过滤和测试数据自动清理均验收通过。
+- [PR #26](https://github.com/QtImM/wechatMiniprogram_Store/pull/26) 已合并到 `main`，Issue #22 已自动关闭。
+- 下一项切换到 [Issue #15：商品多规格与库存可售性读模型](https://github.com/QtImM/wechatMiniprogram_Store/issues/15)。
 
 ## 2026-07-31 Issue #15 商品多规格与库存可售性读模型完成
 
 - 新增 [规格](specs/2026-07-31-product-sku-read-model.md) 与 [实施记录](plans/2026-07-31-product-sku-read-model.md)，明确只改商品模块和商品详情页，不触及 Issue #14 的交易模块或迁移文件。
 - 商品详情接口现已解析全部 SKU 规格属性，返回稳定排序的规格维度、精确 SKU 矩阵、价格、图片、库存和可售状态，并保留 `goodsSpecificationIds`、`goodsNumber` 兼容字段。
-- 商品详情页支持精确 SKU 匹配、缺货组合禁用、库存数量上限、SKU 价格/图片切换；旧接口和 Mock 字段会被归一化，黄金搭档主商品加购也会复用当前选中 SKU。
-- 已在 JDK 25 下执行 `mvn test -pl shop-module-product -am`，8 个测试全部通过；直接 MySQL/Redis 环境的 `goods/detail` 冒烟返回成功并含完整 SKU 字段。
+- 无效、非整数或重复维度属性会按整条 SKU 安全降级，不再污染规格列表；完整 SKU 矩阵不依赖数据库返回顺序。
+- 商品详情页按“规格维度 ID + 规格值 ID”精确匹配 SKU，支持缺货组合禁用、库存数量上限和 SKU 价格/图片切换；旧接口与 Mock 字段保持兼容。
+- Docker 11 模块全量构建通过，商品模块 15 项与交易模块 2 项测试通过；前端 SKU 独立脚本和真实 MySQL/Redis 多规格详情 HTTP 验收均通过，测试数据自动清理。
+- [PR #18](https://github.com/QtImM/wechatMiniprogram_Store/pull/18) 已合并到 `main`，Issue #15 已自动关闭；合并提交为 `ad925ed`。
+- 下一项切换到 [Issue #23：收口商品内容 Mock Provider 与正式 API 边界](https://github.com/QtImM/wechatMiniprogram_Store/issues/23)。
 
-## 2026-07-30 Issue #14 支付状态机规划
+## 2026-08-01 Issue #23 商品内容 Mock Provider 与正式 API 边界
 
-- 已创建 [Issue #14：支付状态机与异常幂等性](https://github.com/QtImM/wechatMiniprogram_Store/issues/14)，并新增对应规格与实施计划；范围聚焦支付单状态、订单支付状态、重复回调、关闭后回调、金额不一致及退款幂等。
-- 计划分支为 `feat/payment-state-machine`，仅涉及 `shop-module-trade`、独立增量迁移、测试和文档。
-- 明确不修改 Issue #13 的 `shop-module-product`、`shop-miniapp`、首页内容和用户互动范围，可并行开发。
+- 新增商品目录 Provider 契约和配置路由，正式分类、列表、详情与关联商品 API 由 `product.provider` 在 Mock/数据库实现之间切换，Controller 不再感知数据来源。
+- 删除 Controller 包中的 `MockData`；可复现商品种子迁入独立 Fixture，且只由 Mock 商品/SKU Provider 读取。
+- `AppMockController` 现仅保留 `/app-api/mock/**` 兼容路径；热销、新品、品牌、专题与通用支持正式路径已迁入独立正式 Controller。
+- 新增 `product.mock-endpoints-enabled` 统一守卫；开发环境可显式开启，生产 profile 无论开关值如何都返回业务码 `403`。
+- Docker 11 模块全量构建通过，商品模块 23 项、交易模块 2 项测试通过；Mock、数据库和生产三模式 HTTP 验收通过。
+- [PR #27](https://github.com/QtImM/wechatMiniprogram_Store/pull/27) 已合并到 `main`，Issue #23 已自动关闭；合并提交为 `ab31cd7`。
+- 下一项切换到 [Issue #24：完善商品内容演示种子与自动验收数据集](https://github.com/QtImM/wechatMiniprogram_Store/issues/24)。
 
-## 2026-07-30 Issue #14 支付状态机实现完成
+## 2026-08-01 Issue #24 商品内容演示种子与自动验收数据集
 
-- 支付单状态已收敛为待支付、已支付、已关闭、已退款；订单支付状态以独立常量维护，避免与支付单的状态值混用。
-- 预支付、支付成功回调、用户取消、超时关闭和退款完成均采用条件更新；重复支付成功和重复退款不会重复写入订单日志。
-- 迁移使用 `V20260730_03__pay_order_state_machine.sql`，避开主干已占用的 `V20260730_02__user_interaction_schema.sql`；迁移校验脚本改为按实际迁移文件数断言历史记录。
-- 已通过 JDK 25 下的 `mvn test -pl shop-module-trade -am`（8 项测试）和 `mvn clean install -DskipTests`（11 个模块）。本机 Docker 守护进程不可用，隔离数据库迁移验收待具备 Docker 的环境执行。
+- 新增独立迁移 `V20260801_02__product_demo_seed.sql`，以稳定 `24xxxx` ID 幂等写入 7 个分类、6 件商品、10 个 SKU、首页内容和一组演示评论。
+- 数据集覆盖上架/下架、热销/新品、二维多规格、部分组合缺货、全部缺货、SKU 差异价格与图片，并保持商品、分类、SKU、内容、会员和评论关联完整。
+- 修复 PowerShell 5.1 向 MySQL 传输迁移 SQL 时的系统代码页转码问题，使用 Base64 保持 UTF-8 原字节，并在隔离数据库验收中加入中文字段字节断言。
+- 新增 `scripts/verify-product-demo-seed.ps1`，已通过 D 盘持久化 MySQL/Redis 的迁移幂等、首页、分类、搜索、详情、SKU 可售性与评论 HTTP 验收。
+- 商品模块 23 项测试、交易模块 2 项测试、Docker 11 模块全量构建及隔离数据库迁移重放均已通过。
+- [PR #28](https://github.com/QtImM/wechatMiniprogram_Store/pull/28) 已合并到 `main`，Issue #24 已自动关闭；合并提交为 `cca579e`。
+- 下一项切换到 [Issue #25：收口小程序商品正式 API 并完成端到端验收](https://github.com/QtImM/wechatMiniprogram_Store/issues/25)。
 
-## 2026-07-31 Issue #17 订单搜索与数据库分页性能补强规划
+## 2026-08-01 Issue #25 小程序商品正式 API 收口
 
-- GitHub 的 #16 已被支付状态机草稿 PR 占用，因此用户口头所称“下一项 Issue 16”顺延为 [Issue #17：订单搜索与数据库分页性能补强](https://github.com/QtImM/wechatMiniprogram_Store/issues/17)。
-- 现有管理端列表已经完成数据库分页和五类筛选，本 Issue 只补创建时间范围、可索引搜索语义、稳定排序、页大小保护、用户端数据库分页、列表批量装配和查询索引，不重复已有实现。
-- 规划分支和独立 worktree 为 `feat/order-query-pagination`；范围只涉及 `shop-module-trade/**`、独立的 `V20260731_01__trade_order_query_indexes.sql`、`sql/init.sql`、查询验收脚本和文档。
-- Issue #15 只修改 `shop-module-product/**` 与 `shop-miniapp/pages/goods/goods.vue`，两者业务代码和文件路径零交集，可并行推进。
-- 数据库合并顺序固定为先合并 PR #16 的 `V20260730_03__pay_order_state_machine.sql`，再执行本 Issue 的 `V20260731_01`。
-
-## 2026-07-31 Issue #17 订单搜索与数据库分页性能补强完成
-
-- 新增 `TradeOrderQueryService`，管理端补齐严格的创建时间闭开区间、订单号精确匹配、纯数字手机号前缀匹配、页大小 1～100 保护，并统一按 `create_time DESC, id DESC` 稳定排序。
-- 用户端订单列表由“查询全量后内存截取”改为 MyBatis-Plus 数据库分页，保留原有 `showType` 状态映射和响应结构。
-- 新增 `TradeOrderListAssembler`，当前页商品、物流和售后各批量查询一次；物流与售后按 `update_time DESC, id DESC` 选择最新记录，空页不查询关联表。
-- 新增 `V20260731_01__trade_order_query_indexes.sql`，落地创建时间、用户、手机号、状态+支付状态、支付状态五个组合索引，并同步 `sql/init.sql`。
-- 新增 `verify-order-query.ps1`，同时扩展通用迁移验收的最小基线和索引断言；一次性 MySQL 8.0.31 实例中，五个迁移版本首次执行、重复执行与校验和检查全部通过。
-- 两万条订单数据的 `EXPLAIN` 验证中，创建时间、用户、手机号前缀、状态组合、支付状态和订单号查询均命中约定索引且无全表扫描。
-- JDK 25 下 `mvn test -pl shop-module-trade -am` 通过：商品模块 7 项、交易模块 18 项；`mvn clean install -DskipTests` 的 11 个模块全部构建成功。
-- 实现分支堆叠在 `feat/payment-state-machine` 上，业务文件未进入 Issue #15 的商品模块或小程序商品详情范围；仅 `status.md` 是所有分支按项目规范都需追加的公共协作文档。
+- 小程序请求层已删除本地 `utils/mock.js` 和 `useMock` 分支，商品内容统一请求正式 `/app-api/**`；后端明确返回的受控 Mock 支付适配保持不变。
+- 首页频道与分类、分类页、商品详情、收藏、足迹和评论已清除硬编码业务数据与固定 SKU 快捷加购，补齐失败态、重试和登录引导。
+- 新增商品正式 API 静态边界验收与 Docker HTTP 全链路验收，覆盖首页、分类、搜索、二维多规格、缺货、收藏、足迹和评论，并自动清理测试数据。
+- 商品模块 23 项测试、前端静态验收、SKU 验收、Docker HTTP 验收和 HBuilderX 微信小程序编译均通过；微信开发者工具已识别项目 AppID 并成功打开源码项目。
+- [PR #29](https://github.com/QtImM/wechatMiniprogram_Store/pull/29) 已合并到 `main`，Issue #25 已自动关闭；合并提交为 `a2181b7`。
 
 ## 决策记录
 
@@ -476,6 +503,9 @@
 | 2026-07-09 | 优化二级分类首屏体验 & 补全金刚区功能 | 解决首屏冗余和点击无交互的体验缺陷，提高 Demo 呈现的高保真度和完整性 |
 | 2026-07-16 | 后续阶段按“交易闭环优先”推进 | 当前项目已具备高保真 Demo，最大缺口是真实后端交易链路，先完成登录、商品、购物车、订单、支付适配，再推进会员营销和管理后台 |
 | 2026-07-24 | 后端 userInfo 字段名与前端对齐 | 后端返回 nickName/avatarUrl，前端期望 nickname/avatar，统一为小写 |
+| 2026-08-01 | 采用 Mock 契约优先、可替换数据源架构 | 先完整演示与验证流程，后续替换真实数据源时不重写前端、Controller 或核心交易规则 |
+| 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
+| 2026-08-03 | 管理后台基座搭建（Issue #1）完成 | 基于 vue-pure-admin thin 搭建 shop-admin/，完成 API 对接层、认证体系简化、路由骨架和 11 个占位页面 |
 
 ## 2026-07-24 Agent Loop Skill
 
@@ -485,13 +515,11 @@
 
 ## 下一步行动
 
-当前交易 MVP 能跑通成功路径，但不满足真实资金上线条件。下一步：
-1. P0 止血：关闭管理端匿名访问和生产 Mock 写接口，移除交易 `MockData` 回退，修复购物车唯一键、退款支付单/库存一致性和迁移验收脚本
-2. P0 基础：建立显式状态机、提交幂等键、支付通知流水、SKU 库存预占/释放流水、异常补偿与每日对账
-3. P1 支付：取得微信商户资料后接入微信支付 V3 下单、回调验签、退款和退款回调，并以故障与并发测试作为上线门禁
-4. P1 履约：按商品类型拆分实物与虚拟订单；实物走运费/物流/收货，课程支付成功后通过可靠事件生成唯一学习权益
-5. P1 性能与契约：订单和售后改数据库分页、批量聚合查询、补组合索引；接口改为 ReqVO/RespVO、校验和明确 HTTP 动词
-6. P2 完整体验：部分售后、退货物流、自动收货、评价、再次购买、价格变化提示和订单列表翻页收口
+管理后台 Issue #1 基座已完成，下一步按 9 个 Issue 并行推进：
+1. Issue #2：管理员登录页定制 + 基础框架主题（依赖 #1）
+2. Issue #3~#7：商品/订单/售后/内容/会员各业务页面开发（依赖 #2，可多人并行）
+3. Issue #8：数据看板首页（依赖 #3~#7 部分完成）
+4. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 

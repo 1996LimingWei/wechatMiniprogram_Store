@@ -44,9 +44,9 @@ public class SecurityAutoConfiguration {
                         "/app-api/region/list",
                         "/app-api/mock/**"
                 ).permitAll()
-                // 管理端认证与 RBAC 尚未完成前一律拒绝，避免匿名读取订单和操作资金。
-                .requestMatchers("/admin-api/**").denyAll()
                 .requestMatchers("/app-api/**").authenticated()
+                .requestMatchers("/admin-api/auth/login").permitAll()
+                .requestMatchers("/admin-api/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

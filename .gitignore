@@ -20,11 +20,12 @@ unpackage/
 *.local
 
 # Environment
-.env
 .env.local
 .env.*.local
 application-local.yml
 sql/backups/
+.docker-data/
+shop-backend/.mvn/repository/
 
 # IDE
 .vscode/

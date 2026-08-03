@@ -18,17 +18,24 @@ wx:
     secret:
     mock-enabled: true
 
-shop:
-  mock:
-    enabled: true
+# 商品与库存数据提供方。开发阶段默认使用稳定 Mock SKU，后续可切换为 database。
+product:
+  provider: mock
+  mock-endpoints-enabled: true
 
 trade:
-  dev-actions-enabled: true
+  mock-actions-enabled: true
   order:
     unpaid-timeout-minutes: 30
     expire-job-enabled: true
     expire-batch-size: 100
     expire-job-fixed-delay: 60000
+
+admin:
+  auth:
+    user-id: 1
+    username: admin
+    password: admin123
 
 mybatis-plus:
   configuration:

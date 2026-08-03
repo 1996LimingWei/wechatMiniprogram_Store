@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: shop_miniapp
-title: shop_miniapp
-scope:
-    - shop-miniapp/
-source_files: []
-depends_on: []
-related_to: []

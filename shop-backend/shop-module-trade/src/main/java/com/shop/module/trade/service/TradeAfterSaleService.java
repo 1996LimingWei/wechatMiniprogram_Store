@@ -6,9 +6,11 @@ import com.shop.common.exception.ServerException;
 import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeAfterSaleDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
+import com.shop.module.trade.dal.dataobject.TradeOrderItemDO;
 import com.shop.module.trade.dal.mysql.PayOrderMapper;
 import com.shop.module.trade.dal.mysql.TradeAfterSaleMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
+import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import com.shop.module.trade.util.TradeRequestUtils;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,8 @@ public class TradeAfterSaleService {
     private final TradeAfterSaleMapper tradeAfterSaleMapper;
     private final TradeOrderMapper tradeOrderMapper;
     private final PayOrderMapper payOrderMapper;
+    private final TradeOrderItemMapper tradeOrderItemMapper;
+    private final TradeProductService tradeProductService;
     private final TradeOrderLogService tradeOrderLogService;
 
     @Transactional(rollbackFor = Exception.class)
@@ -78,12 +82,12 @@ public class TradeAfterSaleService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> adminApprove(Long orderId) {
-        return approve(null, orderId, TradeOrderLogService.OPERATOR_ADMIN, 0L);
+    public Map<String, Object> adminApprove(Long adminId, Long orderId) {
+        return approve(null, orderId, TradeOrderLogService.OPERATOR_ADMIN, adminId);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> adminReject(Long orderId, String rejectReason) {
+    public Map<String, Object> adminReject(Long adminId, Long orderId, String rejectReason) {
         TradeOrderDO order = getUserOrder(null, orderId);
         TradeAfterSaleDO afterSale = getAfterSale(orderId);
         if (afterSale == null || afterSale.getStatus() == null || afterSale.getStatus() != 0) {
@@ -102,7 +106,7 @@ public class TradeAfterSaleService {
 
         order.setStatus(restoreStatus);
         tradeOrderMapper.updateById(order);
-        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_ADMIN, 0L,
+        tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_ADMIN, adminId,
                 "REJECT_AFTER_SALE", fromStatus, order.getStatus(), afterSale.getRejectReason());
         return toResp(afterSale);
     }
@@ -156,25 +160,20 @@ public class TradeAfterSaleService {
     private Map<String, Object> approve(Long userId, Long orderId, String operatorType, Long operatorId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         TradeAfterSaleDO afterSale = getAfterSale(orderId);
-        if (afterSale == null) {
-            afterSale = new TradeAfterSaleDO();
-            afterSale.setOrderId(order.getId());
-            afterSale.setUserId(userId);
-            afterSale.setAfterSaleSn(generateAfterSaleSn());
-            afterSale.setType(order.getStatus() == 1 ? 1 : 2);
-            afterSale.setStatus(0);
-            afterSale.setRefundAmount(order.getActualPrice());
-            afterSale.setReason("模拟退款");
-            afterSale.setApplyRemark("");
-            afterSale.setBeforeOrderStatus(order.getStatus());
-            afterSale.setApplyTime(LocalDateTime.now());
-            tradeAfterSaleMapper.insert(afterSale);
+        if (afterSale == null || afterSale.getStatus() == null) {
+            throw new ServerException(400, "请先提交有效的售后申请");
         }
         if (afterSale.getStatus() == 1) {
             return toResp(afterSale);
         }
+        if (afterSale.getStatus() != 0) {
+            throw new ServerException(400, "当前售后单不能退款");
+        }
         if (order.getPayStatus() == null || order.getPayStatus() != TradeOrderPayStatus.PAID) {
             throw new ServerException(400, "当前订单不能退款");
+        }
+        if (order.getStatus() == null || order.getStatus() != 5) {
+            throw new ServerException(400, "当前订单不在售后处理中");
         }
 
         PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
@@ -227,6 +226,12 @@ public class TradeAfterSaleService {
         tradeOrderLogService.recordPayChanged(order, operatorType, operatorId,
                 "REFUND_SUCCESS", fromStatus, order.getStatus(), fromPayStatus, order.getPayStatus(),
                 "Mock 退款审核通过");
+        if (Integer.valueOf(1).equals(afterSale.getBeforeOrderStatus())) {
+            for (TradeOrderItemDO item : tradeOrderItemMapper.selectList(
+                    new LambdaQueryWrapper<TradeOrderItemDO>().eq(TradeOrderItemDO::getOrderId, orderId))) {
+                tradeProductService.recoverStock(item.getSkuId(), item.getCount());
+            }
+        }
         return toResp(afterSale);
     }
 
