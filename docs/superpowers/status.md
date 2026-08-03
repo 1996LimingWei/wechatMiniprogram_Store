@@ -7,7 +7,8 @@
 ## 当前阶段
 
 **阶段**: 管理后台搭建（Admin Frontend）
-**管理后台计划**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)
+**当前 Issue**: [admin-login-and-framework.md](plans/2026-08-03-admin-login-and-framework.md)（Issue #2 已完成）
+**管理后台基座**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)（Issue #1 已完成）
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
 **交易审计与兜底**: [trade-audit-and-fallback.md](plans/2026-07-31-trade-audit-and-fallback.md)
@@ -515,6 +516,7 @@
 | 2026-08-01 | 采用 Mock 契约优先、可替换数据源架构 | 先完整演示与验证流程，后续替换真实数据源时不重写前端、Controller 或核心交易规则 |
 | 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
 | 2026-08-03 | 管理后台基座搭建（Issue #1）完成 | 基于 vue-pure-admin thin 搭建 shop-admin/，完成 API 对接层、认证体系简化、路由骨架和 11 个占位页面 |
+| 2026-08-03 | 管理后台登录与框架定制（Issue #2）完成 | 登录页品牌定制、顶栏/侧边栏主题配置、auth API 完善、用户信息展示、退出登录、路由守卫 |
 
 ## 2026-07-24 Agent Loop Skill
 
@@ -524,11 +526,14 @@
 
 ## 下一步行动
 
-管理后台 Issue #1 基座已完成，下一步按 9 个 Issue 并行推进：
-1. Issue #2：管理员登录页定制 + 基础框架主题（依赖 #1）
-2. Issue #3~#7：商品/订单/售后/内容/会员各业务页面开发（依赖 #2，可多人并行）
-3. Issue #8：数据看板首页（依赖 #3~#7 部分完成）
-4. Issue #9：构建优化与 Nginx 部署（全部完成后）
+管理后台 Issue #1 + #2 已完成，下一步进入业务页面开发阶段（可多人并行）：
+1. Issue #3：商品管理（分类树 + SPU 列表 + SKU 编辑）
+2. Issue #4：订单管理（列表 + 详情 + 发货 + 物流）
+3. Issue #5：售后管理（列表 + 审批/拒绝）
+4. Issue #6：内容运营（Banner + 频道 + 品牌 + 专题）
+5. Issue #7：会员中心（用户列表 + 评论管理）
+6. Issue #8：数据看板首页（依赖 #3~#7 部分完成）
+7. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 

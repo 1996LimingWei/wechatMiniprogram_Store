@@ -11,7 +11,7 @@ import type { FormInstance } from "element-plus";
 import { useLayout } from "@/layout/hooks/useLayout";
 import { useUserStoreHook } from "@/store/modules/user";
 import { getTopMenu } from "@/router/utils";
-import { bg, avatar, illustration } from "./utils/static";
+import { bg, illustration } from "./utils/static";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { useDataThemeChange } from "@/layout/hooks/useDataThemeChange";
 
@@ -34,7 +34,7 @@ initStorage();
 
 const { dataTheme, overallStyle, dataThemeChange } = useDataThemeChange();
 dataThemeChange(overallStyle.value);
-const { title } = useNav();
+const { getLogo } = useNav();
 
 const ruleForm = reactive({
   username: "admin",
@@ -104,9 +104,13 @@ useEventListener(document, "keydown", ({ code }) => {
       </div>
       <div class="login-box">
         <div class="login-form">
-          <avatar class="avatar" />
+          <!-- 品牌 Logo + 标题 -->
+          <div class="brand-logo">
+            <img :src="getLogo()" alt="logo" />
+            <span>药食同源管理后台</span>
+          </div>
           <Motion>
-            <h2 class="outline-hidden">{{ title }}</h2>
+            <h2>药食同源 · 管理系统</h2>
           </Motion>
 
           <el-form
@@ -156,7 +160,7 @@ useEventListener(document, "keydown", ({ code }) => {
                 :disabled="disabled"
                 @click="onLogin(ruleFormRef)"
               >
-                登录
+                登 录
               </el-button>
             </Motion>
           </el-form>
