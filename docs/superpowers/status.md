@@ -496,6 +496,13 @@
 - 管理后台 `pnpm build` 与 `pnpm typecheck` 均通过，生产构建产物约 2.21 MB。
 - 原有未提交改动已恢复为未暂存状态；合并前备份分支与 stash 暂时保留，便于后续确认无误后清理。
 
+## 2026-08-03 合并管理后台登录与基础布局
+
+- 已将 `origin/main` 最新提交 `0901ac7` 合并到 `fix/wechat-production-readiness`，合并提交为 `ae427fa`；管理后台登录页、认证 API、用户状态及导航栏布局均已进入当前分支。
+- 清理主干中误提交的 `shop-admin/.vite/` 与 `shop-backend/shop-server/.mvn/repository/` 构建缓存，共移除 208 个生成文件，并补充通用忽略规则；清理提交为 `1e10ceb`。
+- 管理后台 `pnpm build` 与 `pnpm typecheck` 均通过；后端商品模块 25 项、交易模块 23 项测试全部通过。
+- 原有生产就绪改动已无冲突恢复为未暂存状态；合并前备份分支与两份 stash 均继续保留。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
