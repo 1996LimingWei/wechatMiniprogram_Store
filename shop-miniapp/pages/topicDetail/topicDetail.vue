@@ -32,9 +32,28 @@
 			</view>
 		</view>
 
+		<view class="goods-section" v-if="goodsList.length > 0">
+			<view class="section-header">
+				<text class="section-title">专题好物</text>
+			</view>
+			<view class="goods-list">
+				<view class="goods-item" v-for="(item, index) in goodsList" :key="index" @tap="goToGoods(item.id)">
+					<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+					<view class="goods-info">
+						<text class="goods-name">{{item.name}}</text>
+						<text class="goods-brief">{{item.goodsBrief}}</text>
+						<view class="goods-bottom">
+							<text class="goods-price">¥{{item.retailPrice}}</text>
+							<view class="goods-btn">去看看</view>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
 		<view class="recommend-section" v-if="topicList.length > 0">
 			<view class="section-header">
-				<text class="section-title">专题推荐</text>
+				<text class="section-title">相关专题</text>
 			</view>
 			<view class="recommend-list">
 				<navigator class="recommend-item" v-for="(item, index) in topicList" :key="index"
@@ -57,6 +76,7 @@
 			return {
 				id: 0,
 				topic: {},
+				goodsList: [],
 				topicList: [],
 				commentCount: 0,
 				commentList: []
@@ -71,15 +91,16 @@
 					size: 5
 				}).then(function(res) {
 					if (res.code === 0) {
-						that.commentList = res.data.records || [];
-						that.commentCount = res.data.total || 0;
+						that.commentList = res.data.data || [];
+						that.commentCount = res.data.count || 0;
 					}
 				});
 			},
+			goToGoods(id) {
+				uni.navigateTo({ url: '/pages/goods/goods?id=' + id });
+			},
 			postComment() {
-				uni.navigateTo({
-					url: '/pages/commentPost/commentPost?valueId=' + this.id + '&typeId=1'
-				});
+				uni.navigateTo({ url: '/pages/commentPost/commentPost?valueId=' + this.id + '&typeId=1' });
 			}
 		},
 		onShow: function() {
@@ -91,6 +112,7 @@
 			util.request(api.TopicDetail, { id: that.id }).then(function(res) {
 				if (res.code === 0) {
 					that.topic = res.data;
+					that.goodsList = res.data.goodsList || [];
 				}
 			});
 			util.request(api.TopicRelated, { id: that.id }).then(function(res) {
@@ -254,5 +276,83 @@
 		font-size: 26rpx;
 		color: #333;
 		background: #FEFEFC;
+	}
+
+	/* 专题好物 */
+	.goods-section {
+		margin: 0 24rpx 24rpx;
+		background: #FEFEFC;
+		border-radius: 16rpx;
+		padding: 0 28rpx 24rpx;
+		box-shadow: 0 2rpx 10rpx rgba(91,140,90,0.08);
+	}
+
+	.goods-list {
+		padding-top: 16rpx;
+	}
+
+	.goods-item {
+		display: flex;
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid #F0F0F0;
+
+		&:last-child {
+			border-bottom: none;
+		}
+	}
+
+	.goods-img {
+		width: 180rpx;
+		height: 180rpx;
+		border-radius: 12rpx;
+		margin-right: 20rpx;
+		flex-shrink: 0;
+	}
+
+	.goods-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+	}
+
+	.goods-name {
+		font-size: 28rpx;
+		color: #333;
+		font-weight: 600;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+	}
+
+	.goods-brief {
+		font-size: 24rpx;
+		color: #999;
+		margin-top: 8rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.goods-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 12rpx;
+	}
+
+	.goods-price {
+		font-size: 32rpx;
+		color: #CF4A3E;
+		font-weight: 700;
+	}
+
+	.goods-btn {
+		font-size: 24rpx;
+		color: #FEFEFC;
+		background: $green;
+		padding: 10rpx 24rpx;
+		border-radius: 24rpx;
 	}
 </style>

@@ -56,3 +56,11 @@ export const updateTopic = (data: ContentTopic) => {
 export const deleteTopic = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/content/topic/delete", { params: { id } });
 };
+
+// ==================== 专题关联商品 ====================
+export const getTopicProducts = (topicId: number) => {
+    return http.get<number[], undefined>("/admin-api/content/topic/products", { params: { topicId } });
+};
+export const setTopicProducts = (data: { topicId: number; spuIds: number[] }) => {
+    return http.post<boolean, typeof data>("/admin-api/content/topic/products", { data });
+};

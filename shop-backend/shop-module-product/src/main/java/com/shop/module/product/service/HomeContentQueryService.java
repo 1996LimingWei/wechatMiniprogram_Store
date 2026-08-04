@@ -20,6 +20,7 @@ public class HomeContentQueryService {
     private final ContentChannelMapper channelMapper;
     private final ContentBrandMapper brandMapper;
     private final ContentTopicMapper topicMapper;
+    private final ContentTopicProductMapper topicProductMapper;
     private final CategoryMapper categoryMapper;
     private final ProductSpuMapper productSpuMapper;
 
@@ -106,6 +107,26 @@ public class HomeContentQueryService {
                 .orElseThrow(() -> new ServerException(404, "专题不存在"));
         Map<String, Object> result = new LinkedHashMap<>(topicItem(item));
         result.put("content", "<p>" + safe(item.getSubtitle()) + "</p>");
+        // 查询关联商品
+        List<ContentTopicProductDO> associations = topicProductMapper.selectList(
+                new LambdaQueryWrapper<ContentTopicProductDO>()
+                        .eq(ContentTopicProductDO::getTopicId, id)
+                        .orderByDesc(ContentTopicProductDO::getSort));
+        if (!associations.isEmpty()) {
+            Set<Long> spuIds = associations.stream().map(ContentTopicProductDO::getSpuId).collect(Collectors.toSet());
+            List<ProductSpuDO> products = productSpuMapper.selectList(
+                    new LambdaQueryWrapper<ProductSpuDO>().in(ProductSpuDO::getId, spuIds).eq(ProductSpuDO::getStatus, 1));
+            // 保持关联表排序
+            Map<Long, ProductSpuDO> productMap = products.stream().collect(Collectors.toMap(ProductSpuDO::getId, p -> p));
+            List<Map<String, Object>> goodsList = associations.stream()
+                    .map(ContentTopicProductDO::getSpuId)
+                    .filter(productMap::containsKey)
+                    .map(spuId -> goods(productMap.get(spuId)))
+                    .toList();
+            result.put("goodsList", goodsList);
+        } else {
+            result.put("goodsList", List.of());
+        }
         return result;
     }
 
