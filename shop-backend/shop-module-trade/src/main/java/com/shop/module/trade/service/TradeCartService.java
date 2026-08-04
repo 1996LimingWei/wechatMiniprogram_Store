@@ -1,5 +1,7 @@
 package com.shop.module.trade.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shop.common.exception.ServerException;
@@ -14,10 +16,13 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TradeCartService {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final TradeCartMapper tradeCartMapper;
     private final TradeProductService tradeProductService;
@@ -134,7 +139,7 @@ public class TradeCartService {
         item.put("goodsId", cart.getSpuId());
         item.put("productId", cart.getSkuId());
         item.put("goodsName", cart.getGoodsName());
-        item.put("goodsSpecifitionNameValue", cart.getSpecName());
+        item.put("goodsSpecifitionNameValue", formatSpecName(cart.getSpecName()));
         item.put("listPicUrl", cart.getGoodsPicUrl());
         item.put("retailPrice", TradeMoneyUtils.formatYuan(cart.getPrice()));
         item.put("number", cart.getCount());
@@ -191,5 +196,24 @@ public class TradeCartService {
                 .filter(s -> !s.isEmpty())
                 .map(Long::parseLong)
                 .toList();
+    }
+
+    /** 将 SKU properties JSON 解析为可读格式，如 "规格: 10斤" */
+    static String formatSpecName(String specName) {
+        if (specName == null || specName.isBlank()) {
+            return "默认规格";
+        }
+        if (!specName.startsWith("[")) {
+            return specName;
+        }
+        try {
+            var list = OBJECT_MAPPER.readValue(specName,
+                    new TypeReference<List<Map<String, Object>>>() {});
+            return list.stream()
+                    .map(p -> p.get("name") + ": " + p.get("valueName"))
+                    .collect(Collectors.joining("; "));
+        } catch (Exception e) {
+            return specName;
+        }
     }
 }
