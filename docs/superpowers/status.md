@@ -7,7 +7,8 @@
 ## 当前阶段
 
 **阶段**: 管理后台搭建（Admin Frontend）
-**当前 Issue**: [product-management.md](plans/2026-08-03-product-management.md)（Issue #3 已完成）
+**当前 Issue**: [content-management.md](plans/2026-08-03-content-management.md)（Issue #6 已完成）
+**商品管理**: [product-management.md](plans/2026-08-03-product-management.md)（Issue #3 已完成）
 **管理后台登录**: [admin-login-and-framework.md](plans/2026-08-03-admin-login-and-framework.md)（Issue #2 已完成）
 **管理后台基座**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)（Issue #1 已完成）
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
@@ -31,6 +32,7 @@
 | Task 10: 小程序骨架 | ✅ 完成 | uni-app 首页+请求封装 |
 | Phase1-子阶段1: 登录与会话 | ✅ 完成 | 微信登录+Token+刷新 |
 | Phase1-子阶段2: 商品真实接口 | ✅ 完成 | Issue #10：分类、列表、详情与商品种子数据已接入数据库 |
+| 管理后台内容运营（Issue #6） | ✅ 完成 | Banner/频道/品牌/专题 CRUD 后端接口 + 前端管理页面 |
 | Phase1-子阶段3: 交易闭环 MVP | ✅ P0完成 | 购物车+地址+结算+订单+Mock支付+管理端发货+售后同意/拒绝/撤销+超时关闭+订单日志+自动验收 |
 
 ## 阻塞项
@@ -488,6 +490,19 @@
 - 商品模块 23 项测试、前端静态验收、SKU 验收、Docker HTTP 验收和 HBuilderX 微信小程序编译均通过；微信开发者工具已识别项目 AppID 并成功打开源码项目。
 - [PR #29](https://github.com/QtImM/wechatMiniprogram_Store/pull/29) 已合并到 `main`，Issue #25 已自动关闭；合并提交为 `a2181b7`。
 
+## 2026-08-03 管理后台内容运营完成（Issue #6）
+
+- 后端：新增 `ContentAdminService`，为 Banner/频道/品牌/专题提供统一的 CRUD 服务
+- 后端：新增 `AdminContentController`，注册 16 个接口覆盖 `/admin-api/content/{banner,channel,brand,topic}` 的 list/create/update/delete
+- 前端：Banner 管理页面 — 表格列表（图片预览+标题+链接+排序+状态）+ 新增/编辑对话框 + 启用/禁用切换
+- 前端：频道管理页面 — 表格列表（图标+名称+链接+排序+状态）+ 新增/编辑对话框 + 启用/禁用切换
+- 前端：品牌管理页面 — 表格列表（图片+名称+起售价+排序+状态）+ 新增/编辑对话框 + 分↔元价格转换
+- 前端：专题管理页面 — 表格列表（图片+标题+副标题+价格说明+排序+状态）+ 新增/编辑对话框
+- 前端：四个页面均使用 `el-tooltip` + `QuestionFilled` 问号图标为不直观字段提供帮助提示
+- 前端 API 层（`content.ts`）和类型定义（`types.ts`）已在之前预先定义好，路由骨架已就绪
+- TypeScript `vue-tsc --noEmit` 0 错误，后端 `mvn clean install -DskipTests` 0 错误
+- 新增计划文档：`docs/superpowers/plans/2026-08-03-content-management.md`
+
 ## 2026-08-03 管理后台商品管理完成（Issue #3）
 
 - 后端：`AdminProductController` 分页接口增加 name/categoryId/status 筛选，新增 `/detail` 接口
@@ -522,6 +537,7 @@
 | 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
 | 2026-08-03 | 管理后台基座搭建（Issue #1）完成 | 基于 vue-pure-admin thin 搭建 shop-admin/，完成 API 对接层、认证体系简化、路由骨架和 11 个占位页面 |
 | 2026-08-03 | 管理后台登录与框架定制（Issue #2）完成 | 登录页品牌定制、顶栏/侧边栏主题配置、auth API 完善、用户信息展示、退出登录、路由守卫 |
+| 2026-08-03 | 管理后台内容运营（Issue #6）完成 | Banner/频道/品牌/专题后端 CRUD + 前端管理页面全链路完成 |
 | 2026-08-03 | 管理后台商品管理（Issue #3）完成 | 分类树 CRUD + 商品列表分页筛选 + 商品表单 + SKU 规格矩阵编辑 |
 
 ## 2026-07-24 Agent Loop Skill
@@ -532,13 +548,12 @@
 
 ## 下一步行动
 
-管理后台 Issue #1 + #2 + #3 已完成，下一步进入业务页面开发阶段（可多人并行）：
+管理后台 Issue #1 + #2 + #3 + #6 已完成，下一步进入业务页面开发阶段（可多人并行）：
 1. Issue #4：订单管理（列表 + 详情 + 发货 + 物流）
 2. Issue #5：售后管理（列表 + 审批/拒绝）
-3. Issue #6：内容运营（Banner + 频道 + 品牌 + 专题）
-4. Issue #7：会员中心（用户列表 + 评论管理）
-5. Issue #8：数据看板首页（依赖 #4~#7 部分完成）
-6. Issue #9：构建优化与 Nginx 部署（全部完成后）
+3. Issue #7：会员中心（用户列表 + 评论管理）
+4. Issue #8：数据看板首页（依赖 #4~#7 部分完成）
+5. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 
