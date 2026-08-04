@@ -32,8 +32,11 @@ public class ProductSpuService {
         return spu;
     }
 
-    public PageResult<ProductSpuDO> getAdminSpuPage(PageParam pageParam) {
+    public PageResult<ProductSpuDO> getAdminSpuPage(PageParam pageParam, String name, Long categoryId, Integer status) {
         LambdaQueryWrapper<ProductSpuDO> wrapper = new LambdaQueryWrapper<ProductSpuDO>()
+                .like(name != null && !name.isBlank(), ProductSpuDO::getName, name)
+                .eq(categoryId != null, ProductSpuDO::getCategoryId, categoryId)
+                .eq(status != null, ProductSpuDO::getStatus, status)
                 .orderByDesc(ProductSpuDO::getCreateTime);
         return productSpuMapper.selectPage(pageParam, wrapper);
     }

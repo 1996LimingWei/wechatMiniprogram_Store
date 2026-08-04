@@ -26,6 +26,24 @@ export default {
             meta: {
                 title: "分类管理"
             }
+        },
+        {
+            path: "/product/spu-form",
+            name: "ProductCreate",
+            component: () => import("@/views/product/spu-form/index.vue"),
+            meta: {
+                title: "新增商品",
+                showLink: false
+            }
+        },
+        {
+            path: "/product/spu-form/:id",
+            name: "ProductEdit",
+            component: () => import("@/views/product/spu-form/index.vue"),
+            meta: {
+                title: "编辑商品",
+                showLink: false
+            }
         }
     ]
 } satisfies RouteConfigsTable;

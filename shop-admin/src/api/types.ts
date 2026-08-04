@@ -53,6 +53,8 @@ export interface ProductSku {
     marketPrice?: number;
     stock?: number;
     picUrl?: string;
+    weight?: number;
+    volume?: number;
     createTime?: string;
 }
 
