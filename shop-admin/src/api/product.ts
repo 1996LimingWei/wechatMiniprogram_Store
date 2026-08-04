@@ -1,12 +1,25 @@
 import { http } from "@/utils/http";
 import type { PageParam, PageResult, ProductSpu } from "./types";
 
-/** 商品分页列表 */
-export const getProductPage = (params: PageParam) => {
+/** 商品分页列表（支持筛选） */
+export const getProductPage = (
+    params: PageParam & {
+        name?: string;
+        categoryId?: number;
+        status?: number;
+    }
+) => {
     return http.get<PageResult<ProductSpu>, PageParam>(
         "/admin-api/product/spu/page",
         { params }
     );
+};
+
+/** 商品详情 */
+export const getProductDetail = (id: number) => {
+    return http.get<ProductSpu, undefined>("/admin-api/product/spu/detail", {
+        params: { id }
+    });
 };
 
 /** 新增商品 */
