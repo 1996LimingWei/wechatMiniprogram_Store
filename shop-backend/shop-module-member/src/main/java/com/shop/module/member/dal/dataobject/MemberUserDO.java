@@ -38,4 +38,7 @@ public class MemberUserDO extends BaseDO {
 
     /** 状态 1=正常 0=禁用 */
     private Integer status;
+
+    /** 会员等级 1=白银会员 2=黄金会员 */
+    private Integer memberLevel;
 }

@@ -1,10 +1,10 @@
 import { http } from "@/utils/http";
-import type { PageResult, MemberUser, ProductComment } from "./types";
+import type { PageResult, MemberUser, MemberUserDetail, ProductComment } from "./types";
 
 // ==================== 会员 ====================
 export const getMemberPage = (params: {
-    page?: number;
-    size?: number;
+    pageNo?: number;
+    pageSize?: number;
     nickname?: string;
     mobile?: string;
 }) => {
@@ -15,15 +15,27 @@ export const getMemberPage = (params: {
 };
 
 export const getMemberDetail = (id: number) => {
-    return http.get<MemberUser, { id: number }>("/admin-api/member/user/detail", {
+    return http.get<MemberUserDetail, { id: number }>("/admin-api/member/user/detail", {
         params: { id }
+    });
+};
+
+export const updateMember = (data: {
+    id: number;
+    nickname?: string;
+    mobile?: string;
+    avatar?: string;
+    status?: number;
+}) => {
+    return http.request<boolean>("put", "/admin-api/member/user/update", {
+        data
     });
 };
 
 // ==================== 评论 ====================
 export const getCommentPage = (params: {
-    page?: number;
-    size?: number;
+    pageNo?: number;
+    pageSize?: number;
     status?: number;
 }) => {
     return http.get<PageResult<ProductComment>, typeof params>(

@@ -12,9 +12,9 @@
 					</view>
 				</view>
 				<view class="vip-card" @tap.stop="goMember">
-					<text class="vip-badge">GOLD</text>
+					<text class="vip-badge">{{ memberBadge }}</text>
 					<text class="vip-title">会员中心</text>
-					<text class="vip-sub">专享折扣 / 优先发货</text>
+					<text class="vip-sub">{{ memberLevel === 2 ? '尊享全部权益' : '专享折扣 / 优先发货' }}</text>
 				</view>
 			</view>
 		</view>
@@ -34,8 +34,8 @@
 				<text class="stat-label">足迹</text>
 			</navigator>
 			<view class="stat-item" @tap="goMember">
-				<text class="stat-num stat-vip">黄金卡</text>
-				<text class="stat-label stat-label-vip">立即开通</text>
+				<text class="stat-num stat-vip">{{ memberLevel === 2 ? '黄金卡' : '黄金卡' }}</text>
+				<text class="stat-label stat-label-vip">{{ memberLevel === 2 ? '已开通' : '立即开通' }}</text>
 			</view>
 		</view>
 
@@ -175,6 +175,7 @@ export default {
 	data() {
 		return {
 			userInfo: {},
+			memberLevel: 1,
 			couponCount: 0,
 			collectCount: 0,
 			footprintCount: 0
@@ -189,6 +190,9 @@ export default {
 		},
 		avatarUrl() {
 			return this.userInfo.avatar || DEFAULT_AVATAR;
+		},
+		memberBadge() {
+			return this.memberLevel === 2 ? 'GOLD' : 'SILVER';
 		}
 	},
 	methods: {
@@ -198,7 +202,7 @@ export default {
 			}
 		},
 		goMember() {
-			uni.showToast({ title: '会员中心开发中', icon: 'none' });
+			uni.navigateTo({ url: '/pages/ucenter/member/member' });
 		},
 		goDistribution() {
 			uni.showToast({ title: '分销中心开发中', icon: 'none' });
@@ -228,10 +232,12 @@ export default {
 		let token = uni.getStorageSync('token');
 		if (userInfo && token) {
 			this.userInfo = userInfo;
+			this.memberLevel = userInfo.memberLevel || 1;
 			app.globalData.userInfo = userInfo;
 			app.globalData.token = token;
 		} else {
 			this.userInfo = {};
+			this.memberLevel = 1;
 		}
 	}
 };

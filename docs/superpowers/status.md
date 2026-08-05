@@ -7,7 +7,8 @@
 ## 当前阶段
 
 **阶段**: 管理后台搭建（Admin Frontend）
-**当前 Issue**: [content-management.md](plans/2026-08-03-content-management.md)（Issue #6 已完成）
+**当前 Issue**: [member-center.md](plans/2026-08-03-member-center.md)（Issue #7 已完成）
+**内容管理**: [content-management.md](plans/2026-08-03-content-management.md)（Issue #6 已完成）
 **商品管理**: [product-management.md](plans/2026-08-03-product-management.md)（Issue #3 已完成）
 **管理后台登录**: [admin-login-and-framework.md](plans/2026-08-03-admin-login-and-framework.md)（Issue #2 已完成）
 **管理后台基座**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)（Issue #1 已完成）
@@ -33,6 +34,7 @@
 | Phase1-子阶段1: 登录与会话 | ✅ 完成 | 微信登录+Token+刷新 |
 | Phase1-子阶段2: 商品真实接口 | ✅ 完成 | Issue #10：分类、列表、详情与商品种子数据已接入数据库 |
 | 管理后台内容运营（Issue #6） | ✅ 完成 | Banner/频道/品牌/专题 CRUD 后端接口 + 前端管理页面 |
+| 管理后台会员中心（Issue #7） | ✅ 完成 | 会员列表+详情抽屉+评论管理 后端接口 + 前端管理页面 |
 | Phase1-子阶段3: 交易闭环 MVP | ✅ P0完成 | 购物车+地址+结算+订单+Mock支付+管理端发货+售后同意/拒绝/撤销+超时关闭+订单日志+自动验收 |
 
 ## 阻塞项
@@ -516,6 +518,37 @@
 - TypeScript `vue-tsc --noEmit` 0 错误，后端 `mvn install -DskipTests` 0 错误
 - 新增计划文档：`docs/superpowers/plans/2026-08-03-product-management.md`
 
+## 2026-08-03 管理后台会员中心完成（Issue #7）
+
+- 后端：`shop-module-product` 新增 `ProductCommentDO` + `ProductCommentMapper`（继承 `BaseMapperX`），将 `product_comment` 表从 JdbcTemplate 直接访问升级为 MyBatis-Plus 标准实体
+- 后端：`shop-module-member` 新增 `AdminMemberService`，使用 `JdbcTemplate` 跨模块查询收货地址、订单统计、收藏数和评论数
+- 后端：`shop-module-member` 新增 `AdminMemberController`，提供 `GET /admin-api/member/user/page` 和 `GET /admin-api/member/user/detail` 接口
+- 后端：`shop-module-product` 新增 `AdminCommentController`，提供 `GET /admin-api/product/comment/page`（批量关联用户昵称+商品名避免 N+1）和 `PUT /admin-api/product/comment/status` 接口
+- 后端：`MemberUserMapper` 和 `ProductCommentMapper` 统一改为继承 `BaseMapperX`，使用项目标准 `PageParam` + `PageResult` 分页模式
+- 前端：`types.ts` 新增 `MemberAddress`、`RecentOrder`、`MemberUserDetail` 类型，`ProductComment` 补充 `userNickname`、`spuName` 字段
+- 前端：`member.ts` API 参数从 `page/size` 统一为 `pageNo/pageSize`，`getMemberDetail` 返回类型升级为 `MemberUserDetail`
+- 前端：会员列表页面 — 昵称/手机号搜索 + 分页表格（头像、昵称、手机号、状态、注册时间）+ 点击行打开详情抽屉
+- 前端：会员详情抽屉 — 基础信息卡片 + 数据概览（订单数/收藏数/评论数）+ 收货地址列表 + 最近订单
+- 前端：评论管理页面 — 状态筛选 + 分页表格（用户、商品、评论内容、状态、时间）+ 审核通过/隐藏操作
+- TypeScript `vue-tsc --noEmit` 0 错误，后端 `mvn install -DskipTests` 0 错误
+- 新增计划文档：`docs/superpowers/plans/2026-08-03-member-center.md`
+
+## 2026-08-05 小程序端会员中心完成
+
+- 后端：`MemberUserDO` 新增 `memberLevel` 字段（1=白银会员 2=黄金会员），`sql/init.sql` 同步更新
+- 后端：`MemberAuthService` 新用户登录时自动绑定白银会员（`memberLevel=1`），登录响应增加 `memberLevel` 字段
+- 后端：新增 `AppMemberController`，提供小程序端 3 个接口：
+  - `GET /app-api/member/center`：会员中心信息（等级、昵称、头像、权益列表）
+  - `GET /app-api/member/gold-card`：黄金卡详情（价格、权益、对比数据）
+  - `POST /app-api/member/gold-card/subscribe`：Mock 开通黄金会员（体验模式，直接升级 level=2）
+- 小程序：新增 `pages/ucenter/member/member.vue` 会员中心页面（白银/金色双主题会员卡、权益列表、黄金卡推广卡片、会员说明规则）
+- 小程序：新增 `pages/ucenter/goldCard/goldCard.vue` 黄金卡购买页面（金色 Hero 卡片、五大权益列表、白银 vs 黄金对比表、Mock 开通按钮）
+- 小程序：个人中心入口对接，`goMember()` 改为导航到会员中心，VIP 徽章和统计行根据 `memberLevel` 动态展示白银/黄金状态
+- 小程序：`api.js` 新增 `MemberCenter`、`MemberGoldCard`、`MemberGoldSubscribe` 三个 API 端点
+- 小程序：`pages.json` 注册两个新页面
+- 已验证：Maven `mvn install -DskipTests` 构建通过，后端 Spring Boot 启动成功
+- 已验证：会员中心、黄金卡详情和 Mock 开通接口均正常响应
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -548,12 +581,11 @@
 
 ## 下一步行动
 
-管理后台 Issue #1 + #2 + #3 + #6 已完成，下一步进入业务页面开发阶段（可多人并行）：
+管理后台 Issue #1 + #2 + #3 + #6 + #7 已完成，下一步进入业务页面开发阶段（可多人并行）：
 1. Issue #4：订单管理（列表 + 详情 + 发货 + 物流）
 2. Issue #5：售后管理（列表 + 审批/拒绝）
-3. Issue #7：会员中心（用户列表 + 评论管理）
-4. Issue #8：数据看板首页（依赖 #4~#7 部分完成）
-5. Issue #9：构建优化与 Nginx 部署（全部完成后）
+3. Issue #8：数据看板首页（依赖 #4~#5 部分完成）
+4. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 

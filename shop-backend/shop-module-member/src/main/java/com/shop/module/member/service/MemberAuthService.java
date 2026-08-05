@@ -52,6 +52,7 @@ public class MemberAuthService {
             user.setNickname("微信用户");
             user.setAvatar("");
             user.setStatus(1);
+            user.setMemberLevel(1); // 新用户自动绑定白银会员
             memberUserMapper.insert(user);
             log.info("[MemberAuth] 新用户注册, userId={}, openid={}", user.getId(), openid);
         } else {
@@ -80,6 +81,7 @@ public class MemberAuthService {
         userInfo.put("nickname", user.getNickname());
         userInfo.put("avatar", user.getAvatar());
         userInfo.put("mobile", user.getMobile() != null ? user.getMobile() : "");
+        userInfo.put("memberLevel", user.getMemberLevel() != null ? user.getMemberLevel() : 1);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("token", token);
