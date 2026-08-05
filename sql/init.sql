@@ -16,6 +16,7 @@ CREATE TABLE `member_user` (
     `nickname` varchar(64) DEFAULT '' COMMENT '昵称',
     `avatar` varchar(512) DEFAULT '' COMMENT '头像URL',
     `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态 1=正常 0=禁用',
+    `member_level` tinyint NOT NULL DEFAULT 1 COMMENT '会员等级 1=白银会员 2=黄金会员',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',

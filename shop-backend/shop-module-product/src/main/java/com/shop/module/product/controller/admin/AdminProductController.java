@@ -16,8 +16,16 @@ public class AdminProductController {
     private final ProductSpuService productSpuService;
 
     @GetMapping("/page")
-    public CommonResult<PageResult<ProductSpuDO>> page(PageParam pageParam) {
-        return CommonResult.success(productSpuService.getAdminSpuPage(pageParam));
+    public CommonResult<PageResult<ProductSpuDO>> page(PageParam pageParam,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Integer status) {
+        return CommonResult.success(productSpuService.getAdminSpuPage(pageParam, name, categoryId, status));
+    }
+
+    @GetMapping("/detail")
+    public CommonResult<ProductSpuDO> detail(@RequestParam Long id) {
+        return CommonResult.success(productSpuService.getSpuDetail(id));
     }
 
     @PostMapping("/create")

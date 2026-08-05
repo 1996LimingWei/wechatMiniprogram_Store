@@ -96,6 +96,32 @@
 			</view>
 		</view>
 
+		<!-- 精选专题 -->
+		<view class="topic-section" v-if="currentTab === 0 && topics.length > 0">
+			<view class="topic-header">
+				<view class="topic-header-left">
+					<text class="topic-header-eyebrow">FEATURED</text>
+					<text class="topic-header-title">精选专题</text>
+				</view>
+				<view class="topic-header-more" @tap="goToTopic">
+					<text class="topic-more-text">查看全部</text>
+					<text class="topic-more-arrow">›</text>
+				</view>
+			</view>
+			<scroll-view scroll-x class="topic-scroll" :show-scrollbar="false">
+				<view class="topic-list-row">
+					<view class="topic-card" v-for="(item, index) in topics" :key="index" @tap="goToTopicDetail(item.id)">
+						<image class="topic-card-img" :src="item.scenePicUrl" mode="aspectFill"></image>
+						<view class="topic-card-info">
+							<text class="topic-card-title">{{item.title}}</text>
+							<text class="topic-card-sub">{{item.subtitle}}</text>
+							<text class="topic-card-price" v-if="item.priceInfo">¥{{item.priceInfo}}起</text>
+						</view>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+
 		<!-- 二级分类专区 Banner -->
 		<view class="category-banner-wrap" v-if="currentTab > 0">
 			<image v-if="categoryTabs[currentTab].icon" class="category-banner-img" :src="categoryTabs[currentTab].icon" mode="aspectFill"></image>
@@ -174,6 +200,7 @@ export default {
 			banner: [],
 			channel: [],
 			brands: [],
+			topics: [],
 			newGoods: [],
 			hotGoods: [],
 			goodsList: [],
@@ -205,6 +232,7 @@ export default {
 				util.request(api.IndexUrlBanner),
 				util.request(api.IndexUrlChannel),
 				util.request(api.IndexUrlBrand),
+				util.request(api.IndexUrlTopic),
 				util.request(api.IndexUrlNewGoods),
 				util.request(api.IndexUrlHotGoods),
 				util.request(api.IndexUrlCategory),
@@ -214,15 +242,16 @@ export default {
 				this.banner = results[0].data.banner || [];
 				this.channel = results[1].data.channel || [];
 				this.brands = results[2].data.brandList || [];
-				this.newGoods = results[3].data.newGoodsList || [];
-				this.hotGoods = results[4].data.hotGoodsList || [];
+				this.topics = results[3].data.topicList || [];
+				this.newGoods = results[4].data.newGoodsList || [];
+				this.hotGoods = results[5].data.hotGoodsList || [];
 				let all = [];
-				(results[5].data.categoryList || []).forEach(category => {
+				(results[6].data.categoryList || []).forEach(category => {
 					if (category.goodsList) all = all.concat(category.goodsList);
 				});
 				this.goodsList = all;
 				this.categoryTabs = [{ name: '精选', id: 0, icon: '' }].concat(
-					(results[6].data.categoryList || []).map(category => ({
+					(results[7].data.categoryList || []).map(category => ({
 						name: category.name,
 						id: category.id,
 						icon: category.wapBannerUrl || ''
@@ -277,6 +306,12 @@ export default {
 		},
 		goToBrand() {
 			uni.navigateTo({ url: '/pages/brand/brand' });
+		},
+		goToTopic() {
+			uni.navigateTo({ url: '/pages/topic/topic' });
+		},
+		goToTopicDetail(id) {
+			uni.navigateTo({ url: '/pages/topicDetail/topicDetail?id=' + id });
 		}
 	},
 	onPullDownRefresh() {
@@ -1033,6 +1068,111 @@ $text-hint: #9A9A9A;
 	line-height: 1;
 	padding: 10rpx;
 	cursor: pointer;
+}
+
+/* 精选专题 */
+.topic-section {
+	margin: 32rpx 24rpx 0;
+}
+
+.topic-header {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	margin-bottom: 20rpx;
+}
+
+.topic-header-left {
+	display: flex;
+	flex-direction: column;
+}
+
+.topic-header-eyebrow {
+	font-size: 18rpx;
+	letter-spacing: 2rpx;
+	color: #89A08B;
+	margin-bottom: 6rpx;
+}
+
+.topic-header-title {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #31443A;
+}
+
+.topic-header-more {
+	display: flex;
+	align-items: center;
+}
+
+.topic-more-text {
+	font-size: 24rpx;
+	color: #6F8E75;
+}
+
+.topic-more-arrow {
+	font-size: 32rpx;
+	color: #6F8E75;
+	margin-left: 4rpx;
+	line-height: 1;
+}
+
+.topic-scroll {
+	white-space: nowrap;
+}
+
+.topic-list-row {
+	display: inline-flex;
+	gap: 16rpx;
+	padding-bottom: 8rpx;
+}
+
+.topic-card {
+	display: inline-block;
+	width: 400rpx;
+	background: #FEFEFC;
+	border-radius: 20rpx;
+	overflow: hidden;
+	box-shadow: 0 10rpx 24rpx rgba(102, 122, 106, 0.08);
+	flex-shrink: 0;
+}
+
+.topic-card-img {
+	width: 400rpx;
+	height: 220rpx;
+}
+
+.topic-card-info {
+	padding: 16rpx 20rpx 20rpx;
+	white-space: normal;
+}
+
+.topic-card-title {
+	display: block;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #31443A;
+	margin-bottom: 6rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.topic-card-sub {
+	display: block;
+	font-size: 22rpx;
+	color: #94A095;
+	margin-bottom: 10rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.topic-card-price {
+	display: inline-block;
+	font-size: 26rpx;
+	font-weight: 700;
+	color: #CF4A3E;
 }
 
 /* 二级分类 Banner */

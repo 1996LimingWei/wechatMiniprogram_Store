@@ -53,6 +53,8 @@ export interface ProductSku {
     marketPrice?: number;
     stock?: number;
     picUrl?: string;
+    weight?: number;
+    volume?: number;
     createTime?: string;
 }
 
@@ -145,8 +147,44 @@ export interface MemberUser {
     avatar?: string;
     mobile?: string;
     gender?: number;
+    status?: number;
     createTime?: string;
     updateTime?: string;
+}
+
+/** 收货地址 */
+export interface MemberAddress {
+    id?: number;
+    userName?: string;
+    telNumber?: string;
+    fullRegion?: string;
+    detailInfo?: string;
+    isDefault?: number;
+}
+
+/** 最近订单 */
+export interface RecentOrder {
+    id?: number;
+    orderSn?: string;
+    status?: number;
+    payStatus?: number;
+    actualPrice?: number;
+    createTime?: string;
+}
+
+/** 会员详情（含关联数据） */
+export interface MemberUserDetail {
+    id?: number;
+    nickname?: string;
+    avatar?: string;
+    mobile?: string;
+    status?: number;
+    createTime?: string;
+    addresses?: MemberAddress[];
+    orderCount?: number;
+    recentOrders?: RecentOrder[];
+    collectCount?: number;
+    commentCount?: number;
 }
 
 /** 轮播图 */
@@ -198,7 +236,9 @@ export interface ContentTopic {
 export interface ProductComment {
     id?: number;
     userId: number;
+    userNickname?: string;
     spuId: number;
+    spuName?: string;
     content: string;
     status?: number;
     createTime?: string;

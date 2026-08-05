@@ -1,5 +1,7 @@
 package com.shop.module.product.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shop.common.exception.ServerException;
@@ -16,6 +18,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "product", name = "provider", havingValue = "database")
 public class DatabaseProductSkuProvider implements ProductSkuProvider {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ProductSpuMapper productSpuMapper;
     private final ProductSkuMapper productSkuMapper;
@@ -38,7 +42,7 @@ public class DatabaseProductSkuProvider implements ProductSkuProvider {
         snapshot.setSkuId(sku.getId());
         snapshot.setName(spu.getName());
         snapshot.setPicUrl(sku.getPicUrl() == null || sku.getPicUrl().isBlank() ? spu.getPicUrl() : sku.getPicUrl());
-        snapshot.setSpecName(sku.getProperties() == null || sku.getProperties().isBlank() ? "默认规格" : sku.getProperties());
+        snapshot.setSpecName(formatSpecName(sku.getProperties()));
         snapshot.setPrice(sku.getPrice() == null ? spu.getPrice() : sku.getPrice());
         snapshot.setStock(sku.getStock() == null ? 0 : sku.getStock());
         return snapshot;
@@ -72,5 +76,21 @@ public class DatabaseProductSkuProvider implements ProductSkuProvider {
             wrapper.orderByAsc(ProductSkuDO::getId).last("LIMIT 1");
         }
         return productSkuMapper.selectOne(wrapper);
+    }
+
+    /** 将 SKU properties JSON 解析为可读格式，如 "规格: 10斤" */
+    private String formatSpecName(String properties) {
+        if (properties == null || properties.isBlank()) {
+            return "默认规格";
+        }
+        try {
+            var list = OBJECT_MAPPER.readValue(properties,
+                    new TypeReference<java.util.List<java.util.Map<String, Object>>>() {});
+            return list.stream()
+                    .map(p -> p.get("name") + ": " + p.get("valueName"))
+                    .collect(java.util.stream.Collectors.joining("; "));
+        } catch (Exception e) {
+            return properties;
+        }
     }
 }

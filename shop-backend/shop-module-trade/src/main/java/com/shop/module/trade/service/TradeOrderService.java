@@ -272,7 +272,7 @@ public class TradeOrderService {
         goods.put("goodsId", item.getSpuId());
         goods.put("productId", item.getSkuId());
         goods.put("goodsName", item.getGoodsName());
-        goods.put("goodsSpecifitionNameValue", item.getSpecName());
+        goods.put("goodsSpecifitionNameValue", TradeCartService.formatSpecName(item.getSpecName()));
         goods.put("number", item.getCount());
         goods.put("retailPrice", TradeMoneyUtils.formatYuan(item.getPrice()));
         goods.put("listPicUrl", item.getGoodsPicUrl());

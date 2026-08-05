@@ -7,7 +7,10 @@
 ## 当前阶段
 
 **阶段**: 管理后台搭建（Admin Frontend）
-**当前 Issue**: [admin-login-and-framework.md](plans/2026-08-03-admin-login-and-framework.md)（Issue #2 已完成）
+**当前 Issue**: [member-center.md](plans/2026-08-03-member-center.md)（Issue #7 已完成）
+**内容管理**: [content-management.md](plans/2026-08-03-content-management.md)（Issue #6 已完成）
+**商品管理**: [product-management.md](plans/2026-08-03-product-management.md)（Issue #3 已完成）
+**管理后台登录**: [admin-login-and-framework.md](plans/2026-08-03-admin-login-and-framework.md)（Issue #2 已完成）
 **管理后台基座**: [admin-base-framework.md](plans/2026-08-03-admin-base-framework.md)（Issue #1 已完成）
 **后端分工**: [backend-three-person-division.md](plans/2026-07-24-backend-three-person-division.md)
 **交易剩余工作**: [trade-remaining-work.md](plans/2026-07-26-trade-remaining-work.md)
@@ -30,6 +33,8 @@
 | Task 10: 小程序骨架 | ✅ 完成 | uni-app 首页+请求封装 |
 | Phase1-子阶段1: 登录与会话 | ✅ 完成 | 微信登录+Token+刷新 |
 | Phase1-子阶段2: 商品真实接口 | ✅ 完成 | Issue #10：分类、列表、详情与商品种子数据已接入数据库 |
+| 管理后台内容运营（Issue #6） | ✅ 完成 | Banner/频道/品牌/专题 CRUD 后端接口 + 前端管理页面 |
+| 管理后台会员中心（Issue #7） | ✅ 完成 | 会员列表+详情抽屉+评论管理 后端接口 + 前端管理页面 |
 | Phase1-子阶段3: 交易闭环 MVP | ✅ P0完成 | 购物车+地址+结算+订单+Mock支付+管理端发货+售后同意/拒绝/撤销+超时关闭+订单日志+自动验收 |
 
 ## 阻塞项
@@ -503,6 +508,63 @@
 - 管理后台 `pnpm build` 与 `pnpm typecheck` 均通过；后端商品模块 25 项、交易模块 23 项测试全部通过。
 - 原有生产就绪改动已无冲突恢复为未暂存状态；合并前备份分支与两份 stash 均继续保留。
 
+## 2026-08-03 管理后台内容运营完成（Issue #6）
+
+- 后端：新增 `ContentAdminService`，为 Banner/频道/品牌/专题提供统一的 CRUD 服务
+- 后端：新增 `AdminContentController`，注册 16 个接口覆盖 `/admin-api/content/{banner,channel,brand,topic}` 的 list/create/update/delete
+- 前端：Banner 管理页面 — 表格列表（图片预览+标题+链接+排序+状态）+ 新增/编辑对话框 + 启用/禁用切换
+- 前端：频道管理页面 — 表格列表（图标+名称+链接+排序+状态）+ 新增/编辑对话框 + 启用/禁用切换
+- 前端：品牌管理页面 — 表格列表（图片+名称+起售价+排序+状态）+ 新增/编辑对话框 + 分↔元价格转换
+- 前端：专题管理页面 — 表格列表（图片+标题+副标题+价格说明+排序+状态）+ 新增/编辑对话框
+- 前端：四个页面均使用 `el-tooltip` + `QuestionFilled` 问号图标为不直观字段提供帮助提示
+- 前端 API 层（`content.ts`）和类型定义（`types.ts`）已在之前预先定义好，路由骨架已就绪
+- TypeScript `vue-tsc --noEmit` 0 错误，后端 `mvn clean install -DskipTests` 0 错误
+- 新增计划文档：`docs/superpowers/plans/2026-08-03-content-management.md`
+
+## 2026-08-03 管理后台商品管理完成（Issue #3）
+
+- 后端：`AdminProductController` 分页接口增加 name/categoryId/status 筛选，新增 `/detail` 接口
+- 后端：新建 `AdminProductSkuController`，实现 `GET /admin-api/product/sku/list` 和 `POST /admin-api/product/sku/save-batch`
+- 前端：分类管理页面 — 树形表格 + 增删改对话框 + 启用/禁用切换
+- 前端：商品列表页面 — 筛选栏 + 分页表格 + 上架/下架快捷操作
+- 前端：商品表单页面 — 基础信息、图片 URL、价格库存（分↔元转换）、HTML 详情
+- 前端：SKU 规格编辑器 — 动态添加规格维度、笛卡尔积生成矩阵、逐行编辑价格/库存/图片
+- 价格存储约定：后端 Integer（分），前端 UI Number（元），保存时 * 100
+- `sliderPicUrls` 格式兼容：JSON 数组字符串和逗号分隔两种格式
+- TypeScript `vue-tsc --noEmit` 0 错误，后端 `mvn install -DskipTests` 0 错误
+- 新增计划文档：`docs/superpowers/plans/2026-08-03-product-management.md`
+
+## 2026-08-03 管理后台会员中心完成（Issue #7）
+
+- 后端：`shop-module-product` 新增 `ProductCommentDO` + `ProductCommentMapper`（继承 `BaseMapperX`），将 `product_comment` 表从 JdbcTemplate 直接访问升级为 MyBatis-Plus 标准实体
+- 后端：`shop-module-member` 新增 `AdminMemberService`，使用 `JdbcTemplate` 跨模块查询收货地址、订单统计、收藏数和评论数
+- 后端：`shop-module-member` 新增 `AdminMemberController`，提供 `GET /admin-api/member/user/page` 和 `GET /admin-api/member/user/detail` 接口
+- 后端：`shop-module-product` 新增 `AdminCommentController`，提供 `GET /admin-api/product/comment/page`（批量关联用户昵称+商品名避免 N+1）和 `PUT /admin-api/product/comment/status` 接口
+- 后端：`MemberUserMapper` 和 `ProductCommentMapper` 统一改为继承 `BaseMapperX`，使用项目标准 `PageParam` + `PageResult` 分页模式
+- 前端：`types.ts` 新增 `MemberAddress`、`RecentOrder`、`MemberUserDetail` 类型，`ProductComment` 补充 `userNickname`、`spuName` 字段
+- 前端：`member.ts` API 参数从 `page/size` 统一为 `pageNo/pageSize`，`getMemberDetail` 返回类型升级为 `MemberUserDetail`
+- 前端：会员列表页面 — 昵称/手机号搜索 + 分页表格（头像、昵称、手机号、状态、注册时间）+ 点击行打开详情抽屉
+- 前端：会员详情抽屉 — 基础信息卡片 + 数据概览（订单数/收藏数/评论数）+ 收货地址列表 + 最近订单
+- 前端：评论管理页面 — 状态筛选 + 分页表格（用户、商品、评论内容、状态、时间）+ 审核通过/隐藏操作
+- TypeScript `vue-tsc --noEmit` 0 错误，后端 `mvn install -DskipTests` 0 错误
+- 新增计划文档：`docs/superpowers/plans/2026-08-03-member-center.md`
+
+## 2026-08-05 小程序端会员中心完成
+
+- 后端：`MemberUserDO` 新增 `memberLevel` 字段（1=白银会员 2=黄金会员），`sql/init.sql` 同步更新
+- 后端：`MemberAuthService` 新用户登录时自动绑定白银会员（`memberLevel=1`），登录响应增加 `memberLevel` 字段
+- 后端：新增 `AppMemberController`，提供小程序端 3 个接口：
+  - `GET /app-api/member/center`：会员中心信息（等级、昵称、头像、权益列表）
+  - `GET /app-api/member/gold-card`：黄金卡详情（价格、权益、对比数据）
+  - `POST /app-api/member/gold-card/subscribe`：Mock 开通黄金会员（体验模式，直接升级 level=2）
+- 小程序：新增 `pages/ucenter/member/member.vue` 会员中心页面（白银/金色双主题会员卡、权益列表、黄金卡推广卡片、会员说明规则）
+- 小程序：新增 `pages/ucenter/goldCard/goldCard.vue` 黄金卡购买页面（金色 Hero 卡片、五大权益列表、白银 vs 黄金对比表、Mock 开通按钮）
+- 小程序：个人中心入口对接，`goMember()` 改为导航到会员中心，VIP 徽章和统计行根据 `memberLevel` 动态展示白银/黄金状态
+- 小程序：`api.js` 新增 `MemberCenter`、`MemberGoldCard`、`MemberGoldSubscribe` 三个 API 端点
+- 小程序：`pages.json` 注册两个新页面
+- 已验证：Maven `mvn install -DskipTests` 构建通过，后端 Spring Boot 启动成功
+- 已验证：会员中心、黄金卡详情和 Mock 开通接口均正常响应
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -524,6 +586,8 @@
 | 2026-08-01 | 最小管理员身份暂采用环境配置注入 | 先消除匿名管理端风险；完整管理员表、密码管理与后台账号管理在后续平台能力阶段实现 |
 | 2026-08-03 | 管理后台基座搭建（Issue #1）完成 | 基于 vue-pure-admin thin 搭建 shop-admin/，完成 API 对接层、认证体系简化、路由骨架和 11 个占位页面 |
 | 2026-08-03 | 管理后台登录与框架定制（Issue #2）完成 | 登录页品牌定制、顶栏/侧边栏主题配置、auth API 完善、用户信息展示、退出登录、路由守卫 |
+| 2026-08-03 | 管理后台内容运营（Issue #6）完成 | Banner/频道/品牌/专题后端 CRUD + 前端管理页面全链路完成 |
+| 2026-08-03 | 管理后台商品管理（Issue #3）完成 | 分类树 CRUD + 商品列表分页筛选 + 商品表单 + SKU 规格矩阵编辑 |
 
 ## 2026-07-24 Agent Loop Skill
 
@@ -533,14 +597,11 @@
 
 ## 下一步行动
 
-管理后台 Issue #1 + #2 已完成，下一步进入业务页面开发阶段（可多人并行）：
-1. Issue #3：商品管理（分类树 + SPU 列表 + SKU 编辑）
-2. Issue #4：订单管理（列表 + 详情 + 发货 + 物流）
-3. Issue #5：售后管理（列表 + 审批/拒绝）
-4. Issue #6：内容运营（Banner + 频道 + 品牌 + 专题）
-5. Issue #7：会员中心（用户列表 + 评论管理）
-6. Issue #8：数据看板首页（依赖 #3~#7 部分完成）
-7. Issue #9：构建优化与 Nginx 部署（全部完成后）
+管理后台 Issue #1 + #2 + #3 + #6 + #7 已完成，下一步进入业务页面开发阶段（可多人并行）：
+1. Issue #4：订单管理（列表 + 详情 + 发货 + 物流）
+2. Issue #5：售后管理（列表 + 审批/拒绝）
+3. Issue #8：数据看板首页（依赖 #4~#5 部分完成）
+4. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 
