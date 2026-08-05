@@ -363,6 +363,20 @@
 					"bounce": "vertical"
 				}
 			}
+		},
+		{
+			"path": "pages/ucenter/member/member",
+			"style": {
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/ucenter/goldCard/goldCard",
+			"style": {
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"easycom": {
