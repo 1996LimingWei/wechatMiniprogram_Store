@@ -258,3 +258,29 @@ export interface OrderTrend {
     orderCount: number;
     salesAmount: number;
 }
+
+/** 数据看板 - 订单状态分布 */
+export interface OrderStatusItem {
+    name: string;
+    value: number;
+}
+
+/** 数据看板 - 热销商品 */
+export interface TopProduct {
+    name: string;
+    sales_count: number;
+    sales_amount: number;
+    pic_url: string;
+}
+
+/** 数据看板 - 最近订单 */
+export interface DashboardRecentOrder {
+    id: number;
+    order_sn: string;
+    status: number;
+    pay_status: number;
+    actual_price: number;
+    consignee: string;
+    create_time: string;
+    item_count: number;
+}
