@@ -35,6 +35,7 @@
 | Phase1-子阶段2: 商品真实接口 | ✅ 完成 | Issue #10：分类、列表、详情与商品种子数据已接入数据库 |
 | 管理后台内容运营（Issue #6） | ✅ 完成 | Banner/频道/品牌/专题 CRUD 后端接口 + 前端管理页面 |
 | 管理后台会员中心（Issue #7） | ✅ 完成 | 会员列表+详情抽屉+评论管理 后端接口 + 前端管理页面 |
+| 管理后台数据看板（Issue #8） | ✅ 完成 | 核心指标卡片 + 订单趋势图 + 状态饼图 + 热销TOP10 + 最近订单 |
 | Phase1-子阶段3: 交易闭环 MVP | ✅ P0完成 | 购物车+地址+结算+订单+Mock支付+管理端发货+售后同意/拒绝/撤销+超时关闭+订单日志+自动验收 |
 
 ## 阻塞项
@@ -549,6 +550,22 @@
 - 已验证：Maven `mvn install -DskipTests` 构建通过，后端 Spring Boot 启动成功
 - 已验证：会员中心、黄金卡详情和 Mock 开通接口均正常响应
 
+## 2026-08-06 管理后台数据看板完成（Issue #8）
+
+- 后端：新增 `DashboardService`，使用 `JdbcTemplate` 跨模块查询订单、商品、会员数据
+- 后端：新增 `DashboardController`，提供 5 个接口：
+  - `GET /admin-api/dashboard/summary` — 核心指标（今日订单数、今日销售额、商品总数、会员总数）
+  - `GET /admin-api/dashboard/order-trend?days=7` — 订单趋势（每日订单量和销售额，支持 7/30 天切换）
+  - `GET /admin-api/dashboard/order-status` — 订单状态分布饼图数据
+  - `GET /admin-api/dashboard/top-products?limit=10` — 热销商品 TOP N（按已支付订单商品销量汇总）
+  - `GET /admin-api/dashboard/recent-orders` — 最近 10 笔订单
+- 前端：重构 `dashboard/index.vue`，包含 4 张指标卡片、订单趋势折线图（双 Y 轴）、订单状态饼图、热销商品横向柱状图、最近订单表格
+- 前端：订单趋势支持 7 天 / 30 天切换，补齐无数据日期为 0
+- 前端：`api/dashboard.ts` 完善类型定义（`OrderStatusItem`、`TopProduct`、`DashboardRecentOrder`）
+- 前端：ECharts 按需引入（LineChart、PieChart、BarChart），图表支持窗口自适应
+- 已验证：Maven `mvn install -DskipTests` 构建通过，`vue-tsc --noEmit` 0 错误
+- 已验证：5 个 Dashboard API 接口全部正常响应
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -581,11 +598,10 @@
 
 ## 下一步行动
 
-管理后台 Issue #1 + #2 + #3 + #6 + #7 已完成，下一步进入业务页面开发阶段（可多人并行）：
+管理后台 Issue #1 + #2 + #3 + #6 + #7 + #8 已完成，下一步进入业务页面开发阶段（可多人并行）：
 1. Issue #4：订单管理（列表 + 详情 + 发货 + 物流）
 2. Issue #5：售后管理（列表 + 审批/拒绝）
-3. Issue #8：数据看板首页（依赖 #4~#5 部分完成）
-4. Issue #9：构建优化与 Nginx 部署（全部完成后）
+3. Issue #9：构建优化与 Nginx 部署（全部完成后）
 
 ---
 
