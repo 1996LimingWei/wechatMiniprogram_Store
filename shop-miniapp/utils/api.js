@@ -12,6 +12,7 @@ module.exports = {
 	CatalogCurrent: 'catalog/current', //分类目录当前分类数据接口
 
 	AuthLoginByWeixin: 'auth/LoginByMa', //微信登录
+	AuthPhoneLogin: 'auth/phone-login', //手机号快速登录
 
 	GoodsCount: 'goods/count', //统计商品总数
 	GoodsList: 'goods/list', //获得商品列表

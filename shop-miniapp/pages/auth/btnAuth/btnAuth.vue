@@ -10,12 +10,9 @@
 			</view>
 			<view class="auth-card">
 				<view class="auth-title">授权登录</view>
-				<view class="auth-desc">获取您的公开信息（昵称、头像等）以提供更好的服务体验</view>
-				<button class="login-btn" v-if="canIUseGetUserProfile" @tap="getUserProfile">
-					<text class="btn-text">微信一键登录</text>
-				</button>
-				<button class="login-btn" v-else open-type="getUserInfo" @getuserinfo="bindGetUserInfo">
-					<text class="btn-text">微信一键登录</text>
+				<view class="auth-desc">授权手机号用于快速登录，享受完整购物体验</view>
+				<button class="login-btn" open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">
+					<text class="btn-text">手机号快速登录</text>
 				</button>
 				<view class="skip-btn" @tap="skipLogin">暂不登录，先逛逛</view>
 			</view>
@@ -29,69 +26,66 @@
 	export default {
 		data() {
 			return {
-				canIUseGetUserProfile: false,
 				navUrl: '',
 				code: ''
 			}
 		},
 		methods: {
-			getUserProfile() {
-				let that = this;
-				// 确保已有 code
-				if (!that.code) {
-					uni.login({
-						success: function(resp) {
-							if (resp.code) {
-								that.code = resp.code;
-								that._doGetProfile();
-							} else {
-								that.toast('获取微信登录凭证失败');
-							}
-						}
-					});
-				} else {
-					that._doGetProfile();
+			onGetPhoneNumber(e) {
+				if (e.detail.errMsg !== 'getPhoneNumber:ok') {
+					// 用户拒绝授权
+					util.toast('您已取消授权，可点击“先逛逛”浏览商品');
+					return;
 				}
+				// 微信 v2 新版：通过 e.detail.code 获取手机号
+				const phoneCode = e.detail.code;
+				if (!phoneCode) {
+					util.toast('手机号授权失败，请重试');
+					return;
+				}
+				this.doPhoneLogin(phoneCode);
 			},
-			_doGetProfile() {
+			doPhoneLogin(phoneCode) {
 				let that = this;
-				uni.getUserProfile({
-					desc: '用于完善会员资料',
-					success: (resp) => {
-						that.loginByWeixin(resp);
-					},
-					fail: () => {
-						// 新版微信可能不支持 getUserProfile，直接用 code 登录
-						that.loginByWeixin({});
-					}
-				});
-			},
-			bindGetUserInfo: function(e) {
-				this.loginByWeixin(e.detail);
-			},
-			loginByWeixin: function(userInfo) {
-				let that = this;
-				if (that.code) {
-					util.request(api.AuthLoginByWeixin, {
-						code: that.code,
-						userInfo: userInfo
+				// 先确保有 wx.login 的 code
+				const doRequest = (wxCode) => {
+					util.request(api.AuthPhoneLogin, {
+						code: wxCode,
+						phoneCode: phoneCode
 					}, 'POST', 'application/json').then(res => {
 						if (res.code === 0) {
 							uni.setStorageSync('userInfo', res.data.userInfo);
 							uni.setStorageSync('token', res.data.token);
 							uni.setStorageSync('userId', res.data.userId);
-							that.goBack();
+							uni.showToast({ title: '登录成功', icon: 'success' });
+							setTimeout(() => {
+								that.goBack();
+							}, 500);
 						} else {
 							uni.showModal({
 								title: '提示',
-								content: res.msg,
+								content: res.msg || '登录失败',
 								showCancel: false
 							});
 						}
 					}).catch(err => {
-						console.error('[Login] 请求异常:', err);
+						console.error('[PhoneLogin] 请求异常:', err);
 					});
-				}
+				};
+
+				// 每次重新获取 code，避免过期
+				uni.login({
+					success(res) {
+						if (res.code) {
+							doRequest(res.code);
+						} else {
+							util.toast('获取登录凭证失败');
+						}
+					},
+					fail() {
+						util.toast('微信登录失败');
+					}
+				});
 			},
 			skipLogin() {
 				this.goBack();
@@ -107,22 +101,11 @@
 			}
 		},
 		onLoad: function(options) {
-			let that = this;
 			if (uni.getStorageSync("navUrl")) {
-				that.navUrl = uni.getStorageSync("navUrl")
+				this.navUrl = uni.getStorageSync("navUrl")
 			} else {
-				that.navUrl = '/pages/index/index'
+				this.navUrl = '/pages/index/index'
 			}
-			if (uni.getUserProfile) {
-				that.canIUseGetUserProfile = true
-			}
-			uni.login({
-				success: function(res) {
-					if (res.code) {
-						that.code = res.code
-					}
-				}
-			});
 		}
 	}
 </script>
