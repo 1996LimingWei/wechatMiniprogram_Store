@@ -129,11 +129,11 @@ export default {
 			}, 'POST', 'application/json').then(res => {
 				if (res.code === 0) {
 					const orderId = res.data.orderInfo.id;
-					getApp().globalData._payAmount = this.actualPrice;
 					util.payOrder(parseInt(orderId)).then(() => {
 						uni.redirectTo({ url: '/pages/payResult/payResult?status=1&orderId=' + orderId });
-					}).catch(() => {
-						uni.redirectTo({ url: '/pages/payResult/payResult?status=0&orderId=' + orderId });
+					}).catch((error) => {
+						const status = error && error.pending ? 2 : 0;
+						uni.redirectTo({ url: '/pages/payResult/payResult?status=' + status + '&orderId=' + orderId });
 					});
 				} else {
 					this.submitting = false;

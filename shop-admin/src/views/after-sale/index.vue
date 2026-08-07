@@ -6,7 +6,8 @@ import { Check, Close, Refresh, View } from "@element-plus/icons-vue";
 import {
   approveAfterSale,
   getAfterSalePage,
-  rejectAfterSale
+  rejectAfterSale,
+  syncAfterSale
 } from "@/api/afterSale";
 import type { AfterSale } from "@/api/types";
 
@@ -85,6 +86,7 @@ function statusType(status?: number) {
 
 const detailVisible = ref(false);
 const detail = ref<AfterSale | null>(null);
+const syncSaving = ref(false);
 
 function openDetail(row: AfterSale) {
   detail.value = row;
@@ -107,6 +109,20 @@ async function handleApprove(row: AfterSale) {
   );
   if (detail.value?.id === row.id) detailVisible.value = false;
   await fetchData();
+}
+
+async function handleSync(row: AfterSale) {
+  syncSaving.value = true;
+  try {
+    const result = await syncAfterSale(row.id);
+    ElMessage.success(
+      result.status === 1 ? "退款状态已同步完成" : "退款渠道仍在处理中"
+    );
+    if (detail.value?.id === row.id) detail.value = result;
+    await fetchData();
+  } finally {
+    syncSaving.value = false;
+  }
 }
 
 const rejectVisible = ref(false);
@@ -247,6 +263,15 @@ function refundDescription(row: AfterSale) {
               @click="openReject(row)"
               >拒绝</el-button
             >
+            <el-button
+              v-if="row.status === 4"
+              type="primary"
+              link
+              :loading="syncSaving"
+              :icon="Refresh"
+              @click="handleSync(row)"
+              >同步</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -358,6 +383,15 @@ function refundDescription(row: AfterSale) {
           >
           <el-button type="success" :icon="Check" @click="handleApprove(detail)"
             >同意退款</el-button
+          >
+        </div>
+        <div v-else-if="detail.status === 4" class="drawer-actions">
+          <el-button
+            type="primary"
+            :icon="Refresh"
+            :loading="syncSaving"
+            @click="handleSync(detail)"
+            >同步退款状态</el-button
           >
         </div>
       </template>

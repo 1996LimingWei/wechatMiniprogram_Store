@@ -34,7 +34,7 @@ public class WxMaService {
     public Map<String, String> code2Session(String code) {
         // Mock 模式：直接返回开发用 openid，不依赖微信接口
         if (wxMaProperties.isMockEnabled()) {
-            log.info("[WxMaService] Mock 模式，使用开发 openid, code={}", code);
+            log.info("[WxMaService] Mock 模式登录");
             Map<String, String> mockResult = new HashMap<>();
             mockResult.put("openid", "dev_openid_" + code);
             mockResult.put("session_key", "dev_session_key");
@@ -68,7 +68,7 @@ public class WxMaService {
             if (json.containsKey("unionid")) {
                 result.put("unionid", json.getStr("unionid"));
             }
-            log.info("[WxMaService] code2session 成功, openid={}", result.get("openid"));
+            log.info("[WxMaService] code2session 成功");
             return result;
         } catch (Exception e) {
             log.error("[WxMaService] code2session 网络异常", e);

@@ -1,13 +1,2 @@
-spring:
-  profiles:
-    active: dev
-
 server:
   port: 8085
-
-shop:
-  mock:
-    enabled: false
-
-trade:
-  dev-actions-enabled: false

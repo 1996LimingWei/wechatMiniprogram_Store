@@ -78,7 +78,10 @@
 			},
 			loginByWeixin: function(code) {
 				let that = this;
-				return util.request(api.AuthLoginByWeixin, { code }, 'POST', 'application/json').then(res => {
+				return util.request(api.AuthLoginByWeixin, {
+					code,
+					privacyAccepted: true
+				}, 'POST', 'application/json').then(res => {
 					if (res.code === 0) {
 						uni.setStorageSync('userInfo', res.data.userInfo);
 						uni.setStorageSync('token', res.data.token);

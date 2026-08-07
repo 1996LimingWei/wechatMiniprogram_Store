@@ -25,6 +25,19 @@ CREATE TABLE `member_user` (
     KEY `idx_mobile` (`mobile`)
 ) ENGINE=InnoDB COMMENT='会员用户表';
 
+CREATE TABLE `member_privacy_consent` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `user_id` bigint NOT NULL COMMENT '会员用户ID',
+    `privacy_version` varchar(32) NOT NULL COMMENT '隐私政策版本',
+    `agreement_version` varchar(32) NOT NULL COMMENT '用户协议版本',
+    `consent_time` datetime NOT NULL COMMENT '同意时间',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_versions` (`user_id`, `privacy_version`, `agreement_version`)
+) ENGINE=InnoDB COMMENT='会员协议与隐私同意记录';
+
 -- ============ 商品相关 ============
 
 CREATE TABLE `product_category` (
@@ -327,6 +340,7 @@ CREATE TABLE `pay_order` (
     `user_id` bigint NOT NULL COMMENT '会员用户ID',
     `amount` int NOT NULL COMMENT '支付金额(分)',
     `channel` varchar(32) NOT NULL DEFAULT 'mock' COMMENT '支付渠道 mock/wx_lite',
+    `channel_trade_no` varchar(64) DEFAULT NULL COMMENT '支付渠道交易号',
     `status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=待支付 1=已支付 2=已关闭 3=已退款',
     `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -334,8 +348,28 @@ CREATE TABLE `pay_order` (
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_pay_sn` (`pay_sn`),
-    UNIQUE KEY `uk_order_id` (`order_id`)
+    UNIQUE KEY `uk_order_id` (`order_id`),
+    UNIQUE KEY `uk_channel_trade_no` (`channel_trade_no`)
 ) ENGINE=InnoDB COMMENT='支付单表';
+
+CREATE TABLE `pay_notify_log` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `notification_id` varchar(64) NOT NULL COMMENT '微信支付通知ID',
+    `pay_order_id` bigint DEFAULT NULL COMMENT '支付单ID',
+    `pay_sn` varchar(32) DEFAULT '' COMMENT '商户支付单号',
+    `channel_trade_no` varchar(64) DEFAULT '' COMMENT '微信支付交易号',
+    `event_type` varchar(64) DEFAULT '' COMMENT '通知事件类型',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '处理状态 0=已接收 1=已处理',
+    `message` varchar(255) DEFAULT '' COMMENT '处理说明',
+    `raw_body` longtext COMMENT '原始加密通知体',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_notification_id` (`notification_id`),
+    KEY `idx_pay_order_id` (`pay_order_id`),
+    KEY `idx_pay_sn` (`pay_sn`)
+) ENGINE=InnoDB COMMENT='支付通知流水表';
 
 CREATE TABLE `trade_order_logistics` (
     `id` bigint NOT NULL AUTO_INCREMENT,
@@ -375,7 +409,7 @@ CREATE TABLE `trade_after_sale` (
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_after_sale_sn` (`after_sale_sn`),
-    KEY `idx_order_id` (`order_id`),
+    UNIQUE KEY `uk_order_id` (`order_id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`),
     KEY `idx_status_create_time_id` (`status`, `create_time`, `id`)

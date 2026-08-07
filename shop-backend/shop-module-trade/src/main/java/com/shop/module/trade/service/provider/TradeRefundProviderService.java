@@ -32,6 +32,10 @@ public class TradeRefundProviderService {
         return current().refund(request);
     }
 
+    public TradeRefundProvider.RefundResult query(TradeRefundProvider.RefundQuery query) {
+        return current().query(query);
+    }
+
     private TradeRefundProvider current() {
         TradeRefundProvider provider = providers.get(providerType);
         if (provider == null) {

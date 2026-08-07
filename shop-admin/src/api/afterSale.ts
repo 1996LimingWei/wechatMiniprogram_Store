@@ -28,3 +28,11 @@ export const rejectAfterSale = (afterSaleId: number, rejectReason: string) => {
     { data: { afterSaleId, rejectReason } }
   );
 };
+
+/** 同步退款渠道状态 */
+export const syncAfterSale = (afterSaleId: number) => {
+  return http.post<AfterSale, { afterSaleId: number }>(
+    "/admin-api/trade/after-sale/sync",
+    { data: { afterSaleId } }
+  );
+};

@@ -73,10 +73,30 @@ public class TradeAfterSaleService {
         afterSale.setApplyRemark(remark);
         afterSale.setBeforeOrderStatus(order.getStatus());
         afterSale.setApplyTime(LocalDateTime.now());
-        tradeAfterSaleMapper.insert(afterSale);
         Integer fromStatus = order.getStatus();
+        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, order.getId())
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getStatus, fromStatus)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                .set(TradeOrderDO::getStatus, 5));
+        if (orderUpdated != 1) {
+            TradeAfterSaleDO concurrent = getAfterSale(orderId);
+            if (concurrent != null) {
+                return toResp(concurrent);
+            }
+            throw new ServerException(400, "订单状态已变更，不能申请售后");
+        }
+        try {
+            tradeAfterSaleMapper.insert(afterSale);
+        } catch (org.springframework.dao.DuplicateKeyException exception) {
+            TradeAfterSaleDO concurrent = getAfterSale(orderId);
+            if (concurrent != null) {
+                return toResp(concurrent);
+            }
+            throw exception;
+        }
         order.setStatus(5);
-        tradeOrderMapper.updateById(order);
         tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
                 "APPLY_AFTER_SALE", fromStatus, order.getStatus(), reason);
         return toResp(afterSale);
@@ -207,8 +227,11 @@ public class TradeAfterSaleService {
         if (afterSale == null || afterSale.getStatus() == null) {
             throw new ServerException(400, "请先提交有效的售后申请");
         }
-        if (afterSale.getStatus() == 1 || afterSale.getStatus() == 4) {
+        if (afterSale.getStatus() == 1) {
             return toResp(afterSale);
+        }
+        if (afterSale.getStatus() == 4) {
+            return syncProcessingInternal(afterSale, operatorType, operatorId);
         }
         if (afterSale.getStatus() != 0) {
             throw new ServerException(400, "当前售后单不能退款");
@@ -220,11 +243,7 @@ public class TradeAfterSaleService {
             throw new ServerException(400, "当前订单不在售后处理中");
         }
 
-        PayOrderDO payOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
-                .eq(PayOrderDO::getOrderId, orderId)
-                .eq(PayOrderDO::getUserId, order.getUserId())
-                .orderByDesc(PayOrderDO::getUpdateTime)
-                .last("LIMIT 1"));
+        PayOrderDO payOrder = getPaidPayOrder(order);
         if (payOrder == null || payOrder.getStatus() == null || payOrder.getStatus() != PayOrderStatus.PAID) {
             throw new ServerException(400, "支付单当前不能退款");
         }
@@ -240,39 +259,106 @@ public class TradeAfterSaleService {
                         payOrder.getPaySn(),
                         afterSale.getRefundAmount(),
                         afterSale.getReason()));
-        LocalDateTime auditTime = LocalDateTime.now();
-        int targetStatus = refundResult.status() == TradeRefundProvider.RefundStatus.SUCCESS ? 1 : 4;
-        LambdaUpdateWrapper<TradeAfterSaleDO> afterSaleUpdate = new LambdaUpdateWrapper<TradeAfterSaleDO>()
-                .eq(TradeAfterSaleDO::getId, afterSale.getId())
-                .eq(TradeAfterSaleDO::getStatus, 0)
-                .set(TradeAfterSaleDO::getStatus, targetStatus)
-                .set(TradeAfterSaleDO::getAuditTime, auditTime)
-                .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
-                .set(TradeAfterSaleDO::getProviderRefundNo, refundResult.providerRefundNo())
-                .set(TradeAfterSaleDO::getRefundMessage, refundResult.message());
-        if (targetStatus == 1) {
-            afterSaleUpdate.set(TradeAfterSaleDO::getRefundTime, auditTime);
-        }
-        int afterSaleUpdated = tradeAfterSaleMapper.update(null, afterSaleUpdate);
-        if (afterSaleUpdated != 1) {
-            TradeAfterSaleDO latest = getAfterSaleById(afterSale.getId());
-            if (latest.getStatus() != null && (latest.getStatus() == 1 || latest.getStatus() == 4)) {
-                return toResp(latest);
+        if (refundResult.status() == TradeRefundProvider.RefundStatus.PROCESSING) {
+            LocalDateTime auditTime = LocalDateTime.now();
+            int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                    .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                    .eq(TradeAfterSaleDO::getStatus, 0)
+                    .set(TradeAfterSaleDO::getStatus, 4)
+                    .set(TradeAfterSaleDO::getAuditTime, auditTime)
+                    .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
+                    .set(TradeAfterSaleDO::getProviderRefundNo, refundResult.providerRefundNo())
+                    .set(TradeAfterSaleDO::getRefundMessage, refundResult.message()));
+            if (afterSaleUpdated != 1) {
+                return toResp(getAfterSaleById(afterSale.getId()));
             }
-            throw new ServerException(400, "售后单状态已变更，不能退款");
-        }
-
-        afterSale.setStatus(targetStatus);
-        afterSale.setAuditTime(auditTime);
-        afterSale.setRefundProvider(refundProvider);
-        afterSale.setProviderRefundNo(refundResult.providerRefundNo());
-        afterSale.setRefundMessage(refundResult.message());
-        if (targetStatus == 4) {
+            afterSale.setStatus(4);
+            afterSale.setAuditTime(auditTime);
+            afterSale.setRefundProvider(refundProvider);
+            afterSale.setProviderRefundNo(refundResult.providerRefundNo());
+            afterSale.setRefundMessage(refundResult.message());
             tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
                     "REFUND_PROCESSING", order.getStatus(), order.getStatus(), refundResult.message());
             return toResp(afterSale);
         }
-        afterSale.setRefundTime(auditTime);
+        return completeRefund(afterSale, order, payOrder, refundProvider, refundResult,
+                0, operatorType, operatorId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> syncProcessing(Long adminId, Long afterSaleId) {
+        return syncProcessingInternal(getAfterSaleById(afterSaleId),
+                TradeOrderLogService.OPERATOR_ADMIN, adminId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> syncProcessingBySystem(Long afterSaleId) {
+        return syncProcessingInternal(getAfterSaleById(afterSaleId),
+                TradeOrderLogService.OPERATOR_SYSTEM, 0L);
+    }
+
+    public List<Long> listProcessingIds(int limit) {
+        return tradeAfterSaleMapper.selectList(new LambdaQueryWrapper<TradeAfterSaleDO>()
+                        .eq(TradeAfterSaleDO::getStatus, 4)
+                        .orderByAsc(TradeAfterSaleDO::getUpdateTime)
+                        .last("LIMIT " + Math.min(Math.max(limit, 1), 100)))
+                .stream()
+                .map(TradeAfterSaleDO::getId)
+                .toList();
+    }
+
+    private Map<String, Object> syncProcessingInternal(TradeAfterSaleDO afterSale,
+                                                        String operatorType, Long operatorId) {
+        if (afterSale.getStatus() == null || afterSale.getStatus() != 4) {
+            return toResp(afterSale);
+        }
+        if (!tradeRefundProviderService.currentType().equals(afterSale.getRefundProvider())) {
+            throw new ServerException(503, "退款渠道配置与售后单不一致");
+        }
+        TradeOrderDO order = getUserOrder(null, afterSale.getOrderId());
+        PayOrderDO payOrder = getPaidPayOrder(order);
+        if (payOrder == null || payOrder.getStatus() == null || payOrder.getStatus() != PayOrderStatus.PAID) {
+            throw new ServerException(400, "支付单当前不能同步退款");
+        }
+        TradeRefundProvider.RefundResult result = tradeRefundProviderService.query(
+                new TradeRefundProvider.RefundQuery(
+                        afterSale.getAfterSaleSn(),
+                        afterSale.getProviderRefundNo(),
+                        payOrder.getPaySn(),
+                        afterSale.getRefundAmount()));
+        if (result.status() == TradeRefundProvider.RefundStatus.PROCESSING) {
+            tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                    .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                    .eq(TradeAfterSaleDO::getStatus, 4)
+                    .set(TradeAfterSaleDO::getRefundMessage, result.message()));
+            afterSale.setRefundMessage(result.message());
+            return toResp(afterSale);
+        }
+        return completeRefund(afterSale, order, payOrder, afterSale.getRefundProvider(), result,
+                4, operatorType, operatorId);
+    }
+
+    private Map<String, Object> completeRefund(
+            TradeAfterSaleDO afterSale, TradeOrderDO order, PayOrderDO payOrder,
+            String refundProvider, TradeRefundProvider.RefundResult refundResult,
+            int expectedAfterSaleStatus, String operatorType, Long operatorId) {
+        LocalDateTime refundTime = LocalDateTime.now();
+        int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                .eq(TradeAfterSaleDO::getStatus, expectedAfterSaleStatus)
+                .set(TradeAfterSaleDO::getStatus, 1)
+                .set(TradeAfterSaleDO::getAuditTime, refundTime)
+                .set(TradeAfterSaleDO::getRefundTime, refundTime)
+                .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
+                .set(TradeAfterSaleDO::getProviderRefundNo, refundResult.providerRefundNo())
+                .set(TradeAfterSaleDO::getRefundMessage, refundResult.message()));
+        if (afterSaleUpdated != 1) {
+            TradeAfterSaleDO latest = getAfterSaleById(afterSale.getId());
+            if (latest.getStatus() != null && latest.getStatus() == 1) {
+                return toResp(latest);
+            }
+            throw new ServerException(400, "售后单状态已变更，不能完成退款");
+        }
 
         int payOrderUpdated = payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getId, payOrder.getId())
@@ -292,11 +378,20 @@ public class TradeAfterSaleService {
         if (orderUpdated != 1) {
             throw new ServerException(400, "订单状态已变更，不能退款");
         }
+
+        afterSale.setStatus(1);
+        afterSale.setAuditTime(refundTime);
+        afterSale.setRefundTime(refundTime);
+        afterSale.setRefundProvider(refundProvider);
+        afterSale.setProviderRefundNo(refundResult.providerRefundNo());
+        afterSale.setRefundMessage(refundResult.message());
+        payOrder.setStatus(PayOrderStatus.REFUNDED);
         order.setPayStatus(TradeOrderPayStatus.REFUNDED);
         order.setStatus(5);
         if (Integer.valueOf(1).equals(afterSale.getBeforeOrderStatus())) {
             List<TradeOrderItemDO> orderItems = tradeOrderItemMapper.selectList(
-                    new LambdaQueryWrapper<TradeOrderItemDO>().eq(TradeOrderItemDO::getOrderId, orderId));
+                    new LambdaQueryWrapper<TradeOrderItemDO>()
+                            .eq(TradeOrderItemDO::getOrderId, order.getId()));
             for (TradeOrderItemDO orderItem : orderItems) {
                 tradeProductService.recoverStock(orderItem.getSkuId(), orderItem.getCount());
             }
@@ -305,6 +400,14 @@ public class TradeAfterSaleService {
                 "REFUND_SUCCESS", fromStatus, order.getStatus(), fromPayStatus, order.getPayStatus(),
                 refundResult.message());
         return toResp(afterSale);
+    }
+
+    private PayOrderDO getPaidPayOrder(TradeOrderDO order) {
+        return payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getOrderId, order.getId())
+                .eq(PayOrderDO::getUserId, order.getUserId())
+                .orderByDesc(PayOrderDO::getUpdateTime)
+                .last("LIMIT 1"));
     }
 
     public Map<String, Object> detail(Long userId, Long orderId) {

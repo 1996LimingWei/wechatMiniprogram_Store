@@ -67,7 +67,6 @@ shop-miniapp/
 │   ├── ucenter/         # 用户中心
 │   ├── auth/            # 登录注册
 │   ├── shopping/        # 下单结算
-│   ├── payMock/         # 模拟支付
 │   └── ...
 ├── components/          # 公共组件
 ├── common/              # 公共样式

@@ -7,21 +7,19 @@ import com.shop.framework.mybatis.core.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.time.LocalDateTime;
-
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("pay_order")
-public class PayOrderDO extends BaseDO {
+@TableName("pay_notify_log")
+public class PayNotifyLogDO extends BaseDO {
 
     @TableId(type = IdType.AUTO)
     private Long id;
+    private String notificationId;
+    private Long payOrderId;
     private String paySn;
-    private Long orderId;
-    private Long userId;
-    private Integer amount;
-    private String channel;
     private String channelTradeNo;
+    private String eventType;
     private Integer status;
-    private LocalDateTime payTime;
+    private String message;
+    private String rawBody;
 }

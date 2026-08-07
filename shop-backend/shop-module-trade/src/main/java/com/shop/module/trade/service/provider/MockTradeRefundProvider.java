@@ -23,4 +23,13 @@ public class MockTradeRefundProvider implements TradeRefundProvider {
                 "Mock 退款成功"
         );
     }
+
+    @Override
+    public RefundResult query(RefundQuery query) {
+        return new RefundResult(
+                query.providerRefundNo(),
+                RefundStatus.SUCCESS,
+                "Mock 退款查询成功"
+        );
+    }
 }

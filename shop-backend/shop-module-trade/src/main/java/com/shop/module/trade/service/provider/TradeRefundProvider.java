@@ -7,6 +7,8 @@ public interface TradeRefundProvider {
 
     RefundResult refund(RefundRequest request);
 
+    RefundResult query(RefundQuery query);
+
     enum RefundStatus {
         SUCCESS,
         PROCESSING
@@ -24,5 +26,12 @@ public interface TradeRefundProvider {
             String providerRefundNo,
             RefundStatus status,
             String message) {
+    }
+
+    record RefundQuery(
+            String afterSaleSn,
+            String providerRefundNo,
+            String paySn,
+            Integer amount) {
     }
 }

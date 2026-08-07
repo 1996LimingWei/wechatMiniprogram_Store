@@ -16,11 +16,9 @@
 				<view class="action-btns">
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.cancel" @tap="cancelOrder">取消订单</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.pay" @tap="payOrder">立即支付</view>
-					<view class="action-btn primary" v-if="tradeDevActionEnabled && orderInfo.handleOption && orderInfo.handleOption.ship" @tap="mockShip">模拟发货</view>
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.logistics" @tap="viewLogistics">查看物流</view>
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refund" @tap="applyRefund">申请退款</view>
 					<view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.refundCancel" @tap="cancelRefund">撤销申请</view>
-					<view class="action-btn primary" v-if="tradeDevActionEnabled && orderInfo.handleOption && orderInfo.handleOption.refundApprove" @tap="mockApproveRefund">模拟退款通过</view>
 					<view class="action-btn primary" v-if="orderInfo.handleOption && orderInfo.handleOption.confirm" @tap="confirmOrder">确认收货</view>
 				</view>
 			</view>
@@ -125,8 +123,7 @@
 				orderGoods: [],
 				handleOption: {},
 				logistics: {},
-				afterSale: {},
-				tradeDevActionEnabled: api.TradeDevActionEnabled === true
+				afterSale: {}
 			}
 		},
 		methods: {
@@ -169,10 +166,12 @@
 			},
 			payOrder() {
 				let that = this;
-				util.payOrder(parseInt(that.orderId)).then(res => {
+				util.payOrder(parseInt(that.orderId)).then(() => {
+					uni.showToast({ title: '支付成功', icon: 'success' });
 					that.getOrderDetail();
-				}).catch(res => {
-					util.toast('支付失败');
+				}).catch(error => {
+					util.toast(error && error.pending ? '支付结果确认中' : '支付失败');
+					if (error && error.pending) that.getOrderDetail();
 				});
 			},
 			confirmOrder() {
@@ -194,27 +193,6 @@
 											uni.navigateBack();
 										}
 									});
-								}
-							});
-						}
-					}
-				});
-			},
-			mockShip() {
-				let that = this;
-				uni.showModal({
-					title: '模拟发货',
-					content: '当前还没有管理后台，先用模拟发货让订单进入待收货，确定继续吗？',
-					confirmColor: '#5B8C5A',
-					success: function(res) {
-						if (res.confirm) {
-							util.request(api.OrderMockShip, {
-								orderId: that.orderInfo.id,
-								logisticsCompany: '顺丰速运'
-							}, 'POST', 'application/json').then(function(res) {
-								if (res.code === 0) {
-									uni.showToast({ title: '已模拟发货', icon: 'success' });
-									that.getOrderDetail();
 								}
 							});
 						}
@@ -250,25 +228,6 @@
 						}, 'POST', 'application/json').then(function(res) {
 							if (res.code === 0) {
 								uni.showToast({ title: '已提交申请', icon: 'success' });
-								that.getOrderDetail();
-							}
-						});
-					}
-				});
-			},
-			mockApproveRefund() {
-				let that = this;
-				uni.showModal({
-					title: '模拟退款通过',
-					content: '当前还没有真实退款接口，先模拟审核通过并将订单标记为已退款，确定继续吗？',
-					confirmColor: '#5B8C5A',
-					success: function(res) {
-						if (!res.confirm) return;
-						util.request(api.OrderRefundMockApprove, {
-							orderId: that.orderInfo.id
-						}, 'POST', 'application/json').then(function(res) {
-							if (res.code === 0) {
-								uni.showToast({ title: '已退款', icon: 'success' });
 								that.getOrderDetail();
 							}
 						});

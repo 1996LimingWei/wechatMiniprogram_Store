@@ -16,4 +16,9 @@ public class DisabledTradeRefundProvider implements TradeRefundProvider {
     public RefundResult refund(RefundRequest request) {
         throw new ServerException(503, "退款渠道尚未配置");
     }
+
+    @Override
+    public RefundResult query(RefundQuery query) {
+        throw new ServerException(503, "退款渠道尚未配置");
+    }
 }

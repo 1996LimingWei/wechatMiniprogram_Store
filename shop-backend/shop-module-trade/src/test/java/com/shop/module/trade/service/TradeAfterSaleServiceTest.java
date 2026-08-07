@@ -171,6 +171,52 @@ class TradeAfterSaleServiceTest {
         verify(tradeOrderMapper, never()).update(isNull(), any());
     }
 
+    @Test
+    void shouldCompleteProcessingRefundAfterProviderQuerySucceeds() {
+        TradeOrderDO order = new TradeOrderDO();
+        order.setId(10L);
+        order.setOrderSn("202608070001");
+        order.setUserId(1L);
+        order.setStatus(5);
+        order.setPayStatus(TradeOrderPayStatus.PAID);
+        TradeAfterSaleDO afterSale = new TradeAfterSaleDO();
+        afterSale.setId(30L);
+        afterSale.setOrderId(10L);
+        afterSale.setAfterSaleSn("R202608070001");
+        afterSale.setStatus(4);
+        afterSale.setRefundAmount(2990);
+        afterSale.setRefundProvider("wechat");
+        afterSale.setProviderRefundNo("WX-R202608070001");
+        PayOrderDO payOrder = new PayOrderDO();
+        payOrder.setId(20L);
+        payOrder.setPaySn("P202608070001");
+        payOrder.setOrderId(10L);
+        payOrder.setUserId(1L);
+        payOrder.setStatus(PayOrderStatus.PAID);
+        payOrder.setAmount(2990);
+        when(tradeAfterSaleMapper.selectById(30L)).thenReturn(afterSale);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(order);
+        when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
+        when(tradeRefundProviderService.currentType()).thenReturn("wechat");
+        when(tradeRefundProviderService.query(any())).thenReturn(
+                new TradeRefundProvider.RefundResult(
+                        "WX-R202608070001",
+                        TradeRefundProvider.RefundStatus.SUCCESS,
+                        "退款成功"));
+        when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
+        when(payOrderMapper.update(isNull(), any())).thenReturn(1);
+        when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
+
+        Map<String, Object> result = tradeAfterSaleService.syncProcessing(9L, 30L);
+
+        assertEquals(1, result.get("status"));
+        assertEquals(TradeOrderPayStatus.REFUNDED, order.getPayStatus());
+        assertEquals(PayOrderStatus.REFUNDED, payOrder.getStatus());
+        verify(tradeRefundProviderService).query(any());
+        verify(tradeOrderLogService).recordPayChanged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
     private void stubSuccessfulRefund() {
         when(tradeRefundProviderService.currentType()).thenReturn("mock");
         when(tradeRefundProviderService.refund(any())).thenReturn(

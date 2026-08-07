@@ -26,8 +26,8 @@ public class SecurityAutoConfiguration {
                 // 登录与 Token 刷新是匿名入口，其余认证接口由后续规则保护。
                 .requestMatchers(
                         "/app-api/auth/LoginByMa",
-                        "/app-api/auth/code",
-                        "/app-api/auth/refresh-token"
+                        "/app-api/auth/refresh-token",
+                        "/app-api/pay/wechat/notify"
                 ).permitAll()
                 // 商品、首页、品牌、专题、帮助与公开评价允许游客浏览。
                 .requestMatchers(

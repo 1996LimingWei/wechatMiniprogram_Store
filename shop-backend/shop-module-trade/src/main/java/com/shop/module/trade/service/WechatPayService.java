@@ -99,9 +99,9 @@ public class WechatPayService {
     }
 
     public PaymentNotification parseNotification(
-            String timestamp, String nonce, String signature, String body) {
+            String timestamp, String nonce, String signature, String serial, String body) {
         validateConfiguration();
-        verifySignature(timestamp + "\n" + nonce + "\n" + body + "\n", signature);
+        verifySignature(timestamp + "\n" + nonce + "\n" + body + "\n", signature, serial);
         long callbackTime;
         try {
             callbackTime = Long.parseLong(timestamp);
@@ -113,15 +113,32 @@ public class WechatPayService {
         }
         try {
             Map<String, Object> envelope = objectMapper.readValue(body, new TypeReference<>() {});
+            String notificationId = requireText(envelope, "id");
+            String eventType = requireText(envelope, "event_type");
+            if (!"TRANSACTION.SUCCESS".equals(eventType)) {
+                throw new ServerException(400, "微信支付通知事件不受支持");
+            }
             Map<String, Object> resource = castMap(envelope.get("resource"));
             String plaintext = decryptResource(resource);
             Map<String, Object> transaction = objectMapper.readValue(plaintext, new TypeReference<>() {});
             Map<String, Object> amount = castMap(transaction.get("amount"));
+            String appId = requireText(transaction, "appid");
+            String mchId = requireText(transaction, "mchid");
+            String currency = requireText(amount, "currency");
+            if (!properties.getAppId().equals(appId) || !properties.getMchId().equals(mchId)) {
+                throw new ServerException(400, "微信支付回调商户信息不匹配");
+            }
+            if (!"CNY".equals(currency)) {
+                throw new ServerException(400, "微信支付回调币种不匹配");
+            }
             return new PaymentNotification(
-                    String.valueOf(transaction.get("out_trade_no")),
-                    String.valueOf(transaction.get("transaction_id")),
-                    String.valueOf(transaction.get("trade_state")),
-                    ((Number) amount.get("total")).intValue()
+                    notificationId,
+                    eventType,
+                    requireText(transaction, "out_trade_no"),
+                    requireText(transaction, "transaction_id"),
+                    requireText(transaction, "trade_state"),
+                    requireAmount(amount),
+                    parseSuccessTime(transaction.get("success_time"))
             );
         } catch (ServerException exception) {
             throw exception;
@@ -162,16 +179,22 @@ public class WechatPayService {
         String timestamp = response.headers().firstValue("Wechatpay-Timestamp").orElse("");
         String nonce = response.headers().firstValue("Wechatpay-Nonce").orElse("");
         String signature = response.headers().firstValue("Wechatpay-Signature").orElse("");
-        if (timestamp.isBlank() || nonce.isBlank() || signature.isBlank()) {
+        String serial = response.headers().firstValue("Wechatpay-Serial").orElse("");
+        if (timestamp.isBlank() || nonce.isBlank() || signature.isBlank() || serial.isBlank()) {
             throw new ServerException(502, "微信支付响应缺少签名");
         }
-        verifySignature(timestamp + "\n" + nonce + "\n" + response.body() + "\n", signature);
+        verifySignature(timestamp + "\n" + nonce + "\n" + response.body() + "\n", signature, serial);
     }
 
-    private void verifySignature(String message, String encodedSignature) {
+    private void verifySignature(String message, String encodedSignature, String serial) {
         try {
+            X509Certificate certificate = loadPlatformCertificate();
+            String certificateSerial = certificate.getSerialNumber().toString(16).toUpperCase();
+            if (!certificateSerial.equalsIgnoreCase(serial)) {
+                throw new ServerException(400, "微信支付平台证书序列号不匹配");
+            }
             Signature verifier = Signature.getInstance("SHA256withRSA");
-            verifier.initVerify(loadPlatformCertificate().getPublicKey());
+            verifier.initVerify(certificate.getPublicKey());
             verifier.update(message.getBytes(StandardCharsets.UTF_8));
             if (!verifier.verify(Base64.getDecoder().decode(encodedSignature))) {
                 throw new ServerException(400, "微信支付签名验证失败");
@@ -184,17 +207,21 @@ public class WechatPayService {
     }
 
     private String decryptResource(Map<String, Object> resource) throws Exception {
+        String algorithm = requireText(resource, "algorithm");
+        if (!"AEAD_AES_256_GCM".equals(algorithm)) {
+            throw new ServerException(400, "微信支付回调加密算法不受支持");
+        }
+        String nonce = requireText(resource, "nonce");
+        String ciphertext = requireText(resource, "ciphertext");
         byte[] key = properties.getApiV3Key().getBytes(StandardCharsets.UTF_8);
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"),
-                new GCMParameterSpec(128, String.valueOf(resource.get("nonce"))
-                        .getBytes(StandardCharsets.UTF_8)));
+                new GCMParameterSpec(128, nonce.getBytes(StandardCharsets.UTF_8)));
         Object associatedData = resource.get("associated_data");
         if (associatedData != null) {
             cipher.updateAAD(String.valueOf(associatedData).getBytes(StandardCharsets.UTF_8));
         }
-        return new String(cipher.doFinal(Base64.getDecoder().decode(
-                String.valueOf(resource.get("ciphertext")))), StandardCharsets.UTF_8);
+        return new String(cipher.doFinal(Base64.getDecoder().decode(ciphertext)), StandardCharsets.UTF_8);
     }
 
     private String sign(String message) throws Exception {
@@ -220,7 +247,7 @@ public class WechatPayService {
         }
     }
 
-    private void validateConfiguration() {
+    public void validateConfiguration() {
         if (!properties.isEnabled()
                 || isBlank(properties.getAppId())
                 || isBlank(properties.getMchId())
@@ -247,11 +274,51 @@ public class WechatPayService {
         return value == null || value.isBlank();
     }
 
+    private String requireText(Map<String, Object> source, String key) {
+        Object value = source.get(key);
+        if (value == null || String.valueOf(value).isBlank()) {
+            throw new ServerException(400, "微信支付回调字段缺失: " + key);
+        }
+        return String.valueOf(value);
+    }
+
+    private int requireAmount(Map<String, Object> amount) {
+        Object total = amount.get("total");
+        if (!(total instanceof Number number) || number.intValue() <= 0) {
+            throw new ServerException(400, "微信支付回调金额无效");
+        }
+        return number.intValue();
+    }
+
+    private java.time.LocalDateTime parseSuccessTime(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) {
+            throw new ServerException(400, "微信支付回调成功时间缺失");
+        }
+        try {
+            return OffsetDateTime.parse(String.valueOf(value))
+                    .atZoneSameInstant(ZoneId.of("Asia/Shanghai"))
+                    .toLocalDateTime();
+        } catch (Exception exception) {
+            throw new ServerException(400, "微信支付回调成功时间无效");
+        }
+    }
+
+    public void validateCredentialFiles() {
+        validateConfiguration();
+        try {
+            loadPrivateKey();
+            loadPlatformCertificate();
+        } catch (Exception exception) {
+            throw new ServerException(503, "微信支付私钥或平台证书不可用");
+        }
+    }
+
     public record TradeOrderDOView(
             Long userId, String orderSn, Integer amount, java.time.LocalDateTime expireTime) {
     }
 
     public record PaymentNotification(
-            String paySn, String transactionId, String tradeState, Integer amount) {
+            String notificationId, String eventType, String paySn, String transactionId,
+            String tradeState, Integer amount, java.time.LocalDateTime successTime) {
     }
 }

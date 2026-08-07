@@ -200,12 +200,6 @@ export default {
 		goMember() {
 			uni.navigateTo({ url: '/pages/ucenter/member/member' });
 		},
-		goDistribution() {
-			uni.showToast({ title: '分销中心开发中', icon: 'none' });
-		},
-		goWallet() {
-			uni.showToast({ title: '余额钱包开发中', icon: 'none' });
-		},
 		exitLogin() {
 			uni.showModal({
 				title: '提示',

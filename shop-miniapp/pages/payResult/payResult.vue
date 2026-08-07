@@ -1,7 +1,7 @@
 <template>
 	<view class="page">
 		<!-- 支付成功 -->
-		<view class="result-card" v-if="status == true">
+		<view class="result-card" v-if="status === 'success'">
 			<view class="result-icon success-icon">✓</view>
 			<text class="result-title">支付成功</text>
 			<text class="result-desc">感谢您的购买，祝您身体健康</text>
@@ -11,8 +11,19 @@
 			</view>
 		</view>
 
+		<!-- 支付结果确认中 -->
+		<view class="result-card" v-else-if="status === 'pending'">
+			<view class="result-icon pending-icon">···</view>
+			<text class="result-title">支付结果确认中</text>
+			<text class="result-desc">正在同步微信支付结果，请稍后在订单中查看</text>
+			<view class="result-btns">
+				<navigator class="btn-primary" url="/pages/ucenter/order/order" open-type="redirect">查看订单</navigator>
+				<navigator class="btn-outline" url="/pages/index/index" open-type="switchTab">返回首页</navigator>
+			</view>
+		</view>
+
 		<!-- 支付失败 -->
-		<view class="result-card" v-if="status != true">
+		<view class="result-card" v-else>
 			<view class="result-icon fail-icon">!</view>
 			<text class="result-title fail-title">支付未完成</text>
 			<text class="result-desc">请在 <text class="highlight">1小时</text> 内完成付款，否则订单将被取消</text>
@@ -26,30 +37,38 @@
 
 <script>
 const util = require("@/utils/util.js");
-const api = require('@/utils/api.js');
 
 export default {
 	data() {
 		return {
-			status: false,
+			status: 'failed',
 			orderId: 0
 		}
 	},
 	methods: {
-		updateSuccess() {
-			util.request(api.OrderQuery, { orderId: this.orderId }).then(() => {});
+		confirmPaymentResult() {
+			if (!this.orderId) return;
+			this.status = 'pending';
+			util.waitForPaymentResult(parseInt(this.orderId)).then(() => {
+				this.status = 'success';
+			}).catch((error) => {
+				this.status = error && error.pending ? 'pending' : 'failed';
+			});
 		},
 		payOrder() {
+			this.status = 'pending';
 			util.payOrder(parseInt(this.orderId)).then(() => {
-				this.status = true;
-			}).catch(() => {
-				util.toast('支付失败');
+				this.status = 'success';
+			}).catch((error) => {
+				this.status = error && error.pending ? 'pending' : 'failed';
+				util.toast(error && error.pending ? '支付结果确认中' : '支付失败');
 			});
 		}
 	},
 	onLoad(options) {
-		this.orderId = options.orderId || 24;
-		this.status = options.status;
+		this.orderId = Number(options.orderId || 0);
+		this.status = options.status === '1' ? 'success' : options.status === '2' ? 'pending' : 'failed';
+		if (this.status !== 'failed') this.confirmPaymentResult();
 	}
 }
 </script>
@@ -107,6 +126,11 @@ page {
 
 .fail-icon {
 	background: linear-gradient(135deg, #E8A44A, #D4863A);
+}
+
+.pending-icon {
+	background: #6F8171;
+	font-size: 40rpx;
 }
 
 .result-title {

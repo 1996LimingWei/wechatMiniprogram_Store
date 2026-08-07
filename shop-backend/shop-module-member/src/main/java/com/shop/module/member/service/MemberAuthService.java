@@ -35,7 +35,11 @@ public class MemberAuthService {
      * @param code 微信 wx.login 获取的 code
      * @return 登录结果（token、userInfo、userId）
      */
-    public Map<String, Object> loginByWeixin(String code) {
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> loginByWeixin(String code, boolean privacyAccepted) {
+        if (!privacyAccepted) {
+            throw new ServerException(400, "请先同意用户协议和隐私政策");
+        }
         // 1. 通过 code 换取 openid 和 session_key
         Map<String, String> wxResult = wxMaService.code2Session(code);
         String openid = wxResult.get("openid");
@@ -58,7 +62,7 @@ public class MemberAuthService {
             user.setStatus(1);
             user.setMemberLevel(1); // 新用户自动绑定白银会员
             memberUserMapper.insert(user);
-            log.info("[MemberAuth] 新用户注册, userId={}, openid={}", user.getId(), openid);
+            log.info("[MemberAuth] 新用户注册, userId={}", user.getId());
         } else {
             // 老用户：更新 session_key
             user.setSessionKey(sessionKey);
@@ -66,7 +70,7 @@ public class MemberAuthService {
                 user.setUnionid(unionid);
             }
             memberUserMapper.updateById(user);
-            log.info("[MemberAuth] 用户登录, userId={}, openid={}", user.getId(), openid);
+            log.info("[MemberAuth] 用户登录, userId={}", user.getId());
         }
 
         // 3. 检查用户状态
@@ -74,13 +78,16 @@ public class MemberAuthService {
             throw new ServerException(403, "账号已被禁用");
         }
 
-        // 4. 生成 Token
+        // 4. 记录当前版本协议同意凭证
+        recordPrivacyConsent(user.getId());
+
+        // 5. 生成 Token
         LoginUser loginUser = new LoginUser();
         loginUser.setUserId(user.getId());
         loginUser.setUserType(1); // 1=会员
         String token = tokenService.createToken(loginUser);
 
-        // 5. 构造响应（字段名与前端 ucenter/index.vue 的 isLogin 判断对齐）
+        // 6. 构造响应（字段名与前端 ucenter/index.vue 的 isLogin 判断对齐）
         Map<String, Object> userInfo = new LinkedHashMap<>();
         userInfo.put("nickname", user.getNickname());
         userInfo.put("avatar", user.getAvatar());
@@ -136,6 +143,14 @@ public class MemberAuthService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("userInfo", userInfo);
         return data;
+    }
+
+    private void recordPrivacyConsent(Long userId) {
+        jdbcTemplate.update("""
+                INSERT IGNORE INTO member_privacy_consent
+                    (user_id, privacy_version, agreement_version, consent_time)
+                VALUES (?, '2026-08-07', '2026-08-07', CURRENT_TIMESTAMP)
+                """, userId);
     }
 
     @Transactional(rollbackFor = Exception.class)

@@ -186,6 +186,15 @@ public class TradeOrderService {
 
     @Transactional(rollbackFor = Exception.class)
     public void markPaid(Long userId, Long orderId) {
+        markPaid(userId, orderId, TradeOrderLogService.OPERATOR_USER, userId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void markPaidBySystem(Long userId, Long orderId) {
+        markPaid(userId, orderId, TradeOrderLogService.OPERATOR_SYSTEM, 0L);
+    }
+
+    private void markPaid(Long userId, Long orderId, String operatorType, Long operatorId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         if (order.getPayStatus() == TradeOrderPayStatus.PAID) {
             return;
@@ -204,8 +213,8 @@ public class TradeOrderService {
         if (updated == 1) {
             order.setStatus(1);
             order.setPayStatus(TradeOrderPayStatus.PAID);
-            tradeOrderLogService.recordPayChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
-                    "PAY_SUCCESS", 0, 1, 0, 1, "Mock 支付成功");
+            tradeOrderLogService.recordPayChanged(order, operatorType, operatorId,
+                    "PAY_SUCCESS", 0, 1, 0, 1, "支付成功");
             return;
         }
         TradeOrderDO latest = tradeOrderMapper.selectById(orderId);

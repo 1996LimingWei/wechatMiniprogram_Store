@@ -162,7 +162,7 @@ export default {
 			return this.memberLevel === 2;
 		},
 		avatarUrl() {
-			return this.avatar || 'https://platform-wxmall.oss-cn-beijing.aliyuncs.com/upload/20180727/150547696d798c.png';
+			return this.avatar || '/static/images/logo.png';
 		}
 	},
 	methods: {

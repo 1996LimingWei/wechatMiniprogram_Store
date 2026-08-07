@@ -52,8 +52,29 @@ const utils = {
 		// #endif
 		return time
 	},
-	delayed: null,
+	loadingTimer: null,
+	loadingCount: 0,
 	refreshPromise: null,
+	unauthorizedHandling: false,
+	_beginLoading: function (isDelay) {
+		utils.loadingCount += 1;
+		if (utils.loadingCount !== 1) return;
+		utils.loadingTimer = setTimeout(() => {
+			utils.loadingTimer = null;
+			if (utils.loadingCount > 0) {
+				uni.showLoading({ mask: true, title: '请稍候...' });
+			}
+		}, isDelay ? 1000 : 0);
+	},
+	_endLoading: function () {
+		utils.loadingCount = Math.max(0, utils.loadingCount - 1);
+		if (utils.loadingCount > 0) return;
+		if (utils.loadingTimer) {
+			clearTimeout(utils.loadingTimer);
+			utils.loadingTimer = null;
+		}
+		uni.hideLoading();
+	},
 	/**
 	 * 请求数据处理
 	 * @param string url 请求地址
@@ -70,20 +91,8 @@ const utils = {
 	 */
 	request: function (url, postData = {}, method = "POST", contentType = "application/x-www-form-urlencoded", isDelay, hideLoading, hasRetried = false) {
 		//接口请求
-		let loadding = false;
-		utils.delayed && uni.hideLoading();
-		clearTimeout(utils.delayed);
-		utils.delayed = null;
 		if (!hideLoading) {
-			utils.delayed = setTimeout(() => {
-				uni.showLoading({
-					mask: true,
-					title: '请稍候...',
-					success(res) {
-						loadding = true
-					}
-				})
-			}, isDelay ? 1000 : 0)
+			utils._beginLoading(isDelay);
 		}
 
 		return new Promise((resolve, reject) => {
@@ -101,9 +110,6 @@ const utils = {
 				method: method, //'GET','POST'
 				timeout: 15000,
 				success: (res) => {
-					if (loadding && !hideLoading) {
-						uni.hideLoading()
-					}
 					if (res.statusCode !== 200) {
 						utils.toast('服务暂时不可用，请稍后再试')
 						reject(res)
@@ -140,9 +146,7 @@ const utils = {
 					reject(res)
 				},
 				complete: function () {
-					clearTimeout(utils.delayed)
-					utils.delayed = null;
-					uni.hideLoading()
+					if (!hideLoading) utils._endLoading();
 				}
 			})
 		})
@@ -385,6 +389,39 @@ const utils = {
 	},
 
 	/**
+	 * 等待后台确认支付结果，后台回调状态是支付成功的唯一依据
+	 */
+	waitForPaymentResult: function (orderId, attempts) {
+		let remainingAttempts = attempts || 10;
+		return new Promise(function (resolve, reject) {
+			const query = function () {
+				utils.request('pay/query', { orderId: orderId }, 'POST', 'application/json', false, true)
+					.then((res) => {
+						if (res.code === 0 && res.data && res.data.orderStatus === 'paid') {
+							resolve(res.data);
+							return;
+						}
+						remainingAttempts -= 1;
+						if (remainingAttempts <= 0) {
+							reject({ errMsg: 'requestPayment:pending', pending: true });
+							return;
+						}
+						setTimeout(query, 1000);
+					})
+					.catch(() => {
+						remainingAttempts -= 1;
+						if (remainingAttempts <= 0) {
+							reject({ errMsg: 'requestPayment:pending', pending: true });
+							return;
+						}
+						setTimeout(query, 1000);
+					});
+			};
+			query();
+		});
+	},
+
+	/**
 	 * 统一下单请求
 	 */
 	payOrder: function (orderId) {
@@ -395,12 +432,26 @@ const utils = {
 				if (res.code === 0) {
 					let payParam = res.data;
 					if (payParam.mockPay) {
-						const app = getApp();
-						app.globalData._payResolve = resolve;
-						app.globalData._payReject = reject;
-						app.globalData._payAmount = payParam.amount || app.globalData._payAmount || '0.00';
-						uni.navigateTo({
-							url: '/pages/payMock/payMock?orderId=' + orderId + '&amount=' + app.globalData._payAmount
+						uni.showModal({
+							title: '开发环境模拟支付',
+							content: '确认将当前订单标记为支付成功？',
+							confirmText: '确认支付',
+							success: function (modalResult) {
+								if (!modalResult.confirm) {
+									reject({ errMsg: 'requestPayment:cancel' });
+									return;
+								}
+								utils.request('pay/mock-success', { orderId: orderId }, 'POST', 'application/json', false, true)
+									.then((mockResult) => {
+										if (mockResult.code === 0) {
+											utils.waitForPaymentResult(orderId).then(resolve).catch(reject);
+										} else {
+											reject(mockResult);
+										}
+									})
+									.catch(reject);
+							},
+							fail: reject
 						});
 						return;
 					}
@@ -410,16 +461,10 @@ const utils = {
 						'package': payParam.package,
 						'signType': payParam.signType,
 						'paySign': payParam.paySign,
-						'success': function (res) {
-							console.log(res)
-							resolve(res);
+						'success': function () {
+							utils.waitForPaymentResult(orderId).then(resolve).catch(reject);
 						},
 						'fail': function (res) {
-							console.log(res)
-							reject(res);
-						},
-						'complete': function (res) {
-							console.log(res)
 							reject(res);
 						}
 					});
@@ -489,6 +534,8 @@ const utils = {
 	 * 未授权处理：清除 token 并跳转登录页
 	 */
 	_handleUnauthorized: function () {
+		if (utils.unauthorizedHandling) return;
+		utils.unauthorizedHandling = true;
 		uni.removeStorageSync('token');
 		uni.removeStorageSync('userId');
 		utils.modal('温馨提示', '您还没有登录，是否去登录', true, (confirm) => {
@@ -502,6 +549,9 @@ const utils = {
 					}
 				});
 			}
+			setTimeout(() => {
+				utils.unauthorizedHandling = false;
+			}, 500);
 		});
 	}
 }
