@@ -17,6 +17,7 @@ const statusTabs = [
   { label: "全部", value: "all" },
   { label: "待审核", value: "0" },
   { label: "退款处理中", value: "4" },
+  { label: "退款失败", value: "5" },
   { label: "已退款", value: "1" },
   { label: "已拒绝", value: "2" },
   { label: "已撤销", value: "3" }
@@ -79,7 +80,8 @@ function statusType(status?: number) {
     1: "success",
     2: "danger",
     3: "info",
-    4: "primary"
+    4: "primary",
+    5: "danger"
   };
   return types[status ?? -1] ?? "info";
 }
@@ -104,9 +106,13 @@ async function handleApprove(row: AfterSale) {
     }
   );
   const result = await approveAfterSale(row.id);
-  ElMessage.success(
-    result.status === 4 ? "退款请求已提交渠道处理" : "退款已完成"
-  );
+  if (result.status === 5) {
+    ElMessage.warning("退款失败，订单状态已恢复");
+  } else {
+    ElMessage.success(
+      result.status === 4 ? "退款请求已提交渠道处理" : "退款已完成"
+    );
+  }
   if (detail.value?.id === row.id) detailVisible.value = false;
   await fetchData();
 }
@@ -115,9 +121,13 @@ async function handleSync(row: AfterSale) {
   syncSaving.value = true;
   try {
     const result = await syncAfterSale(row.id);
-    ElMessage.success(
-      result.status === 1 ? "退款状态已同步完成" : "退款渠道仍在处理中"
-    );
+    if (result.status === 5) {
+      ElMessage.warning("退款失败，订单状态已恢复");
+    } else {
+      ElMessage.success(
+        result.status === 1 ? "退款状态已同步完成" : "退款渠道仍在处理中"
+      );
+    }
     if (detail.value?.id === row.id) detail.value = result;
     await fetchData();
   } finally {

@@ -148,6 +148,40 @@ class PayOrderServiceTest {
         assertEquals(successTime, payOrder.getPayTime());
     }
 
+    @Test
+    void shouldReconcileSuccessfulWechatPaymentWhenUserQueries() {
+        LocalDateTime successTime = LocalDateTime.of(2026, 8, 8, 10, 30);
+        PayOrderDO payOrder = createPayOrder(PayOrderStatus.PENDING, 2990);
+        payOrder.setPaySn("P202608080001");
+        payOrder.setChannel("wx_lite");
+        TradeOrderDO order = createOrder(0, TradeOrderPayStatus.UNPAID, 2990);
+        when(wechatPayService.isEnabled()).thenReturn(true);
+        when(wechatPayService.queryPayment("P202608080001")).thenReturn(
+                new WechatPayService.PaymentQueryResult(
+                        "P202608080001", "WX202608080001", "SUCCESS", 2990,
+                        successTime, "{\"trade_state\":\"SUCCESS\"}"));
+        when(tradeOrderService.getUserOrder(1L, 10L)).thenReturn(order);
+        when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
+        when(payOrderMapper.update(isNull(), any())).thenReturn(1);
+        doAnswer(invocation -> {
+            PayNotifyLogDO notifyLog = invocation.getArgument(0);
+            notifyLog.setId(41L);
+            return 1;
+        }).when(payNotifyLogMapper).insert(any(PayNotifyLogDO.class));
+        when(payNotifyLogMapper.update(isNull(), any())).thenReturn(1);
+        doAnswer(invocation -> {
+            order.setPayStatus(TradeOrderPayStatus.PAID);
+            return null;
+        }).when(tradeOrderService).markPaidBySystem(1L, 10L);
+
+        Map<String, Object> result = payOrderService.query(1L, 10L);
+
+        assertEquals("paid", result.get("orderStatus"));
+        assertEquals(PayOrderStatus.PAID, payOrder.getStatus());
+        verify(wechatPayService).queryPayment("P202608080001");
+        verify(tradeOrderService).markPaidBySystem(1L, 10L);
+    }
+
     private TradeOrderDO createOrder(int status, int payStatus, int actualPrice) {
         TradeOrderDO order = new TradeOrderDO();
         order.setId(10L);

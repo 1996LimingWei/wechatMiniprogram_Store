@@ -56,7 +56,8 @@ public class TradeAfterSaleService {
             throw new ServerException(400, "订单已退款");
         }
         TradeAfterSaleDO existed = getAfterSale(orderId);
-        if (existed != null) {
+        if (existed != null && existed.getStatus() != null
+                && (existed.getStatus() == 0 || existed.getStatus() == 1 || existed.getStatus() == 4)) {
             return toResp(existed);
         }
 
@@ -259,6 +260,10 @@ public class TradeAfterSaleService {
                         payOrder.getPaySn(),
                         afterSale.getRefundAmount(),
                         afterSale.getReason()));
+        if (refundResult.status() == TradeRefundProvider.RefundStatus.FAILED) {
+            return failRefund(afterSale, order, refundProvider, refundResult,
+                    0, operatorType, operatorId);
+        }
         if (refundResult.status() == TradeRefundProvider.RefundStatus.PROCESSING) {
             LocalDateTime auditTime = LocalDateTime.now();
             int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
@@ -334,8 +339,51 @@ public class TradeAfterSaleService {
             afterSale.setRefundMessage(result.message());
             return toResp(afterSale);
         }
+        if (result.status() == TradeRefundProvider.RefundStatus.FAILED) {
+            return failRefund(afterSale, order, afterSale.getRefundProvider(), result,
+                    4, operatorType, operatorId);
+        }
         return completeRefund(afterSale, order, payOrder, afterSale.getRefundProvider(), result,
                 4, operatorType, operatorId);
+    }
+
+    private Map<String, Object> failRefund(
+            TradeAfterSaleDO afterSale, TradeOrderDO order, String refundProvider,
+            TradeRefundProvider.RefundResult refundResult, int expectedAfterSaleStatus,
+            String operatorType, Long operatorId) {
+        LocalDateTime auditTime = LocalDateTime.now();
+        int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                .eq(TradeAfterSaleDO::getStatus, expectedAfterSaleStatus)
+                .set(TradeAfterSaleDO::getStatus, 5)
+                .set(TradeAfterSaleDO::getAuditTime, auditTime)
+                .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
+                .set(TradeAfterSaleDO::getProviderRefundNo, refundResult.providerRefundNo())
+                .set(TradeAfterSaleDO::getRefundMessage, refundResult.message()));
+        if (afterSaleUpdated != 1) {
+            return toResp(getAfterSaleById(afterSale.getId()));
+        }
+
+        Integer fromStatus = order.getStatus();
+        Integer restoreStatus = getRestoreOrderStatus(afterSale);
+        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, order.getId())
+                .eq(TradeOrderDO::getStatus, 5)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                .set(TradeOrderDO::getStatus, restoreStatus));
+        if (orderUpdated != 1) {
+            throw new ServerException(400, "订单状态已变更，不能结束失败退款");
+        }
+
+        afterSale.setStatus(5);
+        afterSale.setAuditTime(auditTime);
+        afterSale.setRefundProvider(refundProvider);
+        afterSale.setProviderRefundNo(refundResult.providerRefundNo());
+        afterSale.setRefundMessage(refundResult.message());
+        order.setStatus(restoreStatus);
+        tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
+                "REFUND_FAILED", fromStatus, restoreStatus, refundResult.message());
+        return toResp(afterSale);
     }
 
     private Map<String, Object> completeRefund(
@@ -498,6 +546,7 @@ public class TradeAfterSaleService {
             case 2 -> "退款已拒绝";
             case 3 -> "已撤销";
             case 4 -> "退款处理中";
+            case 5 -> "退款失败";
             default -> "未知";
         };
     }

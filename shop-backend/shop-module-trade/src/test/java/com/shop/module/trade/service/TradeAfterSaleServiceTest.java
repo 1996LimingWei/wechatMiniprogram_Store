@@ -217,6 +217,70 @@ class TradeAfterSaleServiceTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
+    @Test
+    void shouldRestoreOrderWhenWechatRefundFails() {
+        TradeOrderDO order = new TradeOrderDO();
+        order.setId(10L);
+        order.setOrderSn("202608080001");
+        order.setUserId(1L);
+        order.setStatus(5);
+        order.setPayStatus(TradeOrderPayStatus.PAID);
+        TradeAfterSaleDO afterSale = new TradeAfterSaleDO();
+        afterSale.setId(30L);
+        afterSale.setOrderId(10L);
+        afterSale.setAfterSaleSn("R202608080001");
+        afterSale.setStatus(0);
+        afterSale.setBeforeOrderStatus(2);
+        afterSale.setRefundAmount(2990);
+        PayOrderDO payOrder = new PayOrderDO();
+        payOrder.setId(20L);
+        payOrder.setPaySn("P202608080001");
+        payOrder.setOrderId(10L);
+        payOrder.setUserId(1L);
+        payOrder.setStatus(PayOrderStatus.PAID);
+        payOrder.setAmount(2990);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(order);
+        when(tradeAfterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
+        when(tradeRefundProviderService.currentType()).thenReturn("wechat");
+        when(tradeRefundProviderService.refund(any())).thenReturn(
+                new TradeRefundProvider.RefundResult(
+                        "WX-R202608080001", TradeRefundProvider.RefundStatus.FAILED,
+                        "微信退款异常"));
+        when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
+        when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
+
+        Map<String, Object> result = tradeAfterSaleService.mockApprove(1L, 10L);
+
+        assertEquals(5, result.get("status"));
+        assertEquals(2, order.getStatus());
+        assertEquals(TradeOrderPayStatus.PAID, order.getPayStatus());
+        verify(payOrderMapper, never()).update(isNull(), any());
+    }
+
+    @Test
+    void shouldAllowNewApplicationAfterRejectedAfterSale() {
+        TradeOrderDO order = new TradeOrderDO();
+        order.setId(10L);
+        order.setUserId(1L);
+        order.setStatus(2);
+        order.setPayStatus(TradeOrderPayStatus.PAID);
+        order.setActualPrice(2990);
+        TradeAfterSaleDO rejected = new TradeAfterSaleDO();
+        rejected.setId(30L);
+        rejected.setOrderId(10L);
+        rejected.setStatus(2);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(order);
+        when(tradeAfterSaleMapper.selectOne(any())).thenReturn(rejected);
+        when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
+
+        Map<String, Object> result = tradeAfterSaleService.apply(
+                1L, 10L, Map.of("reason", "再次申请退款"));
+
+        assertEquals(0, result.get("status"));
+        verify(tradeAfterSaleMapper).insert(any(TradeAfterSaleDO.class));
+    }
+
     private void stubSuccessfulRefund() {
         when(tradeRefundProviderService.currentType()).thenReturn("mock");
         when(tradeRefundProviderService.refund(any())).thenReturn(

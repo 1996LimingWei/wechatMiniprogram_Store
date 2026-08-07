@@ -18,6 +18,14 @@ wx:
     secret:
     mock-enabled: true
 
+wechat:
+  pay:
+    reconcile-job-enabled: false
+
+member:
+  gold-card:
+    mock-subscribe-enabled: true
+
 # 商品与库存数据提供方。统一使用 database，所有商品数据从数据库读取。
 product:
   provider: database
@@ -40,6 +48,10 @@ admin:
     user-id: 1
     username: admin
     password: admin123
+
+web:
+  cors:
+    allowed-origin-patterns: "*"
 
 mybatis-plus:
   configuration:

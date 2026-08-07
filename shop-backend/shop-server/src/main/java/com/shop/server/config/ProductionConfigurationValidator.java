@@ -55,6 +55,16 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         if (environment.getProperty("product.mock-endpoints-enabled", Boolean.class, false)) {
             missing.add("product.mock-endpoints-enabled 必须为 false");
         }
+        if (environment.getProperty("member.gold-card.mock-subscribe-enabled", Boolean.class, false)) {
+            missing.add("member.gold-card.mock-subscribe-enabled 必须为 false");
+        }
+        if (!"wechat".equals(environment.getProperty("trade.refund.provider"))) {
+            missing.add("trade.refund.provider 必须为 wechat");
+        }
+        String corsOrigins = environment.getProperty("web.cors.allowed-origin-patterns");
+        if (isBlank(corsOrigins) || corsOrigins.contains("*")) {
+            missing.add("web.cors.allowed-origin-patterns 必须配置明确来源且不能包含通配符");
+        }
         if (isBlank(adminAuthProperties.getUsername())) {
             missing.add("admin.auth.username");
         }

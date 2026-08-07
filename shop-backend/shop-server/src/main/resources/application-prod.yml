@@ -24,6 +24,10 @@ wx:
     secret: ${WX_MA_SECRET:}
     mock-enabled: false
 
+member:
+  gold-card:
+    mock-subscribe-enabled: false
+
 wechat:
   pay:
     enabled: ${WECHAT_PAY_ENABLED:false}
@@ -34,6 +38,9 @@ wechat:
     api-v3-key: ${WECHAT_PAY_API_V3_KEY:}
     platform-certificate-path: ${WECHAT_PAY_PLATFORM_CERTIFICATE_PATH:}
     notify-url: ${WECHAT_PAY_NOTIFY_URL:}
+    reconcile-job-enabled: true
+    reconcile-job-fixed-delay: ${WECHAT_PAY_RECONCILE_FIXED_DELAY:60000}
+    reconcile-batch-size: ${WECHAT_PAY_RECONCILE_BATCH_SIZE:50}
 
 product:
   provider: database
@@ -42,7 +49,7 @@ product:
 trade:
   mock-actions-enabled: false
   refund:
-    provider: ${TRADE_REFUND_PROVIDER:disabled}
+    provider: ${TRADE_REFUND_PROVIDER:wechat}
     sync-job-enabled: true
     sync-job-fixed-delay: ${TRADE_REFUND_SYNC_FIXED_DELAY:60000}
     sync-batch-size: ${TRADE_REFUND_SYNC_BATCH_SIZE:50}
@@ -54,6 +61,10 @@ admin:
     user-id: ${ADMIN_USER_ID:1}
     username: ${ADMIN_USERNAME:}
     password: ${ADMIN_PASSWORD:}
+
+web:
+  cors:
+    allowed-origin-patterns: ${WEB_CORS_ALLOWED_ORIGIN_PATTERNS:}
 
 mybatis-plus:
   configuration:

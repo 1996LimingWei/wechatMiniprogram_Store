@@ -24,4 +24,5 @@ public class PayOrderDO extends BaseDO {
     private String channelTradeNo;
     private Integer status;
     private LocalDateTime payTime;
+    private LocalDateTime lastQueryTime;
 }

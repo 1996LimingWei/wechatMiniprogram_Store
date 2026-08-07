@@ -11,7 +11,8 @@ public interface TradeRefundProvider {
 
     enum RefundStatus {
         SUCCESS,
-        PROCESSING
+        PROCESSING,
+        FAILED
     }
 
     record RefundRequest(

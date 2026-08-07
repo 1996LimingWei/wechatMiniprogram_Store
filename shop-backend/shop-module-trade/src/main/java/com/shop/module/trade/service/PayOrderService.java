@@ -10,14 +10,17 @@ import com.shop.module.trade.dal.mysql.PayNotifyLogMapper;
 import com.shop.module.trade.dal.mysql.PayOrderMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PayOrderService {
@@ -127,9 +130,13 @@ public class PayOrderService {
         throw new ServerException(400, "支付单状态已变更，不能确认支付");
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> query(Long userId, Long orderId) {
         TradeOrderDO order = tradeOrderService.getUserOrder(userId, orderId);
         PayOrderDO payOrder = getPayOrder(userId, orderId);
+        syncWechatPaymentIfNeeded(payOrder);
+        order = tradeOrderService.getUserOrder(userId, orderId);
+        payOrder = getPayOrder(userId, orderId);
         String orderStatus = order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 ? "paid" : order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.REFUNDED
                 ? "refunded" : "unpaid";
@@ -139,6 +146,70 @@ public class PayOrderService {
         result.put("payStatus", payOrder == null ? null : payOrder.getStatus());
         result.put("payStatusText", payOrder == null ? "" : PayOrderStatus.getText(payOrder.getStatus()));
         return result;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void syncPendingWechatPayment(Long payOrderId) {
+        if (payOrderId == null || payOrderId <= 0) {
+            return;
+        }
+        syncWechatPaymentIfNeeded(payOrderMapper.selectById(payOrderId));
+    }
+
+    public List<Long> listPendingWechatPayOrderIds(int limit) {
+        return payOrderMapper.selectList(new LambdaQueryWrapper<PayOrderDO>()
+                        .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
+                        .eq(PayOrderDO::getChannel, "wx_lite")
+                        .orderByAsc(PayOrderDO::getLastQueryTime)
+                        .orderByAsc(PayOrderDO::getId)
+                        .last("LIMIT " + Math.min(Math.max(limit, 1), 100)))
+                .stream()
+                .map(PayOrderDO::getId)
+                .toList();
+    }
+
+    private void syncWechatPaymentIfNeeded(PayOrderDO payOrder) {
+        if (payOrder == null || payOrder.getStatus() == null
+                || payOrder.getStatus() != PayOrderStatus.PENDING
+                || !"wx_lite".equals(payOrder.getChannel()) || !wechatPayService.isEnabled()) {
+            return;
+        }
+        java.time.LocalDateTime queryTime = java.time.LocalDateTime.now();
+        int claimed = payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getId, payOrder.getId())
+                .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
+                .eq(PayOrderDO::getChannel, "wx_lite")
+                .and(wrapper -> wrapper.isNull(PayOrderDO::getLastQueryTime)
+                        .or().le(PayOrderDO::getLastQueryTime, queryTime.minusSeconds(5)))
+                .set(PayOrderDO::getLastQueryTime, queryTime));
+        if (claimed != 1) {
+            return;
+        }
+        WechatPayService.PaymentQueryResult result;
+        try {
+            result = wechatPayService.queryPayment(payOrder.getPaySn());
+        } catch (Exception exception) {
+            log.warn("[PayOrderService] 微信支付主动查单失败, payOrderId={}, message={}",
+                    payOrder.getId(), exception.getMessage());
+            return;
+        }
+        if (!payOrder.getPaySn().equals(result.paySn())) {
+            throw new ServerException(502, "微信支付查单返回的支付单号不匹配");
+        }
+        if (!"SUCCESS".equals(result.tradeState())) {
+            return;
+        }
+        if (result.transactionId() == null || result.transactionId().isBlank()) {
+            throw new ServerException(502, "微信支付查单未返回渠道交易号");
+        }
+        handleWechatNotification(new WechatPayService.PaymentNotification(
+                "QUERY-" + result.transactionId(),
+                "TRANSACTION.QUERY",
+                result.paySn(),
+                result.transactionId(),
+                result.tradeState(),
+                result.amount(),
+                result.successTime()), result.rawBody());
     }
 
     @Transactional(rollbackFor = Exception.class)

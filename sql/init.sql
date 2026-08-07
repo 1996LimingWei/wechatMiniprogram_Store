@@ -343,13 +343,15 @@ CREATE TABLE `pay_order` (
     `channel_trade_no` varchar(64) DEFAULT NULL COMMENT '支付渠道交易号',
     `status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=待支付 1=已支付 2=已关闭 3=已退款',
     `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
+    `last_query_time` datetime DEFAULT NULL COMMENT '最近主动查单时间',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_pay_sn` (`pay_sn`),
     UNIQUE KEY `uk_order_id` (`order_id`),
-    UNIQUE KEY `uk_channel_trade_no` (`channel_trade_no`)
+    UNIQUE KEY `uk_channel_trade_no` (`channel_trade_no`),
+    KEY `idx_status_channel_query` (`status`, `channel`, `last_query_time`, `id`)
 ) ENGINE=InnoDB COMMENT='支付单表';
 
 CREATE TABLE `pay_notify_log` (
@@ -390,7 +392,7 @@ CREATE TABLE `trade_after_sale` (
     `user_id` bigint NOT NULL COMMENT '会员用户ID',
     `after_sale_sn` varchar(32) NOT NULL COMMENT '售后单号',
     `type` tinyint NOT NULL DEFAULT 1 COMMENT '售后类型 1=仅退款 2=退货退款',
-    `status` tinyint NOT NULL DEFAULT 0 COMMENT '售后状态 0=待审核 1=已退款 2=已拒绝 3=已撤销 4=退款处理中',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '售后状态 0=待审核 1=已退款 2=已拒绝 3=已撤销 4=退款处理中 5=退款失败',
     `refund_amount` int NOT NULL DEFAULT 0 COMMENT '退款金额(分)',
     `reason` varchar(128) DEFAULT '' COMMENT '申请原因',
     `apply_remark` varchar(255) DEFAULT '' COMMENT '申请说明',
@@ -409,7 +411,7 @@ CREATE TABLE `trade_after_sale` (
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_after_sale_sn` (`after_sale_sn`),
-    UNIQUE KEY `uk_order_id` (`order_id`),
+    KEY `idx_order_id` (`order_id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`),
     KEY `idx_status_create_time_id` (`status`, `create_time`, `id`)

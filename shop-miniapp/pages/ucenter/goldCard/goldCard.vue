@@ -24,8 +24,8 @@
 					<view class="hero-content">
 						<text class="hero-crown">👑</text>
 						<text class="hero-title">黄金会员卡</text>
-						<text class="hero-sub">尊享五大权益 · 全年无忧购物</text>
-						<view class="hero-price-row">
+						<text class="hero-sub">{{ purchaseEnabled ? '尊享五大权益 · 全年无忧购物' : purchaseMessage }}</text>
+						<view class="hero-price-row" v-if="purchaseEnabled">
 							<text class="hero-price">¥99</text>
 							<text class="hero-price-unit">/年</text>
 							<text class="hero-original">¥199</text>
@@ -48,7 +48,7 @@
 			</view>
 
 			<!-- 权益列表 -->
-			<view class="section">
+			<view class="section" v-if="purchaseEnabled">
 				<view class="section-header">
 					<text class="section-title">黄金会员权益</text>
 				</view>
@@ -69,7 +69,7 @@
 			</view>
 
 			<!-- 白银 vs 黄金对比 -->
-			<view class="section">
+			<view class="section" v-if="purchaseEnabled">
 				<view class="section-header">
 					<text class="section-title">会员权益对比</text>
 				</view>
@@ -108,7 +108,7 @@
 			</view>
 
 			<!-- 底部操作区 -->
-			<view class="bottom-section" v-if="!isGold">
+			<view class="bottom-section" v-if="!isGold && purchaseEnabled">
 				<view class="bottom-card">
 					<view class="bottom-price-info">
 						<text class="bottom-label">限时特惠</text>
@@ -117,6 +117,11 @@
 					<view class="bottom-btn" @tap="handleSubscribe" :class="{ 'btn-loading': subscribing }">
 						<text class="bottom-btn-text">{{ subscribing ? '开通中...' : '立即开通黄金会员' }}</text>
 					</view>
+				</view>
+			</view>
+			<view class="bottom-section" v-else-if="!isGold">
+				<view class="bottom-card unavailable-card">
+					<text class="unavailable-text">{{ purchaseMessage }}</text>
 				</view>
 			</view>
 
@@ -141,6 +146,8 @@ export default {
 			duration: '365天',
 			dailyPrice: '0.27元/天',
 			benefitsList: [],
+			purchaseEnabled: false,
+			purchaseMessage: '黄金会员服务暂未开放',
 			subscribing: false
 		};
 	},
@@ -171,6 +178,8 @@ export default {
 					this.duration = d.duration || '365天';
 					this.dailyPrice = d.dailyPrice || '0.27元/天';
 					this.benefitsList = d.benefits || [];
+					this.purchaseEnabled = d.purchaseEnabled === true;
+					this.purchaseMessage = d.purchaseMessage || '黄金会员服务暂未开放';
 				}
 			} catch (e) {
 				console.error('loadGoldCard error', e);
@@ -179,7 +188,7 @@ export default {
 			}
 		},
 		async handleSubscribe() {
-			if (this.subscribing) return;
+			if (this.subscribing || !this.purchaseEnabled) return;
 			uni.showModal({
 				title: '开通黄金会员',
 				content: '当前为体验模式，开通后将立即生效。确认开通黄金会员？',
@@ -524,6 +533,16 @@ page {
 	display: flex;
 	align-items: center;
 	gap: 20rpx;
+}
+.unavailable-card {
+	justify-content: center;
+	min-height: 72rpx;
+}
+.unavailable-text {
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: $text-secondary;
+	text-align: center;
 }
 .bottom-price-info {
 	flex-shrink: 0;

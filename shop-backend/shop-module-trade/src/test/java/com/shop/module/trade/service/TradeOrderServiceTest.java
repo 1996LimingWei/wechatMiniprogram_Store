@@ -58,6 +58,8 @@ class TradeOrderServiceTest {
     private TradeOrderItemMapper tradeOrderItemMapper;
     @Mock
     private PayOrderMapper payOrderMapper;
+    @Mock
+    private WechatPayService wechatPayService;
     @InjectMocks
     private TradeOrderService tradeOrderService;
 

@@ -25,22 +25,28 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.OffsetDateTime;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class WechatPayService {
 
-    private static final String JSAPI_URL = "https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi";
+    private static final String API_BASE_URL = "https://api.mch.weixin.qq.com";
+    private static final String JSAPI_PATH = "/v3/pay/transactions/jsapi";
 
     private final WechatPayProperties properties;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
-    private final HttpClient httpClient = HttpClient.newBuilder().build();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
     public boolean isEnabled() {
         return properties.isEnabled();
@@ -67,25 +73,7 @@ public class WechatPayService {
             payload.put("notify_url", properties.getNotifyUrl());
             payload.put("amount", amount);
             payload.put("payer", payer);
-            String body = objectMapper.writeValueAsString(payload);
-            String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
-            String nonce = UUID.randomUUID().toString().replace("-", "");
-            String authorization = buildAuthorization("POST", "/v3/pay/transactions/jsapi",
-                    timestamp, nonce, body);
-            HttpRequest request = HttpRequest.newBuilder(URI.create(JSAPI_URL))
-                    .header("Authorization", authorization)
-                    .header("Accept", "application/json")
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
-                    .build();
-            HttpResponse<String> response = httpClient.send(request,
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            verifyResponse(response);
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new ServerException(502, "微信支付下单失败");
-            }
-            Map<String, Object> responseBody = objectMapper.readValue(
-                    response.body(), new TypeReference<>() {});
+            Map<String, Object> responseBody = postJson(JSAPI_PATH, payload);
             String prepayId = String.valueOf(responseBody.getOrDefault("prepay_id", ""));
             if (prepayId.isBlank()) {
                 throw new ServerException(502, "微信支付未返回预支付标识");
@@ -303,6 +291,97 @@ public class WechatPayService {
         }
     }
 
+    public PaymentQueryResult queryPayment(String paySn) {
+        validateConfiguration();
+        try {
+            String path = "/v3/pay/transactions/out-trade-no/" + paySn
+                    + "?mchid=" + properties.getMchId();
+            Map<String, Object> response = getJson(path);
+            Map<String, Object> amount = castMap(response.get("amount"));
+            String appId = requireText(response, "appid");
+            String mchId = requireText(response, "mchid");
+            String currency = requireText(amount, "currency");
+            if (!properties.getAppId().equals(appId) || !properties.getMchId().equals(mchId)) {
+                throw new ServerException(502, "微信支付查单商户信息不匹配");
+            }
+            if (!"CNY".equals(currency)) {
+                throw new ServerException(502, "微信支付查单币种不匹配");
+            }
+            String tradeState = requireText(response, "trade_state");
+            LocalDateTime successTime = "SUCCESS".equals(tradeState)
+                    ? parseSuccessTime(response.get("success_time")) : null;
+            return new PaymentQueryResult(
+                    requireText(response, "out_trade_no"),
+                    String.valueOf(response.getOrDefault("transaction_id", "")),
+                    tradeState,
+                    requireAmount(amount),
+                    successTime,
+                    objectMapper.writeValueAsString(response));
+        } catch (ServerException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ServerException(502, "微信支付查单服务暂时不可用");
+        }
+    }
+
+    public void closePayment(String paySn) {
+        requestJson("POST", "/v3/pay/transactions/out-trade-no/" + paySn + "/close",
+                Map.of("mchid", properties.getMchId()), Set.of("ORDER_CLOSED", "ORDERCLOSED"));
+    }
+
+    public Map<String, Object> getJson(String canonicalUrl) {
+        return requestJson("GET", canonicalUrl, null);
+    }
+
+    public Map<String, Object> postJson(String canonicalUrl, Map<String, Object> payload) {
+        return requestJson("POST", canonicalUrl, payload);
+    }
+
+    private Map<String, Object> requestJson(
+            String method, String canonicalUrl, Map<String, Object> payload) {
+        return requestJson(method, canonicalUrl, payload, Set.of());
+    }
+
+    private Map<String, Object> requestJson(
+            String method, String canonicalUrl, Map<String, Object> payload,
+            Set<String> acceptedErrorCodes) {
+        validateConfiguration();
+        try {
+            String body = payload == null ? "" : objectMapper.writeValueAsString(payload);
+            String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+            String nonce = UUID.randomUUID().toString().replace("-", "");
+            String authorization = buildAuthorization(method, canonicalUrl, timestamp, nonce, body);
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(API_BASE_URL + canonicalUrl))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", authorization)
+                    .header("Accept", "application/json");
+            if ("POST".equals(method)) {
+                builder.header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+            } else {
+                builder.GET();
+            }
+            HttpResponse<String> response = httpClient.send(builder.build(),
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            verifyResponse(response);
+            Map<String, Object> responseBody = response.body() == null || response.body().isBlank()
+                    ? Map.of()
+                    : objectMapper.readValue(response.body(), new TypeReference<>() {});
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                String errorCode = String.valueOf(responseBody.getOrDefault("code", ""));
+                if (acceptedErrorCodes.contains(errorCode)) {
+                    return responseBody;
+                }
+                throw new ServerException(502, "微信支付接口请求失败");
+            }
+            return responseBody;
+        } catch (ServerException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ServerException(502, "微信支付服务暂时不可用");
+        }
+    }
+
     public void validateCredentialFiles() {
         validateConfiguration();
         try {
@@ -320,5 +399,10 @@ public class WechatPayService {
     public record PaymentNotification(
             String notificationId, String eventType, String paySn, String transactionId,
             String tradeState, Integer amount, java.time.LocalDateTime successTime) {
+    }
+
+    public record PaymentQueryResult(
+            String paySn, String transactionId, String tradeState, Integer amount,
+            java.time.LocalDateTime successTime, String rawBody) {
     }
 }

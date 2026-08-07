@@ -44,6 +44,7 @@ public class TradeOrderService {
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
     private final PayOrderMapper payOrderMapper;
+    private final WechatPayService wechatPayService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> submitOrder(Long userId, Long addressId, String requestId) {
@@ -335,6 +336,16 @@ public class TradeOrderService {
 
     private boolean closeUnpaidOrder(Long orderId, Long userId, String operatorType, Long operatorId,
                                      String action, String closeReason) {
+        PayOrderDO pendingPayOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getOrderId, orderId)
+                .eq(PayOrderDO::getUserId, userId)
+                .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
+                .orderByDesc(PayOrderDO::getUpdateTime)
+                .last("LIMIT 1"));
+        if (pendingPayOrder != null && "wx_lite".equals(pendingPayOrder.getChannel())
+                && wechatPayService.isEnabled()) {
+            wechatPayService.closePayment(pendingPayOrder.getPaySn());
+        }
         int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
