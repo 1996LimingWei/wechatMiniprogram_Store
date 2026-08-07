@@ -32,13 +32,37 @@ public class MemberAuthService {
      * @return 登录结果（token、userInfo、userId）
      */
     public Map<String, Object> loginByWeixin(String code) {
+        return doLogin(code, null);
+    }
+
+    /**
+     * 手机号快速登录（微信 v2 新版接口）
+     *
+     * @param code      微信 wx.login 获取的 code
+     * @param phoneCode getPhoneNumber 回调中的 code
+     * @return 登录结果（token、userInfo、userId）
+     */
+    public Map<String, Object> loginByPhone(String code, String phoneCode) {
+        return doLogin(code, phoneCode);
+    }
+
+    /**
+     * 内部统一登录逻辑
+     */
+    private Map<String, Object> doLogin(String code, String phoneCode) {
         // 1. 通过 code 换取 openid 和 session_key
         Map<String, String> wxResult = wxMaService.code2Session(code);
         String openid = wxResult.get("openid");
         String sessionKey = wxResult.get("session_key");
         String unionid = wxResult.get("unionid");
 
-        // 2. 查找或创建用户
+        // 2. 获取手机号（如果有 phoneCode）
+        String mobile = null;
+        if (phoneCode != null && !phoneCode.isEmpty()) {
+            mobile = wxMaService.getPhoneNumber(phoneCode);
+        }
+
+        // 3. 查找或创建用户
         MemberUserDO user = memberUserMapper.selectOne(
                 new LambdaQueryWrapper<MemberUserDO>().eq(MemberUserDO::getOpenid, openid)
         );
@@ -49,34 +73,46 @@ public class MemberAuthService {
             user.setOpenid(openid);
             user.setSessionKey(sessionKey);
             user.setUnionid(unionid);
-            user.setNickname("微信用户");
-            user.setAvatar("");
             user.setStatus(1);
             user.setMemberLevel(1); // 新用户自动绑定白银会员
+            if (mobile != null) {
+                user.setMobile(mobile);
+                user.setNickname(mobile);
+            } else {
+                user.setNickname("微信用户");
+            }
+            user.setAvatar("");
             memberUserMapper.insert(user);
-            log.info("[MemberAuth] 新用户注册, userId={}, openid={}", user.getId(), openid);
+            log.info("[MemberAuth] 新用户注册, userId={}, openid={}, mobile={}", user.getId(), openid, mobile);
         } else {
-            // 老用户：更新 session_key
+            // 老用户：更新 session_key 和手机号
             user.setSessionKey(sessionKey);
             if (unionid != null) {
                 user.setUnionid(unionid);
             }
+            if (mobile != null) {
+                user.setMobile(mobile);
+                // 如果昵称还是"微信用户"，自动更新为手机号
+                if ("微信用户".equals(user.getNickname())) {
+                    user.setNickname(mobile);
+                }
+            }
             memberUserMapper.updateById(user);
-            log.info("[MemberAuth] 用户登录, userId={}, openid={}", user.getId(), openid);
+            log.info("[MemberAuth] 用户登录, userId={}, openid={}, mobile={}", user.getId(), openid, mobile);
         }
 
-        // 3. 检查用户状态
+        // 4. 检查用户状态
         if (user.getStatus() == 0) {
             throw new ServerException(403, "账号已被禁用");
         }
 
-        // 4. 生成 Token
+        // 5. 生成 Token
         LoginUser loginUser = new LoginUser();
         loginUser.setUserId(user.getId());
         loginUser.setUserType(1); // 1=会员
         String token = tokenService.createToken(loginUser);
 
-        // 5. 构造响应（字段名与前端 ucenter/index.vue 的 isLogin 判断对齐）
+        // 6. 构造响应（字段名与前端 ucenter/index.vue 的 isLogin 判断对齐）
         Map<String, Object> userInfo = new LinkedHashMap<>();
         userInfo.put("nickname", user.getNickname());
         userInfo.put("avatar", user.getAvatar());

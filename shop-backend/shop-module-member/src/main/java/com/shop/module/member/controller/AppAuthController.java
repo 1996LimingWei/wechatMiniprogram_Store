@@ -64,6 +64,33 @@ public class AppAuthController {
     }
 
     /**
+     * 手机号快速登录（微信 v2 新版接口）
+     * 前端通过 getPhoneNumber 按钮获取 phoneCode，连同 wx.login 的 code 一起发送
+     */
+    @RequestMapping("/phone-login")
+    public Map<String, Object> loginByPhone(@RequestBody(required = false) Map<String, Object> body) {
+        String code = "";
+        String phoneCode = "";
+        if (body != null) {
+            if (body.get("code") != null) code = body.get("code").toString();
+            if (body.get("phoneCode") != null) phoneCode = body.get("phoneCode").toString();
+        }
+        if (code.isEmpty()) {
+            return fail("缺少微信登录 code");
+        }
+        if (phoneCode.isEmpty()) {
+            return fail("缺少手机号授权 code");
+        }
+        try {
+            Map<String, Object> data = memberAuthService.loginByPhone(code, phoneCode);
+            return success(data);
+        } catch (Exception e) {
+            log.error("[Auth] 手机号登录异常", e);
+            return fail(e.getMessage());
+        }
+    }
+
+    /**
      * 刷新 Token
      * 前端收到 401 时，携带旧 token 调用此接口
      */
