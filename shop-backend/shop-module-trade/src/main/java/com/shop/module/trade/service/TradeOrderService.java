@@ -14,11 +14,13 @@ import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +46,13 @@ public class TradeOrderService {
     private final PayOrderMapper payOrderMapper;
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> submitOrder(Long userId, Long addressId) {
+    public Map<String, Object> submitOrder(Long userId, Long addressId, String requestId) {
+        validateRequestId(requestId);
+        TradeOrderDO existingOrder = findByRequestId(userId, requestId);
+        if (existingOrder != null) {
+            return buildSubmitResult(existingOrder);
+        }
+
         List<TradeCartDO> checkedList = tradeCartService.getCheckedCartList(userId);
         if (checkedList.isEmpty()) {
             throw new ServerException(400, "请选择要结算的商品");
@@ -54,29 +62,34 @@ public class TradeOrderService {
             throw new ServerException(400, "请选择收货地址");
         }
 
-        List<TradeProductSnapshot> snapshots = checkedList.stream()
-                .map(cart -> tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId()))
-                .toList();
-        int goodsTotalPrice = java.util.stream.IntStream.range(0, checkedList.size())
-                .map(index -> snapshots.get(index).getPrice() * checkedList.get(index).getCount())
-                .sum();
+        List<OrderLine> orderLines = new ArrayList<>(checkedList.size());
+        int goodsTotalPrice = 0;
+        for (TradeCartDO cart : checkedList) {
+            if (cart.getCount() == null || cart.getCount() < 1 || cart.getCount() > 99) {
+                throw new ServerException(400, "商品数量必须在 1 到 99 之间");
+            }
+            TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
+            if (snapshot.getStock() == null || snapshot.getStock() < cart.getCount()) {
+                throw new ServerException(1201, "商品库存不足");
+            }
+            goodsTotalPrice = Math.addExact(goodsTotalPrice,
+                    Math.multiplyExact(snapshot.getPrice(), cart.getCount()));
+            orderLines.add(new OrderLine(cart, snapshot));
+        }
         int freightPrice = tradeCheckoutService.calculateFreight(goodsTotalPrice);
         int couponPrice = 0;
-        int actualPrice = goodsTotalPrice + freightPrice - couponPrice;
-
-        for (int index = 0; index < checkedList.size(); index++) {
-            tradeProductService.reduceStock(snapshots.get(index), checkedList.get(index).getCount());
-        }
+        int actualPrice = Math.addExact(goodsTotalPrice, freightPrice);
 
         TradeOrderDO order = new TradeOrderDO();
         order.setOrderSn(generateOrderSn());
+        order.setRequestId(requestId);
         order.setUserId(userId);
         order.setStatus(0);
         order.setPayStatus(TradeOrderPayStatus.UNPAID);
         order.setGoodsPrice(goodsTotalPrice);
         order.setFreightPrice(freightPrice);
         order.setCouponPrice(couponPrice);
-        order.setOrderPrice(goodsTotalPrice + freightPrice);
+        order.setOrderPrice(actualPrice);
         order.setActualPrice(actualPrice);
         order.setAddressId(address.getId());
         order.setConsignee(address.getUserName());
@@ -84,12 +97,21 @@ public class TradeOrderService {
         order.setFullRegion(address.getFullRegion());
         order.setAddress(address.getDetailInfo());
         order.setExpireTime(LocalDateTime.now().plusMinutes(tradeOrderProperties.getUnpaidTimeoutMinutes()));
-        tradeOrderMapper.insert(order);
+        try {
+            tradeOrderMapper.insert(order);
+        } catch (DuplicateKeyException exception) {
+            TradeOrderDO duplicatedOrder = findByRequestId(userId, requestId);
+            if (duplicatedOrder != null) {
+                return buildSubmitResult(duplicatedOrder);
+            }
+            throw exception;
+        }
         tradeOrderLogService.recordCreated(order);
 
-        for (int index = 0; index < checkedList.size(); index++) {
-            TradeCartDO cart = checkedList.get(index);
-            TradeProductSnapshot snapshot = snapshots.get(index);
+        for (OrderLine orderLine : orderLines) {
+            TradeCartDO cart = orderLine.cart();
+            TradeProductSnapshot snapshot = orderLine.snapshot();
+            tradeProductService.reduceStock(snapshot, cart.getCount());
             TradeOrderItemDO item = new TradeOrderItemDO();
             item.setOrderId(order.getId());
             item.setUserId(userId);
@@ -100,12 +122,12 @@ public class TradeOrderService {
             item.setSpecName(snapshot.getSpecName());
             item.setPrice(snapshot.getPrice());
             item.setCount(cart.getCount());
-            item.setTotalPrice(snapshot.getPrice() * cart.getCount());
+            item.setTotalPrice(Math.multiplyExact(snapshot.getPrice(), cart.getCount()));
             tradeOrderItemMapper.insert(item);
         }
         tradeCartService.clearCheckedCart(userId);
 
-        return Map.of("orderInfo", Map.of("id", order.getId(), "orderSn", order.getOrderSn()));
+        return buildSubmitResult(order);
     }
 
     public Map<String, Object> getOrderDetail(Long userId, Long orderId) {
@@ -245,6 +267,7 @@ public class TradeOrderService {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", order.getId());
         item.put("orderSn", order.getOrderSn());
+        item.put("userId", order.getUserId());
         item.put("orderStatusText", getOrderStatusText(order));
         item.put("actualPrice", TradeMoneyUtils.formatYuan(order.getActualPrice()));
         item.put("goodsPrice", TradeMoneyUtils.formatYuan(order.getGoodsPrice()));
@@ -368,5 +391,25 @@ public class TradeOrderService {
     private String generateOrderSn() {
         return LocalDateTime.now().format(ORDER_SN_FORMATTER)
                 + ThreadLocalRandom.current().nextInt(1000, 9999);
+    }
+
+    private void validateRequestId(String requestId) {
+        if (requestId == null || !requestId.matches("[A-Za-z0-9_-]{8,64}")) {
+            throw new ServerException(400, "订单请求标识格式不正确");
+        }
+    }
+
+    private TradeOrderDO findByRequestId(Long userId, String requestId) {
+        return tradeOrderMapper.selectOne(new LambdaQueryWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getRequestId, requestId)
+                .last("LIMIT 1"));
+    }
+
+    private Map<String, Object> buildSubmitResult(TradeOrderDO order) {
+        return Map.of("orderInfo", Map.of("id", order.getId(), "orderSn", order.getOrderSn()));
+    }
+
+    private record OrderLine(TradeCartDO cart, TradeProductSnapshot snapshot) {
     }
 }

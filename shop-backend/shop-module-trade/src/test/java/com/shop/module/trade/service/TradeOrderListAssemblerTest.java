@@ -121,6 +121,7 @@ class TradeOrderListAssemblerTest {
         TradeOrderDO order = new TradeOrderDO();
         order.setId(id);
         order.setOrderSn("ORDER-" + id);
+        order.setUserId(id + 100);
         order.setStatus(status);
         order.setPayStatus(TradeOrderPayStatus.PAID);
         order.setActualPrice(2000);
@@ -182,7 +183,7 @@ class TradeOrderListAssemblerTest {
     }
 
     private static final Set<String> EXPECTED_LIST_KEYS = Set.of(
-            "id", "orderSn", "orderStatusText", "actualPrice", "goodsPrice", "freightPrice",
+            "id", "orderSn", "userId", "orderStatusText", "actualPrice", "goodsPrice", "freightPrice",
             "couponPrice", "consignee", "mobile", "fullRegion", "address", "status", "payStatus",
             "orderPrice", "payTime", "expireTime", "closeTime", "closeReason", "handleOption",
             "addTime", "goodsList", "logistics", "afterSale");

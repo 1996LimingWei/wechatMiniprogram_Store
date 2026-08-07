@@ -100,6 +100,7 @@ public class TradeOrderLogService {
             case "SHIP_ORDER" -> "商家发货";
             case "CONFIRM_RECEIPT" -> "确认收货";
             case "APPLY_AFTER_SALE" -> "申请售后";
+            case "REFUND_PROCESSING" -> "退款处理中";
             case "REFUND_SUCCESS" -> "退款完成";
             case "REJECT_AFTER_SALE" -> "拒绝售后";
             case "CANCEL_AFTER_SALE" -> "撤销售后";

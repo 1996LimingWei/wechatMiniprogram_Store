@@ -1,15 +1,27 @@
 <script>
 	const util = require("@/utils/util.js")
+	const env = require("@/config/env.js")
 	export default {
 		globalData: {
 			userInfo: {
         nickname: 'Hi,游客',
 				userName: '点击去登录',
-				avatar: 'https://platform-wxmall.oss-cn-beijing.aliyuncs.com/upload/20180727/150547696d798c.png'
+				avatar: '/static/images/logo.png'
 			},
 			token: ''
 		},
 		onLaunch: function() {
+			try {
+				env.validate()
+			} catch (error) {
+				console.error('[Config] ' + error.message)
+				uni.showModal({
+					title: '配置错误',
+					content: '当前版本未正确配置服务地址，请联系运营人员。',
+					showCancel: false
+				})
+				return
+			}
 			//获取小程序更新机制兼容
 			if (uni.canIUse('getUpdateManager')) {
 				const updateManager = uni.getUpdateManager()

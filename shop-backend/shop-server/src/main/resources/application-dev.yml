@@ -25,6 +25,10 @@ product:
 
 trade:
   mock-actions-enabled: true
+  refund:
+    provider: mock
+  logistics:
+    provider: mock
   order:
     unpaid-timeout-minutes: 30
     expire-job-enabled: true

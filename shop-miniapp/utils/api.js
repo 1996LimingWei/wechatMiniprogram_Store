@@ -12,6 +12,8 @@ module.exports = {
 	CatalogCurrent: 'catalog/current', //分类目录当前分类数据接口
 
 	AuthLoginByWeixin: 'auth/LoginByMa', //微信登录
+	AuthLogout: 'auth/logout', //退出登录并使服务端令牌失效
+	AccountClose: 'auth/account', //注销账号
 
 	GoodsCount: 'goods/count', //统计商品总数
 	GoodsList: 'goods/list', //获得商品列表
@@ -79,8 +81,6 @@ module.exports = {
 	Login: 'auth/login', //账号登录
 	Code:  'auth/', //静默登录
 	Register: 'auth/register', //注册
-	CouponList: 'coupon/list', // 优惠券列表
-	GoodsCouponList: 'coupon/listByGoods', // 商品优惠券列表
 	OrderQuery: 'pay/query', //微信查询订单状态
 
 	HelpTypeList: 'helpissue/typeList', //查看帮助类型列表

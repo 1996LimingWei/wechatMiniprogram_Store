@@ -30,6 +30,10 @@ product:
 
 trade:
   mock-actions-enabled: false
+  refund:
+    provider: ${TRADE_REFUND_PROVIDER:disabled}
+  logistics:
+    provider: ${TRADE_LOGISTICS_PROVIDER:disabled}
 
 admin:
   auth:

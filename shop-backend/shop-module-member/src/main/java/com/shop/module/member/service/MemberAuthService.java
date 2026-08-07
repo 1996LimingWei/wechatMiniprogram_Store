@@ -8,10 +8,13 @@ import com.shop.module.member.dal.dataobject.MemberUserDO;
 import com.shop.module.member.dal.mysql.MemberUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 会员认证服务：登录、注册、Token 管理
@@ -24,6 +27,7 @@ public class MemberAuthService {
     private final MemberUserMapper memberUserMapper;
     private final TokenService tokenService;
     private final WxMaService wxMaService;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * 微信小程序静默登录（code2session）
@@ -132,5 +136,42 @@ public class MemberAuthService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("userInfo", userInfo);
         return data;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void closeAccount(Long userId, String confirmation) {
+        if (!"确认注销".equals(confirmation)) {
+            throw new ServerException(400, "请确认注销账号");
+        }
+        Integer activeOrderCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM trade_order
+                 WHERE user_id = ?
+                   AND deleted = b'0'
+                   AND status IN (0, 1, 2, 5)
+                """, Integer.class, userId);
+        if (activeOrderCount != null && activeOrderCount > 0) {
+            throw new ServerException(400, "存在未完成订单或售后，请处理完成后再注销");
+        }
+
+        MemberUserDO user = memberUserMapper.selectById(userId);
+        if (user == null || user.getStatus() == 0) {
+            return;
+        }
+        jdbcTemplate.update("DELETE FROM member_address WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM trade_cart WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM member_collect WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM member_footprint WHERE user_id = ?", userId);
+
+        user.setOpenid("closed_" + UUID.randomUUID().toString().replace("-", ""));
+        user.setUnionid(null);
+        user.setSessionKey(null);
+        user.setMobile(null);
+        user.setNickname("注销用户");
+        user.setAvatar("");
+        user.setStatus(0);
+        memberUserMapper.updateById(user);
+        tokenService.deleteAllTokens(userId, 1);
+        log.info("[MemberAuth] 用户完成账号注销, userId={}", userId);
     }
 }

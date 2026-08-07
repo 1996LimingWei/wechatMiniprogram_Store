@@ -40,7 +40,7 @@ public class AdminTradeAfterSaleController {
                                                      @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         return CommonResult.success(tradeAfterSaleService.adminApprove(
-                TradeSecurityUtils.getRequiredUserId(), TradeRequestUtils.getLong(request, "orderId", 0L)));
+                TradeSecurityUtils.getRequiredUserId(), TradeRequestUtils.getLong(request, "afterSaleId", 0L)));
     }
 
     @RequestMapping("/reject")
@@ -49,8 +49,8 @@ public class AdminTradeAfterSaleController {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         return CommonResult.success(tradeAfterSaleService.adminReject(
                 TradeSecurityUtils.getRequiredUserId(),
-                TradeRequestUtils.getLong(request, "orderId", 0L),
-                TradeRequestUtils.getString(request, "rejectReason", "商家拒绝售后申请")
+                TradeRequestUtils.getLong(request, "afterSaleId", 0L),
+                TradeRequestUtils.getString(request, "rejectReason", "")
         ));
     }
 

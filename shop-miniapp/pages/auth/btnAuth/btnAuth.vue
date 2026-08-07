@@ -9,14 +9,18 @@
 				<view class="brand-slogan">传承经典 · 健康生活</view>
 			</view>
 			<view class="auth-card">
-				<view class="auth-title">授权登录</view>
-				<view class="auth-desc">获取您的公开信息（昵称、头像等）以提供更好的服务体验</view>
-				<button class="login-btn" v-if="canIUseGetUserProfile" @tap="getUserProfile">
+				<view class="auth-title">微信快捷登录</view>
+				<view class="auth-desc">使用微信身份建立商城账号。我们不会在登录时获取您的微信昵称和头像。</view>
+				<button class="login-btn" @tap="login">
 					<text class="btn-text">微信一键登录</text>
 				</button>
-				<button class="login-btn" v-else open-type="getUserInfo" @getuserinfo="bindGetUserInfo">
-					<text class="btn-text">微信一键登录</text>
-				</button>
+				<view class="agreement-row" @tap="toggleAgreement">
+					<view class="agreement-check" :class="{ checked: agreed }">{{agreed ? '✓' : ''}}</view>
+					<text>我已阅读并同意</text>
+					<text class="agreement-link" @tap.stop="openAgreement">《用户协议》</text>
+					<text>和</text>
+					<text class="agreement-link" @tap.stop="openPrivacy">《隐私政策》</text>
+				</view>
 				<view class="skip-btn" @tap="skipLogin">暂不登录，先逛逛</view>
 			</view>
 		</view>
@@ -29,69 +33,65 @@
 	export default {
 		data() {
 			return {
-				canIUseGetUserProfile: false,
 				navUrl: '',
-				code: ''
+				agreed: false,
+				submitting: false
 			}
 		},
 		methods: {
-			getUserProfile() {
-				let that = this;
-				// 确保已有 code
-				if (!that.code) {
-					uni.login({
-						success: function(resp) {
-							if (resp.code) {
-								that.code = resp.code;
-								that._doGetProfile();
-							} else {
-								that.toast('获取微信登录凭证失败');
-							}
-						}
-					});
-				} else {
-					that._doGetProfile();
-				}
+			toggleAgreement() {
+				this.agreed = !this.agreed;
 			},
-			_doGetProfile() {
-				let that = this;
-				uni.getUserProfile({
-					desc: '用于完善会员资料',
+			openAgreement() {
+				uni.navigateTo({ url: '/pages/legal/agreement/agreement' });
+			},
+			openPrivacy() {
+				uni.navigateTo({ url: '/pages/legal/privacy/privacy' });
+			},
+			login() {
+				if (!this.agreed) {
+					util.toast('请先阅读并同意用户协议和隐私政策');
+					return;
+				}
+				if (this.submitting) {
+					return;
+				}
+				this.submitting = true;
+				uni.login({
 					success: (resp) => {
-						that.loginByWeixin(resp);
+						if (!resp.code) {
+							util.toast('获取微信登录凭证失败');
+							this.submitting = false;
+							return;
+						}
+						this.loginByWeixin(resp.code).then(() => {
+							this.submitting = false;
+						}, () => {
+							this.submitting = false;
+						});
 					},
 					fail: () => {
-						// 新版微信可能不支持 getUserProfile，直接用 code 登录
-						that.loginByWeixin({});
+						util.toast('微信登录失败，请稍后重试');
+						this.submitting = false;
 					}
 				});
 			},
-			bindGetUserInfo: function(e) {
-				this.loginByWeixin(e.detail);
-			},
-			loginByWeixin: function(userInfo) {
+			loginByWeixin: function(code) {
 				let that = this;
-				if (that.code) {
-					util.request(api.AuthLoginByWeixin, {
-						code: that.code,
-						userInfo: userInfo
-					}, 'POST', 'application/json').then(res => {
-						if (res.code === 0) {
-							uni.setStorageSync('userInfo', res.data.userInfo);
-							uni.setStorageSync('token', res.data.token);
-							uni.setStorageSync('userId', res.data.userId);
-							that.goBack();
-						} else {
-							uni.showModal({
-								title: '提示',
-								content: res.msg,
-								showCancel: false
-							});
-						}
-					}).catch(err => {
-						console.error('[Login] 请求异常:', err);
-					});
-				}
+				return util.request(api.AuthLoginByWeixin, { code }, 'POST', 'application/json').then(res => {
+					if (res.code === 0) {
+						uni.setStorageSync('userInfo', res.data.userInfo);
+						uni.setStorageSync('token', res.data.token);
+						uni.setStorageSync('userId', res.data.userId);
+						uni.setStorageSync('privacyAgreedAt', Date.now());
+						that.goBack();
+					} else {
+						throw new Error(res.msg || '登录失败');
+					}
+				}).catch((error) => {
+					util.toast(error.message || '登录失败，请稍后重试');
+					throw error;
+				});
 			},
 			skipLogin() {
 				this.goBack();
@@ -113,16 +113,7 @@
 			} else {
 				that.navUrl = '/pages/index/index'
 			}
-			if (uni.getUserProfile) {
-				that.canIUseGetUserProfile = true
-			}
-			uni.login({
-				success: function(res) {
-					if (res.code) {
-						that.code = res.code
-					}
-				}
-			});
+			that.agreed = !!uni.getStorageSync('privacyAgreedAt');
 		}
 	}
 </script>
@@ -258,5 +249,37 @@
 		color: #999;
 		margin-top: 30rpx;
 		padding: 10rpx;
+	}
+
+	.agreement-row {
+		margin-top: 28rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		font-size: 22rpx;
+		line-height: 1.8;
+		color: #777;
+	}
+
+	.agreement-check {
+		width: 28rpx;
+		height: 28rpx;
+		margin-right: 10rpx;
+		border: 2rpx solid #9aa69a;
+		border-radius: 6rpx;
+		color: #fff;
+		font-size: 20rpx;
+		line-height: 28rpx;
+		text-align: center;
+
+		&.checked {
+			background: $green;
+			border-color: $green;
+		}
+	}
+
+	.agreement-link {
+		color: $green;
 	}
 </style>

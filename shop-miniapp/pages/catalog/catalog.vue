@@ -153,7 +153,7 @@ export default {
 		},
 		goToGoods(id) {
 			uni.navigateTo({ url: '/pages/goods/goods?id=' + id });
-		},
+		}
 	},
 	onLoad() {
 		this.calcHeight();

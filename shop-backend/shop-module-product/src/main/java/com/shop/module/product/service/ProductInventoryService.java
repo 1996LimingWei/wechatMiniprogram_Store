@@ -53,15 +53,32 @@ public class ProductInventoryService {
         if (updated != 1) {
             throw new ServerException(1201, "商品库存不足");
         }
+        ProductSkuDO sku = productSkuMapper.selectById(skuId);
+        if (sku != null) {
+            syncSpuStock(sku.getSpuId());
+        }
     }
 
     public void recoverSkuStock(Long skuId, int count) {
         if (skuId == null || count <= 0) {
             return;
         }
-        productSkuMapper.update(null, new LambdaUpdateWrapper<ProductSkuDO>()
+        int updated = productSkuMapper.update(null, new LambdaUpdateWrapper<ProductSkuDO>()
                 .eq(ProductSkuDO::getId, skuId)
                 .setSql("stock = stock + " + count));
+        if (updated == 1) {
+            ProductSkuDO sku = productSkuMapper.selectById(skuId);
+            if (sku != null) {
+                syncSpuStock(sku.getSpuId());
+            }
+        }
+    }
+
+    private void syncSpuStock(Long spuId) {
+        productSpuMapper.update(null, new LambdaUpdateWrapper<ProductSpuDO>()
+                .eq(ProductSpuDO::getId, spuId)
+                .setSql("stock = (SELECT COALESCE(SUM(s.stock), 0) FROM product_sku s "
+                        + "WHERE s.spu_id = " + spuId + " AND s.deleted = 0)"));
     }
 
     private String formatSpecName(String properties) {

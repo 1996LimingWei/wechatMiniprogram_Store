@@ -110,44 +110,10 @@
 			}
 		},
 		{
-			"path": "pages/ucenter/coupon/coupon",
-			"style": {
-				"navigationBarTitleText": "我的优惠券",
-				"app-plus": {
-					"bounce": "vertical"
-				}
-			}
-		},
-		{
 			"path": "pages/ucenter/collect/collect",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "我的收藏",
-				"app-plus": {
-					"bounce": "vertical"
-				}
-			}
-		},
-		{
-			"path": "pages/auth/login/login",
-			"style": {
-				"navigationBarTitleText": "登录",
-				"app-plus": {
-					"bounce": "vertical"
-				}
-			}
-		},
-		{
-			"path": "pages/auth/register/register",
-			"style": {
-				"app-plus": {
-					"bounce": "vertical"
-				}
-			}
-		},
-		{
-			"path": "pages/auth/reset/reset",
-			"style": {
 				"app-plus": {
 					"bounce": "vertical"
 				}
@@ -277,15 +243,6 @@
 			}
 		},
 		{
-			"path": "pages/shopping/selCoupon/selCoupon",
-			"style": {
-				"navigationBarTitleText": "选择优惠券",
-				"app-plus": {
-					"bounce": "vertical"
-				}
-			}
-		},
-		{
 			"path": "pages/shopping/address/address",
 			"style": {
 				"navigationBarTitleText": "地址",
@@ -376,6 +333,26 @@
 			"style": {
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/ucenter/settings/settings",
+			"style": {
+				"navigationBarTitleText": "账号设置",
+				"navigationBarBackgroundColor": "#FEFEFC",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/legal/privacy/privacy",
+			"style": {
+				"navigationBarTitleText": "隐私政策"
+			}
+		},
+		{
+			"path": "pages/legal/agreement/agreement",
+			"style": {
+				"navigationBarTitleText": "用户协议"
 			}
 		}
 	],

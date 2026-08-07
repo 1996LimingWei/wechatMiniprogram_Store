@@ -32,15 +32,6 @@
 			</view>
 		</view>
 
-		<!-- 优惠券 -->
-		<view class="option-card" @tap="tapCoupon">
-			<text class="option-label">优惠券</text>
-			<view class="option-right">
-				<text class="option-value" :class="{'has-coupon': couponDesc}">{{couponDesc || '选择优惠券'}}</text>
-				<text class="option-arrow">›</text>
-			</view>
-		</view>
-
 		<!-- 金额明细 -->
 		<view class="amount-card">
 			<view class="amount-row">
@@ -51,10 +42,6 @@
 				<text class="amount-label">运费</text>
 				<text class="amount-value">¥{{freightPrice}}</text>
 			</view>
-			<view class="amount-row" v-if="couponPrice > 0">
-				<text class="amount-label">优惠券</text>
-				<text class="amount-value discount">-¥{{couponPrice}}</text>
-			</view>
 		</view>
 
 		<!-- 底部提交栏 -->
@@ -63,8 +50,8 @@
 				<text class="submit-label">实付</text>
 				<text class="submit-price">¥{{actualPrice}}</text>
 			</view>
-			<view class="submit-btn" @tap="submitOrder">
-				<text>提交订单</text>
+			<view class="submit-btn" :class="{ disabled: submitting }" @tap="submitOrder">
+				<text>{{submitting ? '正在提交...' : '提交订单'}}</text>
 			</view>
 		</view>
 	</view>
@@ -80,19 +67,15 @@ export default {
 		return {
 			checkedGoodsList: [],
 			checkedAddress: {},
-			checkedCoupon: [],
-			couponList: [],
 			goodsTotalPrice: 0.00,
 			freightPrice: 0.00,
-			couponPrice: 0.00,
 			orderTotalPrice: 0.00,
 			actualPrice: 0.00,
 			addressId: 0,
-			couponId: 0,
 			isBuy: false,
-			couponDesc: '',
-			couponCode: '',
-			buyType: ''
+			buyType: '',
+			submitting: false,
+			requestId: ''
 		}
 	},
 	methods: {
@@ -100,16 +83,12 @@ export default {
 			let buyType = this.isBuy ? 'buy' : 'cart';
 			util.request(api.CartCheckout, {
 				addressId: this.addressId,
-				couponId: this.couponId,
 				type: buyType
 			}).then(res => {
 				if (res.code === 0) {
 					this.checkedGoodsList = res.data.checkedGoodsList;
 					this.checkedAddress = res.data.checkedAddress;
 					this.actualPrice = res.data.actualPrice;
-					this.checkedCoupon = res.data.checkedCoupon || "";
-					this.couponList = res.data.couponList || "";
-					this.couponPrice = res.data.couponPrice;
 					this.freightPrice = res.data.freightPrice;
 					this.goodsTotalPrice = res.data.goodsTotalPrice;
 					this.orderTotalPrice = res.data.orderTotalPrice;
@@ -134,27 +113,19 @@ export default {
 		addAddress() {
 			uni.navigateTo({ url: '/pages/shopping/addressAdd/addressAdd' });
 		},
-		getCouponData() {
-			if (app.globalData.userCoupon == 'USE_COUPON') {
-				this.couponDesc = app.globalData.courseCouponCode.name;
-				this.couponId = app.globalData.courseCouponCode.user_coupon_id;
-			} else if (app.globalData.userCoupon == 'NO_USE_COUPON') {
-				this.couponDesc = "不使用优惠券";
-				this.couponId = '';
-			}
-		},
-		tapCoupon() {
-			uni.navigateTo({ url: '/pages/shopping/selCoupon/selCoupon?buyType=' + this.buyType });
-		},
 		submitOrder() {
+			if (this.submitting) {
+				return;
+			}
 			if (this.addressId <= 0) {
 				util.toast('请选择收货地址');
 				return;
 			}
+			this.submitting = true;
 			util.request(api.OrderSubmit, {
 				addressId: this.addressId,
-				couponId: this.couponId,
-				type: this.buyType
+				type: this.buyType,
+				requestId: this.requestId
 			}, 'POST', 'application/json').then(res => {
 				if (res.code === 0) {
 					const orderId = res.data.orderInfo.id;
@@ -165,13 +136,15 @@ export default {
 						uni.redirectTo({ url: '/pages/payResult/payResult?status=0&orderId=' + orderId });
 					});
 				} else {
+					this.submitting = false;
 					util.toast('下单失败');
 				}
+			}).catch(() => {
+				this.submitting = false;
 			});
 		}
 	},
 	onShow() {
-		this.getCouponData();
 		try {
 			var addressId = uni.getStorageSync('addressId');
 			if (addressId) this.addressId = addressId;
@@ -181,8 +154,7 @@ export default {
 	onLoad(options) {
 		if (options.isBuy != null) this.isBuy = options.isBuy;
 		this.buyType = this.isBuy ? 'buy' : 'cart';
-		app.globalData.userCoupon = 'NO_USE_COUPON';
-		app.globalData.courseCouponCode = {};
+		this.requestId = 'MP' + Date.now() + Math.random().toString(36).slice(2, 10);
 	}
 }
 </script>
@@ -464,5 +436,9 @@ page {
 	font-size: 30rpx;
 	color: #FEFEFC;
 	font-weight: 600;
+
+	&.disabled {
+		opacity: 0.55;
+	}
 }
 </style>

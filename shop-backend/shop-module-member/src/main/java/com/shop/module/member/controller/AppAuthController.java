@@ -111,6 +111,18 @@ public class AppAuthController {
         return success(data);
     }
 
+    @DeleteMapping("/account")
+    public Map<String, Object> closeAccount(@RequestBody(required = false) Map<String, Object> body) {
+        LoginUser loginUser = getLoginUser();
+        if (loginUser == null) {
+            return fail(401, "未登录");
+        }
+        String confirmation = body == null || body.get("confirmation") == null
+                ? "" : body.get("confirmation").toString();
+        memberAuthService.closeAccount(loginUser.getUserId(), confirmation);
+        return success(null);
+    }
+
     // ===== helpers =====
 
     private LoginUser getLoginUser() {

@@ -58,12 +58,6 @@
 						<!-- 查看物流（待收货时） -->
 						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.logistics"
 							@tap.stop="viewLogistics(item)">查看物流</view>
-						<!-- 去评价 -->
-						<view class="action-btn primary" v-if="item.orderStatusText === '已完成'"
-							@tap.stop="goReview">去评价</view>
-						<!-- 再次购买 -->
-						<view class="action-btn ghost" v-if="item.orderStatusText === '已完成'"
-							@tap.stop="buyAgain">再次购买</view>
 					</view>
 				</view>
 			</view>
@@ -91,7 +85,8 @@ export default {
 			page: 1,
 			size: 10,
 			tradeDevActionEnabled: api.TradeDevActionEnabled === true,
-			loading: false
+			loading: false,
+			hasMore: true
 		}
 	},
 	methods: {
@@ -103,21 +98,27 @@ export default {
 		reload() {
 			this.orderList = [];
 			this.page = 1;
+			this.hasMore = true;
 			this.getOrderList();
 		},
 		getOrderList() {
-			if (this.loading) return;
+			if (this.loading || !this.hasMore) return;
 			this.loading = true;
 			util.request(api.OrderList, {
 				showType: this.showType,
 				page: this.page,
 				size: this.size
 			}).then(res => {
-				this.loading = false;
 				if (res.code === 0) {
-					this.orderList = this.orderList.concat(res.data.list || []);
+					const pageList = res.data.list || [];
+					this.orderList = this.orderList.concat(pageList);
+					const total = Number(res.data.total || 0);
+					this.hasMore = this.orderList.length < total && pageList.length > 0;
 					this.page++;
 				}
+				this.loading = false;
+			}).catch(() => {
+				this.loading = false;
 			});
 		},
 		goDetail(id) {
@@ -237,12 +238,7 @@ export default {
 				});
 			});
 		},
-		goReview() {
-			uni.showToast({ title: '评价入口暂未开放', icon: 'none' });
-		},
-		buyAgain() {
-			uni.switchTab({ url: '/pages/index/index' });
-		}
+
 	},
 	onReachBottom() {
 		this.getOrderList();

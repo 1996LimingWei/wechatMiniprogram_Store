@@ -239,13 +239,14 @@ CREATE TABLE `trade_cart` (
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user_sku` (`user_id`, `sku_id`, `deleted`),
+    UNIQUE KEY `uk_user_sku` (`user_id`, `sku_id`),
     KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB COMMENT='购物车表';
 
 CREATE TABLE `trade_order` (
     `id` bigint NOT NULL AUTO_INCREMENT,
     `order_sn` varchar(32) NOT NULL COMMENT '订单号',
+    `request_id` varchar(64) DEFAULT NULL COMMENT '客户端下单幂等标识',
     `user_id` bigint NOT NULL COMMENT '会员用户ID',
     `status` tinyint NOT NULL DEFAULT 0 COMMENT '订单状态 0=待付款 1=待发货 2=待收货 3=已完成 4=已取消 5=退款中',
     `pay_status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=未支付 1=已支付 2=已退款',
@@ -268,6 +269,7 @@ CREATE TABLE `trade_order` (
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_order_sn` (`order_sn`),
+    UNIQUE KEY `uk_user_request_id` (`user_id`, `request_id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`),
     KEY `idx_expire_status` (`status`, `pay_status`, `expire_time`),
@@ -354,14 +356,18 @@ CREATE TABLE `trade_after_sale` (
     `user_id` bigint NOT NULL COMMENT '会员用户ID',
     `after_sale_sn` varchar(32) NOT NULL COMMENT '售后单号',
     `type` tinyint NOT NULL DEFAULT 1 COMMENT '售后类型 1=仅退款 2=退货退款',
-    `status` tinyint NOT NULL DEFAULT 0 COMMENT '售后状态 0=处理中 1=已退款 2=已拒绝 3=已撤销',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '售后状态 0=待审核 1=已退款 2=已拒绝 3=已撤销 4=退款处理中',
     `refund_amount` int NOT NULL DEFAULT 0 COMMENT '退款金额(分)',
     `reason` varchar(128) DEFAULT '' COMMENT '申请原因',
     `apply_remark` varchar(255) DEFAULT '' COMMENT '申请说明',
     `before_order_status` tinyint DEFAULT NULL COMMENT '申请售后前订单状态',
     `reject_reason` varchar(255) DEFAULT '' COMMENT '拒绝原因',
+    `refund_provider` varchar(32) DEFAULT '' COMMENT '退款提供方',
+    `provider_refund_no` varchar(64) DEFAULT '' COMMENT '渠道退款单号',
+    `refund_message` varchar(255) DEFAULT '' COMMENT '退款渠道说明',
     `apply_time` datetime DEFAULT NULL COMMENT '申请时间',
     `audit_time` datetime DEFAULT NULL COMMENT '审核时间',
+    `refund_time` datetime DEFAULT NULL COMMENT '退款完成时间',
     `reject_time` datetime DEFAULT NULL COMMENT '拒绝时间',
     `cancel_time` datetime DEFAULT NULL COMMENT '撤销时间',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -371,5 +377,6 @@ CREATE TABLE `trade_after_sale` (
     UNIQUE KEY `uk_after_sale_sn` (`after_sale_sn`),
     KEY `idx_order_id` (`order_id`),
     KEY `idx_user_id` (`user_id`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_status_create_time_id` (`status`, `create_time`, `id`)
 ) ENGINE=InnoDB COMMENT='交易售后表';

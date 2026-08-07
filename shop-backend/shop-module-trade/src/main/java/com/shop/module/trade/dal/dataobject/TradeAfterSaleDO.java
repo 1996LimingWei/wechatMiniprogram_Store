@@ -26,8 +26,12 @@ public class TradeAfterSaleDO extends BaseDO {
     private String applyRemark;
     private Integer beforeOrderStatus;
     private String rejectReason;
+    private String refundProvider;
+    private String providerRefundNo;
+    private String refundMessage;
     private LocalDateTime applyTime;
     private LocalDateTime auditTime;
+    private LocalDateTime refundTime;
     private LocalDateTime rejectTime;
     private LocalDateTime cancelTime;
 }

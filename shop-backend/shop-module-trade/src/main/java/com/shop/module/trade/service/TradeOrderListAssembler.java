@@ -126,6 +126,7 @@ public class TradeOrderListAssembler {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", order.getId());
         item.put("orderSn", order.getOrderSn());
+        item.put("userId", order.getUserId());
         item.put("orderStatusText", getOrderStatusText(order));
         item.put("actualPrice", TradeMoneyUtils.formatYuan(order.getActualPrice()));
         item.put("goodsPrice", TradeMoneyUtils.formatYuan(order.getGoodsPrice()));
@@ -153,7 +154,7 @@ public class TradeOrderListAssembler {
         goods.put("goodsId", item.getSpuId());
         goods.put("productId", item.getSkuId());
         goods.put("goodsName", item.getGoodsName());
-        goods.put("goodsSpecifitionNameValue", item.getSpecName());
+        goods.put("goodsSpecifitionNameValue", TradeCartService.formatSpecName(item.getSpecName()));
         goods.put("number", item.getCount());
         goods.put("retailPrice", TradeMoneyUtils.formatYuan(item.getPrice()));
         goods.put("listPicUrl", item.getGoodsPicUrl());
@@ -178,10 +179,8 @@ public class TradeOrderListAssembler {
         result.put("logisticsCompany", logistics.getLogisticsCompany());
         result.put("logisticsNo", logistics.getLogisticsNo());
         result.put("deliveryTime", deliveryTime);
-        result.put("traces", List.of(
-                Map.of("time", deliveryTime, "text", "商家已发货，包裹交由" + logistics.getLogisticsCompany()),
-                Map.of("time", deliveryTime, "text", "物流单号：" + logistics.getLogisticsNo())
-        ));
+        // 列表查询不触发外部物流调用，轨迹只在物流详情接口中按需查询。
+        result.put("traces", List.of());
         return result;
     }
 
@@ -205,8 +204,12 @@ public class TradeOrderListAssembler {
         result.put("applyRemark", afterSale.getApplyRemark());
         result.put("beforeOrderStatus", afterSale.getBeforeOrderStatus());
         result.put("rejectReason", afterSale.getRejectReason());
+        result.put("refundProvider", afterSale.getRefundProvider());
+        result.put("providerRefundNo", afterSale.getProviderRefundNo());
+        result.put("refundMessage", afterSale.getRefundMessage());
         result.put("applyTime", formatTime(afterSale.getApplyTime()));
         result.put("auditTime", formatTime(afterSale.getAuditTime()));
+        result.put("refundTime", formatTime(afterSale.getRefundTime()));
         result.put("rejectTime", formatTime(afterSale.getRejectTime()));
         result.put("cancelTime", formatTime(afterSale.getCancelTime()));
         return result;
@@ -249,10 +252,11 @@ public class TradeOrderListAssembler {
 
     private String getAfterSaleStatusText(Integer status) {
         return switch (status == null ? 0 : status) {
-            case 0 -> "退款处理中";
+            case 0 -> "待审核";
             case 1 -> "已退款";
             case 2 -> "退款已拒绝";
             case 3 -> "已撤销";
+            case 4 -> "退款处理中";
             default -> "未知";
         };
     }
