@@ -11,6 +11,7 @@ module.exports = {
 	CatalogCurrent: 'catalog/current', //分类目录当前分类数据接口
 
 	AuthLoginByWeixin: 'auth/LoginByMa', //微信登录
+	AuthPhoneLogin: 'auth/phone-login', //手机号快速登录
 	AuthLogout: 'auth/logout', //退出登录并使服务端令牌失效
 	AccountClose: 'auth/account', //注销账号
 

@@ -37,6 +37,28 @@ public class MemberAuthService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> loginByWeixin(String code, boolean privacyAccepted) {
+        return doLogin(code, null, privacyAccepted);
+    }
+
+    /**
+     * 手机号快速登录（微信新版接口）。
+     *
+     * @param code 微信 wx.login 获取的 code
+     * @param phoneCode getPhoneNumber 回调中的 code
+     * @param privacyAccepted 是否同意当前版本协议
+     * @return 登录结果（token、userInfo、userId）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> loginByPhone(
+            String code, String phoneCode, boolean privacyAccepted) {
+        if (phoneCode == null || phoneCode.isBlank()) {
+            throw new ServerException(400, "缺少手机号授权 code");
+        }
+        return doLogin(code, phoneCode, privacyAccepted);
+    }
+
+    private Map<String, Object> doLogin(
+            String code, String phoneCode, boolean privacyAccepted) {
         if (!privacyAccepted) {
             throw new ServerException(400, "请先同意用户协议和隐私政策");
         }
@@ -46,7 +68,13 @@ public class MemberAuthService {
         String sessionKey = wxResult.get("session_key");
         String unionid = wxResult.get("unionid");
 
-        // 2. 查找或创建用户
+        // 2. 获取手机号（如果有 phoneCode）
+        String mobile = null;
+        if (phoneCode != null && !phoneCode.isEmpty()) {
+            mobile = wxMaService.getPhoneNumber(phoneCode);
+        }
+
+        // 3. 查找或创建用户
         MemberUserDO user = memberUserMapper.selectOne(
                 new LambdaQueryWrapper<MemberUserDO>().eq(MemberUserDO::getOpenid, openid)
         );
@@ -57,23 +85,29 @@ public class MemberAuthService {
             user.setOpenid(openid);
             user.setSessionKey(sessionKey);
             user.setUnionid(unionid);
-            user.setNickname("微信用户");
-            user.setAvatar("");
             user.setStatus(1);
             user.setMemberLevel(1); // 新用户自动绑定白银会员
+            if (mobile != null) {
+                user.setMobile(mobile);
+            }
+            user.setNickname("微信用户");
+            user.setAvatar("");
             memberUserMapper.insert(user);
             log.info("[MemberAuth] 新用户注册, userId={}", user.getId());
         } else {
-            // 老用户：更新 session_key
+            // 老用户：更新 session_key 和手机号
             user.setSessionKey(sessionKey);
             if (unionid != null) {
                 user.setUnionid(unionid);
+            }
+            if (mobile != null) {
+                user.setMobile(mobile);
             }
             memberUserMapper.updateById(user);
             log.info("[MemberAuth] 用户登录, userId={}", user.getId());
         }
 
-        // 3. 检查用户状态
+        // 4. 检查用户状态
         if (user.getStatus() == 0) {
             throw new ServerException(403, "账号已被禁用");
         }

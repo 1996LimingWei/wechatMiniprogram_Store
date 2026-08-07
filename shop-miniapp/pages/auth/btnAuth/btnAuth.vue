@@ -9,10 +9,11 @@
 				<view class="brand-slogan">传承经典 · 健康生活</view>
 			</view>
 			<view class="auth-card">
-				<view class="auth-title">微信快捷登录</view>
-				<view class="auth-desc">使用微信身份建立商城账号。我们不会在登录时获取您的微信昵称和头像。</view>
-				<button class="login-btn" @tap="login">
-					<text class="btn-text">微信一键登录</text>
+				<view class="auth-title">授权登录</view>
+				<view class="auth-desc">使用微信身份建立商城账号</view>
+				<button class="login-btn" :open-type="agreed ? 'getPhoneNumber' : ''"
+					:disabled="submitting" @tap="beforePhoneLogin" @getphonenumber="onGetPhoneNumber">
+					<text class="btn-text">手机号快速登录</text>
 				</button>
 				<view class="agreement-row" @tap="toggleAgreement">
 					<view class="agreement-check" :class="{ checked: agreed }">{{agreed ? '✓' : ''}}</view>
@@ -21,6 +22,7 @@
 					<text>和</text>
 					<text class="agreement-link" @tap.stop="openPrivacy">《隐私政策》</text>
 				</view>
+				<view class="skip-btn" @tap="login">使用微信身份登录</view>
 				<view class="skip-btn" @tap="skipLogin">暂不登录，先逛逛</view>
 			</view>
 		</view>
@@ -48,11 +50,30 @@
 			openPrivacy() {
 				uni.navigateTo({ url: '/pages/legal/privacy/privacy' });
 			},
+			beforePhoneLogin() {
+				if (!this.agreed) {
+					util.toast('请先阅读并同意用户协议和隐私政策');
+				}
+			},
+			onGetPhoneNumber(e) {
+				if (!this.agreed) {
+					util.toast('请先阅读并同意用户协议和隐私政策');
+					return;
+				}
+				if (!e.detail || e.detail.errMsg !== 'getPhoneNumber:ok' || !e.detail.code) {
+					util.toast('未获得手机号授权');
+					return;
+				}
+				this.startWechatLogin(api.AuthPhoneLogin, { phoneCode: e.detail.code });
+			},
 			login() {
 				if (!this.agreed) {
 					util.toast('请先阅读并同意用户协议和隐私政策');
 					return;
 				}
+				this.startWechatLogin(api.AuthLoginByWeixin, {});
+			},
+			startWechatLogin(endpoint, extraPayload) {
 				if (this.submitting) {
 					return;
 				}
@@ -64,36 +85,29 @@
 							this.submitting = false;
 							return;
 						}
-						this.loginByWeixin(resp.code).then(() => {
+						util.request(endpoint, Object.assign({
+							code: resp.code,
+							privacyAccepted: true
+						}, extraPayload), 'POST', 'application/json').then(res => {
 							this.submitting = false;
-						}, () => {
+							if (res.code !== 0) {
+								util.toast(res.msg || '登录失败');
+								return;
+							}
+							uni.setStorageSync('userInfo', res.data.userInfo);
+							uni.setStorageSync('token', res.data.token);
+							uni.setStorageSync('userId', res.data.userId);
+							uni.setStorageSync('privacyAgreedAt', Date.now());
+							this.goBack();
+						}, (error) => {
 							this.submitting = false;
+							util.toast(error.message || '登录失败，请稍后重试');
 						});
 					},
 					fail: () => {
 						util.toast('微信登录失败，请稍后重试');
 						this.submitting = false;
 					}
-				});
-			},
-			loginByWeixin: function(code) {
-				let that = this;
-				return util.request(api.AuthLoginByWeixin, {
-					code,
-					privacyAccepted: true
-				}, 'POST', 'application/json').then(res => {
-					if (res.code === 0) {
-						uni.setStorageSync('userInfo', res.data.userInfo);
-						uni.setStorageSync('token', res.data.token);
-						uni.setStorageSync('userId', res.data.userId);
-						uni.setStorageSync('privacyAgreedAt', Date.now());
-						that.goBack();
-					} else {
-						throw new Error(res.msg || '登录失败');
-					}
-				}).catch((error) => {
-					util.toast(error.message || '登录失败，请稍后重试');
-					throw error;
 				});
 			},
 			skipLogin() {
@@ -110,13 +124,12 @@
 			}
 		},
 		onLoad: function(options) {
-			let that = this;
 			if (uni.getStorageSync("navUrl")) {
-				that.navUrl = uni.getStorageSync("navUrl")
+				this.navUrl = uni.getStorageSync("navUrl")
 			} else {
-				that.navUrl = '/pages/index/index'
+				this.navUrl = '/pages/index/index'
 			}
-			that.agreed = !!uni.getStorageSync('privacyAgreedAt');
+			this.agreed = !!uni.getStorageSync('privacyAgreedAt');
 		}
 	}
 </script>
