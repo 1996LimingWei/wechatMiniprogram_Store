@@ -43,27 +43,17 @@
 						<!-- 立即支付 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.pay"
 							@tap.stop="payOrder(item, index)">立即支付</view>
-						<view class="action-btn primary" v-if="tradeDevActionEnabled && item.handleOption && item.handleOption.ship"
-							@tap.stop="mockShip(item, index)">模拟发货</view>
 						<!-- 申请退款 -->
 						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refund"
 							@tap.stop="applyRefund(item)">申请退款</view>
 						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refundCancel"
 							@tap.stop="cancelRefund(item)">撤销申请</view>
-						<view class="action-btn primary" v-if="tradeDevActionEnabled && item.handleOption && item.handleOption.refundApprove"
-							@tap.stop="mockApproveRefund(item)">模拟退款通过</view>
 						<!-- 确认收货 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.confirm"
 							@tap.stop="confirmOrder(item, index)">确认收货</view>
 						<!-- 查看物流（待收货时） -->
 						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.logistics"
 							@tap.stop="viewLogistics(item)">查看物流</view>
-						<!-- 去评价 -->
-						<view class="action-btn primary" v-if="item.orderStatusText === '已完成'"
-							@tap.stop="goReview">去评价</view>
-						<!-- 再次购买 -->
-						<view class="action-btn ghost" v-if="item.orderStatusText === '已完成'"
-							@tap.stop="buyAgain">再次购买</view>
 					</view>
 				</view>
 			</view>
@@ -90,8 +80,8 @@ export default {
 			orderList: [],
 			page: 1,
 			size: 10,
-			tradeDevActionEnabled: api.TradeDevActionEnabled === true,
-			loading: false
+			loading: false,
+			hasMore: true
 		}
 	},
 	methods: {
@@ -103,33 +93,39 @@ export default {
 		reload() {
 			this.orderList = [];
 			this.page = 1;
+			this.hasMore = true;
 			this.getOrderList();
 		},
 		getOrderList() {
-			if (this.loading) return;
+			if (this.loading || !this.hasMore) return;
 			this.loading = true;
 			util.request(api.OrderList, {
 				showType: this.showType,
 				page: this.page,
 				size: this.size
 			}).then(res => {
-				this.loading = false;
 				if (res.code === 0) {
-					this.orderList = this.orderList.concat(res.data.list || []);
+					const pageList = res.data.list || [];
+					this.orderList = this.orderList.concat(pageList);
+					const total = Number(res.data.total || 0);
+					this.hasMore = this.orderList.length < total && pageList.length > 0;
 					this.page++;
 				}
+				this.loading = false;
+			}).catch(() => {
+				this.loading = false;
 			});
 		},
 		goDetail(id) {
 			uni.navigateTo({ url: '../orderDetail/orderDetail?id=' + id });
 		},
 		payOrder(item, index) {
-			getApp().globalData._payAmount = item.actualPrice;
 			util.payOrder(parseInt(item.id)).then(() => {
 				uni.showToast({ title: '支付成功', icon: 'success' });
 				this.reload();
-			}).catch(() => {
-				util.toast('支付失败，请重试');
+			}).catch((error) => {
+				util.toast(error && error.pending ? '支付结果确认中' : '支付失败，请重试');
+				if (error && error.pending) this.reload();
 			});
 		},
 		cancelOrder(item, index) {
@@ -154,20 +150,6 @@ export default {
 				});
 			});
 		},
-		mockShip(item, index) {
-			util.modal('模拟发货', '当前还没有管理后台，先用模拟发货让订单进入待收货，确定继续吗？', true, (confirm) => {
-				if (!confirm) return;
-				util.request(api.OrderMockShip, {
-					orderId: item.id,
-					logisticsCompany: '顺丰速运'
-				}, 'POST', 'application/json').then(res => {
-					if (res.code === 0) {
-						uni.showToast({ title: '已模拟发货', icon: 'success' });
-						this.reload();
-					}
-				});
-			});
-		},
 		applyRefund(item) {
 			uni.showModal({
 				title: '申请退款',
@@ -181,24 +163,6 @@ export default {
 					}, 'POST', 'application/json').then(res => {
 						if (res.code === 0) {
 							uni.showToast({ title: '已提交申请', icon: 'success' });
-							this.reload();
-						}
-					});
-				}
-			});
-		},
-		mockApproveRefund(item) {
-			uni.showModal({
-				title: '模拟退款通过',
-				content: '当前还没有真实退款接口，先模拟审核通过并将订单标记为已退款，确定继续吗？',
-				confirmColor: '#5B8C5A',
-				success: (modalRes) => {
-					if (!modalRes.confirm) return;
-					util.request(api.OrderRefundMockApprove, {
-						orderId: item.id
-					}, 'POST', 'application/json').then(res => {
-						if (res.code === 0) {
-							uni.showToast({ title: '已退款', icon: 'success' });
 							this.reload();
 						}
 					});
@@ -237,12 +201,7 @@ export default {
 				});
 			});
 		},
-		goReview() {
-			uni.showToast({ title: '评价入口暂未开放', icon: 'none' });
-		},
-		buyAgain() {
-			uni.switchTab({ url: '/pages/index/index' });
-		}
+
 	},
 	onReachBottom() {
 		this.getOrderList();

@@ -35,27 +35,13 @@ public class AppAuthController {
             code = body.get("code").toString();
         }
         if (code.isEmpty()) {
-            return fail("缺少微信登录 code");
+            return fail(400, "缺少微信登录 code");
+        }
+        if (body == null || !Boolean.TRUE.equals(body.get("privacyAccepted"))) {
+            return fail(400, "请先同意用户协议和隐私政策");
         }
         try {
-            Map<String, Object> data = memberAuthService.loginByWeixin(code);
-            return success(data);
-        } catch (Exception e) {
-            log.error("[Auth] 微信登录异常", e);
-            return fail(e.getMessage());
-        }
-    }
-
-    /**
-     * 兼容旧接口：通过 URL 路径传递 code 登录
-     */
-    @RequestMapping("/code")
-    public Map<String, Object> loginByCode(@RequestParam(value = "code", required = false) String code) {
-        if (code == null || code.isEmpty()) {
-            return fail("缺少微信登录 code");
-        }
-        try {
-            Map<String, Object> data = memberAuthService.loginByWeixin(code);
+            Map<String, Object> data = memberAuthService.loginByWeixin(code, true);
             return success(data);
         } catch (Exception e) {
             log.error("[Auth] 微信登录异常", e);
@@ -79,10 +65,13 @@ public class AppAuthController {
             return fail("缺少微信登录 code");
         }
         if (phoneCode.isEmpty()) {
-            return fail("缺少手机号授权 code");
+            return fail(400, "缺少手机号授权 code");
+        }
+        if (body == null || !Boolean.TRUE.equals(body.get("privacyAccepted"))) {
+            return fail(400, "请先同意用户协议和隐私政策");
         }
         try {
-            Map<String, Object> data = memberAuthService.loginByPhone(code, phoneCode);
+            Map<String, Object> data = memberAuthService.loginByPhone(code, phoneCode, true);
             return success(data);
         } catch (Exception e) {
             log.error("[Auth] 手机号登录异常", e);
@@ -136,6 +125,18 @@ public class AppAuthController {
             return fail("用户不存在");
         }
         return success(data);
+    }
+
+    @DeleteMapping("/account")
+    public Map<String, Object> closeAccount(@RequestBody(required = false) Map<String, Object> body) {
+        LoginUser loginUser = getLoginUser();
+        if (loginUser == null) {
+            return fail(401, "未登录");
+        }
+        String confirmation = body == null || body.get("confirmation") == null
+                ? "" : body.get("confirmation").toString();
+        memberAuthService.closeAccount(loginUser.getUserId(), confirmation);
+        return success(null);
     }
 
     // ===== helpers =====

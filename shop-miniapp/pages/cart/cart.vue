@@ -8,7 +8,7 @@
 			</view>
 			<view class="guarantee-item">
 				<text class="guarantee-dot">✓</text>
-				<text>极速退款</text>
+				<text>售后服务</text>
 			</view>
 			<view class="guarantee-item">
 				<text class="guarantee-dot">✓</text>

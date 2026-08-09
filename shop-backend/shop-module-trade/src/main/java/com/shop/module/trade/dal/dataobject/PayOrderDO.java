@@ -21,6 +21,8 @@ public class PayOrderDO extends BaseDO {
     private Long userId;
     private Integer amount;
     private String channel;
+    private String channelTradeNo;
     private Integer status;
     private LocalDateTime payTime;
+    private LocalDateTime lastQueryTime;
 }

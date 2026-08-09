@@ -21,10 +21,6 @@
 
 		<!-- 数据统计行 -->
 		<view class="stats-row">
-			<navigator url="/pages/ucenter/coupon/coupon" class="stat-item">
-				<text class="stat-num">{{ couponCount }}</text>
-				<text class="stat-label">优惠券</text>
-			</navigator>
 			<navigator url="/pages/ucenter/collect/collect" class="stat-item">
 				<text class="stat-num">{{ collectCount }}</text>
 				<text class="stat-label">收藏</text>
@@ -65,9 +61,9 @@
 					<text class="order-label">待收货</text>
 				</navigator>
 				<navigator :url="'/pages/ucenter/order/order?status=4'" class="order-tab">
-					<view class="order-status-dot"></view>
+					<view class="order-status-dot subtle"></view>
 					<image class="order-icon-img" src="/static/images/service/order_rate.svg"></image>
-					<text class="order-label">待评价</text>
+					<text class="order-label">已完成</text>
 				</navigator>
 				<navigator :url="'/pages/ucenter/order/order?status=5'" class="order-tab">
 					<view class="order-status-dot subtle"></view>
@@ -94,11 +90,11 @@
 						</view>
 						<text class="service-label">地址管理</text>
 					</navigator>
-					<navigator url="/pages/ucenter/coupon/coupon" class="service-item">
+					<navigator url="/pages/ucenter/collect/collect" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #F6ECD1 0%, #FBF5E7 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_coupon.svg"></image>
 						</view>
-						<text class="service-label">优惠券</text>
+						<text class="service-label">我的收藏</text>
 					</navigator>
 					<button class="service-item service-btn" open-type="contact">
 						<view class="service-icon" style="background: linear-gradient(135deg, #E4ECE4 0%, #F2F7F2 100%);">
@@ -106,12 +102,12 @@
 						</view>
 						<text class="service-label">在线客服</text>
 					</button>
-					<view class="service-item" @tap="goMember">
+					<navigator url="/pages/ucenter/footprint/footprint" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #F2E6C1 0%, #F9F2DE 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_vip.svg"></image>
 						</view>
-						<text class="service-label">会员中心</text>
-					</view>
+						<text class="service-label">浏览记录</text>
+					</navigator>
 				</view>
 			</view>
 			<view class="service-group service-group-secondary">
@@ -120,29 +116,29 @@
 					<text class="service-group-desc">账户、反馈与帮助服务</text>
 				</view>
 				<view class="service-grid secondary">
-					<view class="service-item" @tap="goDistribution">
+					<navigator url="/pages/legal/privacy/privacy" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #E7EEE8 0%, #F6F8F6 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_distribution.svg"></image>
 						</view>
-						<text class="service-label">分销中心</text>
-					</view>
-					<view class="service-item" @tap="goWallet">
+						<text class="service-label">隐私政策</text>
+					</navigator>
+					<navigator url="/pages/legal/agreement/agreement" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #EEF2EC 0%, #FAFBF8 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_wallet.svg"></image>
 						</view>
-						<text class="service-label">余额钱包</text>
-					</view>
+						<text class="service-label">用户协议</text>
+					</navigator>
 					<navigator url="/pages/ucenter/feedback/feedback" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #E6EEE7 0%, #F4F8F4 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_feedback.svg"></image>
 						</view>
 						<text class="service-label">意见反馈</text>
 					</navigator>
-					<navigator url="/pages/ucenter/help/help" class="service-item">
+					<navigator url="/pages/ucenter/settings/settings" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #F2F3EC 0%, #FBFBF8 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_help.svg"></image>
 						</view>
-						<text class="service-label">帮助中心</text>
+						<text class="service-label">账号设置</text>
 					</navigator>
 				</view>
 			</view>
@@ -169,7 +165,7 @@ const util = require('@/utils/util.js');
 const api = require('@/utils/api.js');
 const app = getApp();
 
-const DEFAULT_AVATAR = 'https://platform-wxmall.oss-cn-beijing.aliyuncs.com/upload/20180727/150547696d798c.png';
+const DEFAULT_AVATAR = '/static/images/logo.png';
 
 export default {
 	data() {
@@ -206,12 +202,6 @@ export default {
 		goMember() {
 			uni.navigateTo({ url: '/pages/ucenter/member/member' });
 		},
-		goDistribution() {
-			uni.showToast({ title: '分销中心开发中', icon: 'none' });
-		},
-		goWallet() {
-			uni.showToast({ title: '余额钱包开发中', icon: 'none' });
-		},
 		exitLogin() {
 			uni.showModal({
 				title: '提示',
@@ -219,11 +209,16 @@ export default {
 				confirmColor: '#5B8C5A',
 				success: (res) => {
 					if (res.confirm) {
-						uni.removeStorageSync('token');
-						uni.removeStorageSync('userInfo');
-						app.globalData.userInfo = {};
-						this.userInfo = {};
-						util.toast('已退出登录');
+						util.request(api.AuthLogout, {}, 'POST', 'application/json')
+							.catch(() => null)
+							.finally(() => {
+								uni.removeStorageSync('token');
+								uni.removeStorageSync('userInfo');
+								app.globalData.userInfo = {};
+								app.globalData.token = '';
+								this.userInfo = {};
+								util.toast('已退出登录');
+							});
 					}
 				}
 			});

@@ -27,20 +27,6 @@
 					</view>
 				</view>
 
-				<!-- VIP会员权益卡 -->
-				<view class="vip-section" v-if="goods.retailPrice">
-					<view class="vip-left">
-						<view class="vip-badge-wrap">
-							<text class="vip-badge">黄金会员</text>
-							<text class="vip-price-label">专享价 ¥{{ (parseFloat(goods.retailPrice) * 0.9).toFixed(2) }}</text>
-						</view>
-						<text class="vip-note">开卡后下单立享折扣</text>
-					</view>
-					<navigator url="/pages/ucenter/coupon/coupon" class="vip-right">
-						<text class="vip-action-text">立即开通</text>
-					</navigator>
-				</view>
-
 				<!-- 商品标题区 -->
 				<view class="info-section">
 					<text class="goods-name">{{goods.name || ''}}</text>
@@ -59,11 +45,11 @@
 					</view>
 					<view class="service-tag">
 						<text class="tag-dot">✓</text>
-						<text>极速退款</text>
+						<text>售后服务</text>
 					</view>
 					<view class="service-tag">
 						<text class="tag-dot">✓</text>
-						<text>满88元免邮</text>
+						<text>满199元免邮</text>
 					</view>
 				</view>
 

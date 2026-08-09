@@ -44,7 +44,7 @@ public class WxMaService {
     public Map<String, String> code2Session(String code) {
         // Mock 模式：直接返回开发用 openid，不依赖微信接口
         if (wxMaProperties.isMockEnabled()) {
-            log.info("[WxMaService] Mock 模式，使用开发 openid, code={}", code);
+            log.info("[WxMaService] Mock 模式登录");
             Map<String, String> mockResult = new HashMap<>();
             mockResult.put("openid", "dev_openid_" + code);
             mockResult.put("session_key", "dev_session_key");
@@ -78,7 +78,7 @@ public class WxMaService {
             if (json.containsKey("unionid")) {
                 result.put("unionid", json.getStr("unionid"));
             }
-            log.info("[WxMaService] code2session 成功, openid={}", result.get("openid"));
+            log.info("[WxMaService] code2session 成功");
             return result;
         } catch (Exception e) {
             log.error("[WxMaService] code2session 网络异常", e);
@@ -94,7 +94,7 @@ public class WxMaService {
      */
     public String getPhoneNumber(String phoneCode) {
         if (wxMaProperties.isMockEnabled()) {
-            log.info("[WxMaService] Mock 模式，返回模拟手机号, phoneCode={}", phoneCode);
+            log.info("[WxMaService] Mock 模式，返回模拟手机号");
             return "1380000" + String.format("%04d", Math.abs(phoneCode.hashCode() % 10000));
         }
 
@@ -122,7 +122,10 @@ public class WxMaService {
             if (phoneNumber == null || phoneNumber.isEmpty()) {
                 phoneNumber = phoneInfo.getStr("phoneNumber");
             }
-            log.info("[WxMaService] 获取手机号成功: {}", phoneNumber);
+            if (phoneNumber == null || !phoneNumber.matches("^1\\d{10}$")) {
+                throw new ServerException(500, "微信返回的手机号格式无效");
+            }
+            log.info("[WxMaService] 获取手机号成功");
             return phoneNumber;
         } catch (Exception e) {
             log.error("[WxMaService] 获取手机号网络异常", e);
@@ -135,12 +138,15 @@ public class WxMaService {
      */
     private String getAccessToken() {
         String appid = wxMaProperties.getAppid();
+        String secret = wxMaProperties.getSecret();
+        if (appid == null || appid.isBlank() || secret == null || secret.isBlank()) {
+            throw new ServerException(500, "微信小程序 appid/secret 未配置");
+        }
         CachedToken cached = tokenCache.get(appid);
         if (cached != null && !cached.isExpired()) {
             return cached.token;
         }
 
-        String secret = wxMaProperties.getSecret();
         String url = ACCESS_TOKEN_URL
                 .replace("{appid}", appid)
                 .replace("{secret}", secret);
@@ -156,6 +162,9 @@ public class WxMaService {
 
             String token = json.getStr("access_token");
             int expiresIn = json.getInt("expires_in", 7200);
+            if (token == null || token.isBlank()) {
+                throw new ServerException(500, "微信未返回 access_token");
+            }
             tokenCache.put(appid, new CachedToken(token, expiresIn));
             log.info("[WxMaService] access_token 刷新成功, expires_in={}", expiresIn);
             return token;
@@ -173,7 +182,8 @@ public class WxMaService {
         CachedToken(String token, int expiresInSeconds) {
             this.token = token;
             // 提前 5 分钟过期，避免边界问题
-            this.expireAt = System.currentTimeMillis() + (expiresInSeconds - 300) * 1000L;
+            this.expireAt = System.currentTimeMillis()
+                    + Math.max(expiresInSeconds - 300, 60) * 1000L;
         }
 
         boolean isExpired() {

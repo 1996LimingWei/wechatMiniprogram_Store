@@ -17,6 +17,7 @@ public class TradeOrderDO extends BaseDO {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String orderSn;
+    private String requestId;
     private Long userId;
     private Integer status;
     private Integer payStatus;

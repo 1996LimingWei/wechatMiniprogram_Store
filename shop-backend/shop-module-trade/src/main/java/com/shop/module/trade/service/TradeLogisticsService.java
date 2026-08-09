@@ -1,11 +1,14 @@
 package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shop.common.exception.ServerException;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderLogisticsDO;
 import com.shop.module.trade.dal.mysql.TradeOrderLogisticsMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
+import com.shop.module.trade.service.provider.TradeLogisticsProvider;
+import com.shop.module.trade.service.provider.TradeLogisticsProviderService;
 import com.shop.module.trade.util.TradeRequestUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ public class TradeLogisticsService {
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderLogisticsMapper tradeOrderLogisticsMapper;
     private final TradeOrderLogService tradeOrderLogService;
+    private final TradeLogisticsProviderService tradeLogisticsProviderService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> mockShip(Long userId, Long orderId, Map<String, Object> request) {
@@ -64,8 +68,14 @@ public class TradeLogisticsService {
         }
 
         Integer fromStatus = order.getStatus();
+        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, order.getId())
+                .eq(TradeOrderDO::getStatus, 1)
+                .set(TradeOrderDO::getStatus, 2));
+        if (orderUpdated != 1) {
+            throw new ServerException(400, "订单状态已变更，不能重复发货");
+        }
         order.setStatus(2);
-        tradeOrderMapper.updateById(order);
         tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
                 "SHIP_ORDER", fromStatus, order.getStatus(),
                 "物流公司：" + company + "，物流单号：" + logisticsNo);
@@ -75,6 +85,10 @@ public class TradeLogisticsService {
     public Map<String, Object> query(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         return toResp(getLogistics(orderId), order.getStatus());
+    }
+
+    public Map<String, Object> adminQuery(Long orderId) {
+        return query(null, orderId);
     }
 
     public Map<String, Object> getOrderLogisticsInfo(Long orderId, Integer orderStatus) {
@@ -119,10 +133,19 @@ public class TradeLogisticsService {
         result.put("logisticsCompany", logistics.getLogisticsCompany());
         result.put("logisticsNo", logistics.getLogisticsNo());
         result.put("deliveryTime", deliveryTime);
-        result.put("traces", List.of(
-                Map.of("time", deliveryTime, "text", "商家已发货，包裹交由" + logistics.getLogisticsCompany()),
-                Map.of("time", deliveryTime, "text", "物流单号：" + logistics.getLogisticsNo())
-        ));
+        List<Map<String, String>> traces = tradeLogisticsProviderService.query(
+                        new TradeLogisticsProvider.LogisticsQuery(
+                                logistics.getOrderId(),
+                                logistics.getLogisticsCompany(),
+                                logistics.getLogisticsNo(),
+                                logistics.getDeliveryTime(),
+                                orderStatus))
+                .stream()
+                .map(trace -> Map.of(
+                        "time", trace.time() == null ? "" : trace.time().format(TIME_FORMATTER),
+                        "text", trace.text()))
+                .toList();
+        result.put("traces", traces);
         return result;
     }
 }

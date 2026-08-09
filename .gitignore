@@ -20,6 +20,7 @@ target/
 node_modules/
 dist/
 unpackage/
+.vite/
 .DS_Store
 *.local
 
@@ -29,7 +30,7 @@ unpackage/
 application-local.yml
 sql/backups/
 .docker-data/
-shop-backend/.mvn/repository/
+**/.mvn/repository/
 
 # IDE
 .vscode/

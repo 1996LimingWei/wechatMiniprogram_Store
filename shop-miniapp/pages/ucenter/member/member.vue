@@ -43,7 +43,7 @@
 			</view>
 
 			<!-- 当前权益 -->
-			<view class="section">
+			<view v-if="purchaseEnabled" class="section">
 				<view class="section-header">
 					<text class="section-title">当前权益</text>
 					<text class="section-tag">{{ memberLevelName }}</text>
@@ -80,7 +80,7 @@
 			</view>
 
 			<!-- 黄金卡推广（白银会员才显示） -->
-			<view v-if="!isGold" class="section">
+			<view v-if="purchaseEnabled && !isGold" class="section">
 				<view class="gold-promo" @tap="goGoldCard">
 					<view class="promo-bg"></view>
 					<view class="promo-content">
@@ -101,15 +101,21 @@
 			</view>
 
 			<!-- 已是黄金会员提示 -->
-			<view v-else class="section">
+			<view v-else-if="purchaseEnabled && isGold" class="section">
 				<view class="gold-active-notice">
 					<text class="gold-active-icon">👑</text>
 					<text class="gold-active-text">您已是黄金会员，尊享全部权益</text>
 				</view>
 			</view>
 
+			<view v-else class="section">
+				<view class="gold-active-notice">
+					<text class="gold-active-text">{{ purchaseMessage }}</text>
+				</view>
+			</view>
+
 			<!-- 会员说明 -->
-			<view class="section">
+			<view v-if="purchaseEnabled" class="section">
 				<view class="section-header">
 					<text class="section-title">会员说明</text>
 				</view>
@@ -149,6 +155,8 @@ export default {
 			nickname: '',
 			avatar: '',
 			mobile: '',
+			purchaseEnabled: false,
+			purchaseMessage: '黄金会员服务暂未开放',
 			benefits: {
 				discount: '无专属折扣',
 				shipping: '标准发货',
@@ -162,7 +170,7 @@ export default {
 			return this.memberLevel === 2;
 		},
 		avatarUrl() {
-			return this.avatar || 'https://platform-wxmall.oss-cn-beijing.aliyuncs.com/upload/20180727/150547696d798c.png';
+			return this.avatar || '/static/images/logo.png';
 		}
 	},
 	methods: {
@@ -182,6 +190,8 @@ export default {
 					this.nickname = d.nickname || '';
 					this.avatar = d.avatar || '';
 					this.mobile = d.mobile || '';
+					this.purchaseEnabled = d.purchaseEnabled === true;
+					this.purchaseMessage = d.purchaseMessage || '黄金会员服务暂未开放';
 					if (d.benefits) {
 						this.benefits = d.benefits;
 					}

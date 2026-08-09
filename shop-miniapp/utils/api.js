@@ -1,5 +1,4 @@
 module.exports = {
-	TradeDevActionEnabled: false, //开发调试用交易操作开关，客户演示和正式交付必须保持关闭
 	IndexUrlNewGoods: 'index/newGoods', //新品首发
 	IndexUrlHotGoods: 'index/hotGoods', //热卖商品
 	IndexUrlTopic: 'index/topic', //专题精选
@@ -13,6 +12,8 @@ module.exports = {
 
 	AuthLoginByWeixin: 'auth/LoginByMa', //微信登录
 	AuthPhoneLogin: 'auth/phone-login', //手机号快速登录
+	AuthLogout: 'auth/logout', //退出登录并使服务端令牌失效
+	AccountClose: 'auth/account', //注销账号
 
 	GoodsCount: 'goods/count', //统计商品总数
 	GoodsList: 'goods/list', //获得商品列表
@@ -64,11 +65,9 @@ module.exports = {
 	OrderCancel: 'order/cancelOrder', //取消订单
 	OrderConfirm: 'order/confirmOrder', //确认收货
 	OrderLogistics: 'order/logistics', //订单物流
-	OrderMockShip: 'order/mock-ship', //开发用模拟发货
 	OrderRefundApply: 'order/refund/apply', //申请退款/售后
 	OrderRefundDetail: 'order/refund/detail', //退款/售后详情
 	OrderRefundCancel: 'order/refund/cancel', //撤销退款/售后申请
-	OrderRefundMockApprove: 'order/refund/mock-approve', //开发用模拟退款通过
 
 	FootprintList: 'footprint/list', //足迹列表
 	FootprintDelete: 'footprint/delete', //删除足迹
@@ -80,8 +79,6 @@ module.exports = {
 	Login: 'auth/login', //账号登录
 	Code:  'auth/', //静默登录
 	Register: 'auth/register', //注册
-	CouponList: 'coupon/list', // 优惠券列表
-	GoodsCouponList: 'coupon/listByGoods', // 商品优惠券列表
 	OrderQuery: 'pay/query', //微信查询订单状态
 
 	HelpTypeList: 'helpissue/typeList', //查看帮助类型列表

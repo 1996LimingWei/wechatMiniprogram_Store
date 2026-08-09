@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class TradeCartService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int MAX_CART_ITEM_COUNT = 99;
 
     private final TradeCartMapper tradeCartMapper;
     private final TradeProductService tradeProductService;
@@ -38,13 +39,10 @@ public class TradeCartService {
     }
 
     private Map<String, Object> addCart(Long userId, Long goodsId, Long productId, int number, boolean buyNow) {
-        if (number <= 0) {
-            throw new ServerException(400, "商品数量必须大于 0");
+        if (number <= 0 || number > MAX_CART_ITEM_COUNT) {
+            throw new ServerException(400, "商品数量必须在 1 到 99 之间");
         }
         TradeProductSnapshot snapshot = tradeProductService.getSnapshot(goodsId, productId);
-        if (snapshot.getStock() < number) {
-            throw new ServerException(1201, "商品库存不足");
-        }
 
         if (buyNow) {
             tradeCartMapper.update(null, new LambdaUpdateWrapper<TradeCartDO>()
@@ -57,6 +55,7 @@ public class TradeCartService {
                 .eq(TradeCartDO::getUserId, userId)
                 .eq(TradeCartDO::getSkuId, snapshot.getSkuId()));
         if (cart == null) {
+            validateStock(snapshot, number);
             cart = new TradeCartDO();
             cart.setUserId(userId);
             cart.setSpuId(snapshot.getSpuId());
@@ -69,7 +68,17 @@ public class TradeCartService {
             cart.setChecked(1);
             tradeCartMapper.insert(cart);
         } else {
-            cart.setCount(buyNow ? number : cart.getCount() + number);
+            int finalCount = buyNow ? number : cart.getCount() + number;
+            if (finalCount > MAX_CART_ITEM_COUNT) {
+                throw new ServerException(400, "单个规格最多购买 99 件");
+            }
+            validateStock(snapshot, finalCount);
+            cart.setSpuId(snapshot.getSpuId());
+            cart.setGoodsName(snapshot.getName());
+            cart.setGoodsPicUrl(snapshot.getPicUrl());
+            cart.setSpecName(snapshot.getSpecName());
+            cart.setPrice(snapshot.getPrice());
+            cart.setCount(finalCount);
             cart.setChecked(1);
             tradeCartMapper.updateById(cart);
         }
@@ -102,10 +111,16 @@ public class TradeCartService {
     }
 
     public void updateCart(Long userId, Long id, Long goodsId, Long productId, int number) {
-        if (number <= 0) {
-            throw new ServerException(400, "商品数量必须大于 0");
+        if (number <= 0 || number > MAX_CART_ITEM_COUNT) {
+            throw new ServerException(400, "商品数量必须在 1 到 99 之间");
         }
         TradeCartDO cart = getCart(userId, id, goodsId, productId);
+        TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
+        validateStock(snapshot, number);
+        cart.setGoodsName(snapshot.getName());
+        cart.setGoodsPicUrl(snapshot.getPicUrl());
+        cart.setSpecName(snapshot.getSpecName());
+        cart.setPrice(snapshot.getPrice());
         cart.setCount(number);
         tradeCartMapper.updateById(cart);
     }
@@ -214,6 +229,12 @@ public class TradeCartService {
                     .collect(Collectors.joining("; "));
         } catch (Exception e) {
             return specName;
+        }
+    }
+
+    private void validateStock(TradeProductSnapshot snapshot, int count) {
+        if (snapshot.getStock() == null || snapshot.getStock() < count) {
+            throw new ServerException(1201, "商品库存不足");
         }
     }
 }

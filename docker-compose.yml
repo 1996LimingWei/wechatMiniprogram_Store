@@ -51,6 +51,8 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       TRADE_MOCK_ACTIONS_ENABLED: "true"
+      TRADE_REFUND_PROVIDER: mock
+      TRADE_LOGISTICS_PROVIDER: mock
       TZ: Asia/Shanghai
     ports:
       - "${BACKEND_PORT:-8085}:8085"

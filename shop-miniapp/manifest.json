@@ -172,8 +172,9 @@
 	"quickapp": {},
 	"mp-weixin": {
 		"appid": "wx34175bfa441e4316",
+		"__usePrivacyCheck__": true,
 		"setting": {
-			"urlCheck": false,
+			"urlCheck": true,
 			"es6": true,
 			"minified": true
 		},

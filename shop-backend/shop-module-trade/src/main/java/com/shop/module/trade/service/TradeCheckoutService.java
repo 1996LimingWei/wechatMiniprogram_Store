@@ -26,9 +26,19 @@ public class TradeCheckoutService {
         List<TradeProductSnapshot> snapshots = checkedList.stream()
                 .map(item -> tradeProductService.getSnapshot(item.getSpuId(), item.getSkuId()))
                 .toList();
-        int goodsTotalPrice = java.util.stream.IntStream.range(0, checkedList.size())
-                .map(index -> snapshots.get(index).getPrice() * checkedList.get(index).getCount())
-                .sum();
+        int goodsTotalPrice = 0;
+        for (int index = 0; index < checkedList.size(); index++) {
+            TradeCartDO item = checkedList.get(index);
+            TradeProductSnapshot snapshot = snapshots.get(index);
+            if (snapshot.getStock() == null || snapshot.getStock() < item.getCount()) {
+                throw new com.shop.common.exception.ServerException(1201, "商品库存不足");
+            }
+            item.setGoodsName(snapshot.getName());
+            item.setGoodsPicUrl(snapshot.getPicUrl());
+            item.setSpecName(snapshot.getSpecName());
+            item.setPrice(snapshot.getPrice());
+            goodsTotalPrice = Math.addExact(goodsTotalPrice, Math.multiplyExact(snapshot.getPrice(), item.getCount()));
+        }
         int freightPrice = calculateFreight(goodsTotalPrice);
         int couponPrice = 0;
         int orderTotalPrice = goodsTotalPrice + freightPrice;

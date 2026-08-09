@@ -10,10 +10,19 @@
 			</view>
 			<view class="auth-card">
 				<view class="auth-title">授权登录</view>
-				<view class="auth-desc">授权手机号用于快速登录，享受完整购物体验</view>
-				<button class="login-btn" open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">
+				<view class="auth-desc">使用微信身份建立商城账号</view>
+				<button class="login-btn" :open-type="agreed ? 'getPhoneNumber' : ''"
+					:disabled="submitting" @tap="beforePhoneLogin" @getphonenumber="onGetPhoneNumber">
 					<text class="btn-text">手机号快速登录</text>
 				</button>
+				<view class="agreement-row" @tap="toggleAgreement">
+					<view class="agreement-check" :class="{ checked: agreed }">{{agreed ? '✓' : ''}}</view>
+					<text>我已阅读并同意</text>
+					<text class="agreement-link" @tap.stop="openAgreement">《用户协议》</text>
+					<text>和</text>
+					<text class="agreement-link" @tap.stop="openPrivacy">《隐私政策》</text>
+				</view>
+				<view class="skip-btn" @tap="login">使用微信身份登录</view>
 				<view class="skip-btn" @tap="skipLogin">暂不登录，先逛逛</view>
 			</view>
 		</view>
@@ -27,63 +36,77 @@
 		data() {
 			return {
 				navUrl: '',
-				code: ''
+				agreed: false,
+				submitting: false
 			}
 		},
 		methods: {
-			onGetPhoneNumber(e) {
-				if (e.detail.errMsg !== 'getPhoneNumber:ok') {
-					// 用户拒绝授权
-					util.toast('您已取消授权，可点击“先逛逛”浏览商品');
-					return;
-				}
-				// 微信 v2 新版：通过 e.detail.code 获取手机号
-				const phoneCode = e.detail.code;
-				if (!phoneCode) {
-					util.toast('手机号授权失败，请重试');
-					return;
-				}
-				this.doPhoneLogin(phoneCode);
+			toggleAgreement() {
+				this.agreed = !this.agreed;
 			},
-			doPhoneLogin(phoneCode) {
-				let that = this;
-				// 先确保有 wx.login 的 code
-				const doRequest = (wxCode) => {
-					util.request(api.AuthPhoneLogin, {
-						code: wxCode,
-						phoneCode: phoneCode
-					}, 'POST', 'application/json').then(res => {
-						if (res.code === 0) {
+			openAgreement() {
+				uni.navigateTo({ url: '/pages/legal/agreement/agreement' });
+			},
+			openPrivacy() {
+				uni.navigateTo({ url: '/pages/legal/privacy/privacy' });
+			},
+			beforePhoneLogin() {
+				if (!this.agreed) {
+					util.toast('请先阅读并同意用户协议和隐私政策');
+				}
+			},
+			onGetPhoneNumber(e) {
+				if (!this.agreed) {
+					util.toast('请先阅读并同意用户协议和隐私政策');
+					return;
+				}
+				if (!e.detail || e.detail.errMsg !== 'getPhoneNumber:ok' || !e.detail.code) {
+					util.toast('未获得手机号授权');
+					return;
+				}
+				this.startWechatLogin(api.AuthPhoneLogin, { phoneCode: e.detail.code });
+			},
+			login() {
+				if (!this.agreed) {
+					util.toast('请先阅读并同意用户协议和隐私政策');
+					return;
+				}
+				this.startWechatLogin(api.AuthLoginByWeixin, {});
+			},
+			startWechatLogin(endpoint, extraPayload) {
+				if (this.submitting) {
+					return;
+				}
+				this.submitting = true;
+				uni.login({
+					success: (resp) => {
+						if (!resp.code) {
+							util.toast('获取微信登录凭证失败');
+							this.submitting = false;
+							return;
+						}
+						util.request(endpoint, Object.assign({
+							code: resp.code,
+							privacyAccepted: true
+						}, extraPayload), 'POST', 'application/json').then(res => {
+							this.submitting = false;
+							if (res.code !== 0) {
+								util.toast(res.msg || '登录失败');
+								return;
+							}
 							uni.setStorageSync('userInfo', res.data.userInfo);
 							uni.setStorageSync('token', res.data.token);
 							uni.setStorageSync('userId', res.data.userId);
-							uni.showToast({ title: '登录成功', icon: 'success' });
-							setTimeout(() => {
-								that.goBack();
-							}, 500);
-						} else {
-							uni.showModal({
-								title: '提示',
-								content: res.msg || '登录失败',
-								showCancel: false
-							});
-						}
-					}).catch(err => {
-						console.error('[PhoneLogin] 请求异常:', err);
-					});
-				};
-
-				// 每次重新获取 code，避免过期
-				uni.login({
-					success(res) {
-						if (res.code) {
-							doRequest(res.code);
-						} else {
-							util.toast('获取登录凭证失败');
-						}
+							uni.setStorageSync('privacyAgreedAt', Date.now());
+							this.goBack();
+						}, (error) => {
+							this.submitting = false;
+							util.toast(error.message || '登录失败，请稍后重试');
+						});
 					},
-					fail() {
-						util.toast('微信登录失败');
+					fail: () => {
+						util.toast('微信登录失败，请稍后重试');
+						this.submitting = false;
 					}
 				});
 			},
@@ -106,6 +129,7 @@
 			} else {
 				this.navUrl = '/pages/index/index'
 			}
+			this.agreed = !!uni.getStorageSync('privacyAgreedAt');
 		}
 	}
 </script>
@@ -241,5 +265,37 @@
 		color: #999;
 		margin-top: 30rpx;
 		padding: 10rpx;
+	}
+
+	.agreement-row {
+		margin-top: 28rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		font-size: 22rpx;
+		line-height: 1.8;
+		color: #777;
+	}
+
+	.agreement-check {
+		width: 28rpx;
+		height: 28rpx;
+		margin-right: 10rpx;
+		border: 2rpx solid #9aa69a;
+		border-radius: 6rpx;
+		color: #fff;
+		font-size: 20rpx;
+		line-height: 28rpx;
+		text-align: center;
+
+		&.checked {
+			background: $green;
+			border-color: $green;
+		}
+	}
+
+	.agreement-link {
+		color: $green;
 	}
 </style>

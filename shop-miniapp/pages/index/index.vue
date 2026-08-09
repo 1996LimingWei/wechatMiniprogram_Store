@@ -7,7 +7,7 @@
 					<image class="nav-logo" src="/static/images/logo.png" mode="aspectFit"></image>
 					<view class="nav-title">
 						<text class="brand-name">药食同源</text>
-						<text class="brand-slogan">让健康触手可及</text>
+						<text class="brand-slogan">安心选购，便捷到家</text>
 					</view>
 				</view>
 			</view>
@@ -64,10 +64,10 @@
 				<view class="dual-left-glow"></view>
 				<view class="dual-header">
 					<view class="dual-header-text">
-						<text class="dual-eyebrow">HOT DEAL</text>
-						<text class="dual-title">限时特惠</text>
+						<text class="dual-eyebrow">POPULAR</text>
+						<text class="dual-title">热销推荐</text>
 					</view>
-					<text class="dual-sub">低至5折</text>
+					<text class="dual-sub">查看更多</text>
 				</view>
 				<view class="dual-products">
 					<view class="dual-product" v-for="(item, index) in hotGoods.slice(0,2)" :key="index">
@@ -88,7 +88,7 @@
 				<view class="dual-card" @tap="goToBrand">
 					<text class="dual-card-tag">精选品牌</text>
 					<text class="dual-card-title">品牌精选</text>
-					<text class="dual-card-sub">大牌直供</text>
+					<text class="dual-card-sub">查看更多</text>
 					<view class="dual-card-img-wrap" v-if="brands.length > 0">
 						<image class="dual-card-img" :src="brands[0].newPicUrl" mode="aspectFill"></image>
 					</view>
@@ -127,7 +127,7 @@
 			<image v-if="categoryTabs[currentTab].icon" class="category-banner-img" :src="categoryTabs[currentTab].icon" mode="aspectFill"></image>
 			<view class="category-banner-text">
 				<text class="cat-title">{{categoryTabs[currentTab].name}}专区</text>
-				<text class="cat-sub">甄选地道原料，科学合理配比</text>
+				<text class="cat-sub">查看当前分类商品</text>
 			</view>
 		</view>
 
@@ -327,7 +327,6 @@ export default {
 	onLoad() {
 		const sysInfo = uni.getSystemInfoSync();
 		this.statusBarHeight = sysInfo.statusBarHeight || 44;
-
 		this.getIndexData();
 	}
 }

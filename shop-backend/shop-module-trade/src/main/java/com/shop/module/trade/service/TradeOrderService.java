@@ -2,8 +2,6 @@ package com.shop.module.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.shop.common.pojo.PageResult;
 import com.shop.common.exception.ServerException;
 import com.shop.module.trade.config.TradeOrderProperties;
 import com.shop.module.trade.dal.dataobject.MemberAddressDO;
@@ -16,11 +14,13 @@ import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,9 +44,16 @@ public class TradeOrderService {
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
     private final PayOrderMapper payOrderMapper;
+    private final WechatPayService wechatPayService;
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> submitOrder(Long userId, Long addressId) {
+    public Map<String, Object> submitOrder(Long userId, Long addressId, String requestId) {
+        validateRequestId(requestId);
+        TradeOrderDO existingOrder = findByRequestId(userId, requestId);
+        if (existingOrder != null) {
+            return buildSubmitResult(existingOrder);
+        }
+
         List<TradeCartDO> checkedList = tradeCartService.getCheckedCartList(userId);
         if (checkedList.isEmpty()) {
             throw new ServerException(400, "请选择要结算的商品");
@@ -56,29 +63,34 @@ public class TradeOrderService {
             throw new ServerException(400, "请选择收货地址");
         }
 
-        List<TradeProductSnapshot> snapshots = checkedList.stream()
-                .map(cart -> tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId()))
-                .toList();
-        int goodsTotalPrice = java.util.stream.IntStream.range(0, checkedList.size())
-                .map(index -> snapshots.get(index).getPrice() * checkedList.get(index).getCount())
-                .sum();
+        List<OrderLine> orderLines = new ArrayList<>(checkedList.size());
+        int goodsTotalPrice = 0;
+        for (TradeCartDO cart : checkedList) {
+            if (cart.getCount() == null || cart.getCount() < 1 || cart.getCount() > 99) {
+                throw new ServerException(400, "商品数量必须在 1 到 99 之间");
+            }
+            TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
+            if (snapshot.getStock() == null || snapshot.getStock() < cart.getCount()) {
+                throw new ServerException(1201, "商品库存不足");
+            }
+            goodsTotalPrice = Math.addExact(goodsTotalPrice,
+                    Math.multiplyExact(snapshot.getPrice(), cart.getCount()));
+            orderLines.add(new OrderLine(cart, snapshot));
+        }
         int freightPrice = tradeCheckoutService.calculateFreight(goodsTotalPrice);
         int couponPrice = 0;
-        int actualPrice = goodsTotalPrice + freightPrice - couponPrice;
-
-        for (int index = 0; index < checkedList.size(); index++) {
-            tradeProductService.reduceStock(snapshots.get(index), checkedList.get(index).getCount());
-        }
+        int actualPrice = Math.addExact(goodsTotalPrice, freightPrice);
 
         TradeOrderDO order = new TradeOrderDO();
         order.setOrderSn(generateOrderSn());
+        order.setRequestId(requestId);
         order.setUserId(userId);
         order.setStatus(0);
-        order.setPayStatus(0);
+        order.setPayStatus(TradeOrderPayStatus.UNPAID);
         order.setGoodsPrice(goodsTotalPrice);
         order.setFreightPrice(freightPrice);
         order.setCouponPrice(couponPrice);
-        order.setOrderPrice(goodsTotalPrice + freightPrice);
+        order.setOrderPrice(actualPrice);
         order.setActualPrice(actualPrice);
         order.setAddressId(address.getId());
         order.setConsignee(address.getUserName());
@@ -86,12 +98,21 @@ public class TradeOrderService {
         order.setFullRegion(address.getFullRegion());
         order.setAddress(address.getDetailInfo());
         order.setExpireTime(LocalDateTime.now().plusMinutes(tradeOrderProperties.getUnpaidTimeoutMinutes()));
-        tradeOrderMapper.insert(order);
+        try {
+            tradeOrderMapper.insert(order);
+        } catch (DuplicateKeyException exception) {
+            TradeOrderDO duplicatedOrder = findByRequestId(userId, requestId);
+            if (duplicatedOrder != null) {
+                return buildSubmitResult(duplicatedOrder);
+            }
+            throw exception;
+        }
         tradeOrderLogService.recordCreated(order);
 
-        for (int index = 0; index < checkedList.size(); index++) {
-            TradeCartDO cart = checkedList.get(index);
-            TradeProductSnapshot snapshot = snapshots.get(index);
+        for (OrderLine orderLine : orderLines) {
+            TradeCartDO cart = orderLine.cart();
+            TradeProductSnapshot snapshot = orderLine.snapshot();
+            tradeProductService.reduceStock(snapshot, cart.getCount());
             TradeOrderItemDO item = new TradeOrderItemDO();
             item.setOrderId(order.getId());
             item.setUserId(userId);
@@ -102,77 +123,17 @@ public class TradeOrderService {
             item.setSpecName(snapshot.getSpecName());
             item.setPrice(snapshot.getPrice());
             item.setCount(cart.getCount());
-            item.setTotalPrice(snapshot.getPrice() * cart.getCount());
+            item.setTotalPrice(Math.multiplyExact(snapshot.getPrice(), cart.getCount()));
             tradeOrderItemMapper.insert(item);
         }
         tradeCartService.clearCheckedCart(userId);
 
-        return Map.of("orderInfo", Map.of("id", order.getId(), "orderSn", order.getOrderSn()));
-    }
-
-    public Map<String, Object> getOrderList(Long userId, int showType, int page, int size) {
-        LambdaQueryWrapper<TradeOrderDO> wrapper = new LambdaQueryWrapper<TradeOrderDO>()
-                .eq(TradeOrderDO::getUserId, userId)
-                .orderByDesc(TradeOrderDO::getCreateTime);
-        Integer status = mapShowTypeToStatus(showType);
-        if (status != null) {
-            if (status < 0) {
-                wrapper.and(w -> w.eq(TradeOrderDO::getStatus, 5)
-                        .or()
-                        .eq(TradeOrderDO::getPayStatus, 2));
-            } else {
-                wrapper.eq(TradeOrderDO::getStatus, status);
-            }
-        }
-        List<TradeOrderDO> all = tradeOrderMapper.selectList(wrapper);
-        int fromIndex = Math.min(Math.max(page - 1, 0) * size, all.size());
-        int toIndex = Math.min(fromIndex + size, all.size());
-        List<Map<String, Object>> list = all.subList(fromIndex, toIndex)
-                .stream()
-                .map(this::toOrderListItem)
-                .toList();
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("list", list);
-        result.put("page", page);
-        result.put("total", all.size());
-        return result;
+        return buildSubmitResult(order);
     }
 
     public Map<String, Object> getOrderDetail(Long userId, Long orderId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         return buildOrderDetail(order);
-    }
-
-    public PageResult<Map<String, Object>> getAdminOrderPage(int page, int size, Map<String, Object> request) {
-        LambdaQueryWrapper<TradeOrderDO> wrapper = new LambdaQueryWrapper<TradeOrderDO>()
-                .orderByDesc(TradeOrderDO::getCreateTime);
-        Long userId = getLong(request, "userId", 0L);
-        Long orderId = getLong(request, "orderId", 0L);
-        Integer status = getInteger(request, "status");
-        Integer payStatus = getInteger(request, "payStatus");
-        String orderSn = getString(request, "orderSn");
-        String mobile = getString(request, "mobile");
-        if (userId > 0) {
-            wrapper.eq(TradeOrderDO::getUserId, userId);
-        }
-        if (orderId > 0) {
-            wrapper.eq(TradeOrderDO::getId, orderId);
-        }
-        if (status != null) {
-            wrapper.eq(TradeOrderDO::getStatus, status);
-        }
-        if (payStatus != null) {
-            wrapper.eq(TradeOrderDO::getPayStatus, payStatus);
-        }
-        if (!orderSn.isBlank()) {
-            wrapper.like(TradeOrderDO::getOrderSn, orderSn);
-        }
-        if (!mobile.isBlank()) {
-            wrapper.like(TradeOrderDO::getMobile, mobile);
-        }
-        Page<TradeOrderDO> pageResult = tradeOrderMapper.selectPage(new Page<>(Math.max(page, 1), Math.max(size, 1)), wrapper);
-        return new PageResult<>(pageResult.getRecords().stream().map(this::toOrderListItem).toList(),
-                pageResult.getTotal());
     }
 
     public Map<String, Object> getAdminOrderDetail(Long orderId) {
@@ -226,8 +187,17 @@ public class TradeOrderService {
 
     @Transactional(rollbackFor = Exception.class)
     public void markPaid(Long userId, Long orderId) {
+        markPaid(userId, orderId, TradeOrderLogService.OPERATOR_USER, userId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void markPaidBySystem(Long userId, Long orderId) {
+        markPaid(userId, orderId, TradeOrderLogService.OPERATOR_SYSTEM, 0L);
+    }
+
+    private void markPaid(Long userId, Long orderId, String operatorType, Long operatorId) {
         TradeOrderDO order = getUserOrder(userId, orderId);
-        if (order.getPayStatus() == 1) {
+        if (order.getPayStatus() == TradeOrderPayStatus.PAID) {
             return;
         }
         if (order.getStatus() != 0) {
@@ -237,19 +207,19 @@ public class TradeOrderService {
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
                 .eq(TradeOrderDO::getStatus, 0)
-                .eq(TradeOrderDO::getPayStatus, 0)
-                .set(TradeOrderDO::getPayStatus, 1)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
+                .set(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
                 .set(TradeOrderDO::getStatus, 1)
                 .set(TradeOrderDO::getPayTime, LocalDateTime.now()));
         if (updated == 1) {
             order.setStatus(1);
-            order.setPayStatus(1);
-            tradeOrderLogService.recordPayChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
-                    "PAY_SUCCESS", 0, 1, 0, 1, "Mock 支付成功");
+            order.setPayStatus(TradeOrderPayStatus.PAID);
+            tradeOrderLogService.recordPayChanged(order, operatorType, operatorId,
+                    "PAY_SUCCESS", 0, 1, 0, 1, "支付成功");
             return;
         }
         TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
-        if (latest != null && latest.getPayStatus() != null && latest.getPayStatus() == 1) {
+        if (latest != null && latest.getPayStatus() != null && latest.getPayStatus() == TradeOrderPayStatus.PAID) {
             return;
         }
         if (latest != null && latest.getStatus() != null && latest.getStatus() == 4) {
@@ -273,7 +243,7 @@ public class TradeOrderService {
         int batchSize = Math.max(1, tradeOrderProperties.getExpireBatchSize());
         List<TradeOrderDO> expiredOrders = tradeOrderMapper.selectList(new LambdaQueryWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getStatus, 0)
-                .eq(TradeOrderDO::getPayStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
                 .and(wrapper -> wrapper.le(TradeOrderDO::getExpireTime, now)
                         .or()
                         .isNull(TradeOrderDO::getExpireTime)
@@ -288,14 +258,6 @@ public class TradeOrderService {
             }
         }
         return closedCount;
-    }
-
-    private Map<String, Object> toOrderListItem(TradeOrderDO order) {
-        Map<String, Object> item = toOrderInfo(order);
-        item.put("goodsList", getOrderItems(order.getId()).stream().map(this::toOrderGoods).toList());
-        item.put("logistics", tradeLogisticsService.getOrderLogisticsInfo(order.getId(), order.getStatus()));
-        item.put("afterSale", tradeAfterSaleService.getOrderAfterSaleInfo(order.getId()));
-        return item;
     }
 
     private Map<String, Object> buildOrderDetail(TradeOrderDO order) {
@@ -315,6 +277,7 @@ public class TradeOrderService {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", order.getId());
         item.put("orderSn", order.getOrderSn());
+        item.put("userId", order.getUserId());
         item.put("orderStatusText", getOrderStatusText(order));
         item.put("actualPrice", TradeMoneyUtils.formatYuan(order.getActualPrice()));
         item.put("goodsPrice", TradeMoneyUtils.formatYuan(order.getGoodsPrice()));
@@ -356,11 +319,11 @@ public class TradeOrderService {
         option.put("ship", order.getStatus() == 1);
         option.put("logistics", order.getStatus() == 2 || order.getStatus() == 3);
         option.put("confirm", order.getStatus() == 2);
-        option.put("refund", order.getPayStatus() != null && order.getPayStatus() == 1
+        option.put("refund", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null && (order.getStatus() == 1 || order.getStatus() == 2 || order.getStatus() == 3));
-        option.put("refundApprove", order.getPayStatus() != null && order.getPayStatus() == 1
+        option.put("refundApprove", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null && order.getStatus() == 5);
-        option.put("refundCancel", order.getPayStatus() != null && order.getPayStatus() == 1
+        option.put("refundCancel", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null && order.getStatus() == 5);
         return option;
     }
@@ -373,11 +336,21 @@ public class TradeOrderService {
 
     private boolean closeUnpaidOrder(Long orderId, Long userId, String operatorType, Long operatorId,
                                      String action, String closeReason) {
+        PayOrderDO pendingPayOrder = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrderDO>()
+                .eq(PayOrderDO::getOrderId, orderId)
+                .eq(PayOrderDO::getUserId, userId)
+                .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
+                .orderByDesc(PayOrderDO::getUpdateTime)
+                .last("LIMIT 1"));
+        if (pendingPayOrder != null && "wx_lite".equals(pendingPayOrder.getChannel())
+                && wechatPayService.isEnabled()) {
+            wechatPayService.closePayment(pendingPayOrder.getPaySn());
+        }
         int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
                 .eq(TradeOrderDO::getStatus, 0)
-                .eq(TradeOrderDO::getPayStatus, 0)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
                 .set(TradeOrderDO::getStatus, 4)
                 .set(TradeOrderDO::getCloseTime, LocalDateTime.now())
                 .set(TradeOrderDO::getCloseReason, closeReason));
@@ -393,13 +366,13 @@ public class TradeOrderService {
         payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getOrderId, orderId)
                 .eq(PayOrderDO::getUserId, userId)
-                .eq(PayOrderDO::getStatus, 0)
-                .set(PayOrderDO::getStatus, 2));
+                .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
+                .set(PayOrderDO::getStatus, PayOrderStatus.CLOSED));
         return true;
     }
 
     private String getOrderStatusText(TradeOrderDO order) {
-        if (order.getPayStatus() != null && order.getPayStatus() == 2) {
+        if (order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.REFUNDED) {
             return "已退款";
         }
         Integer status = order.getStatus();
@@ -430,50 +403,33 @@ public class TradeOrderService {
         result.put("amount", TradeMoneyUtils.formatYuan(payOrder.getAmount()));
         result.put("channel", payOrder.getChannel());
         result.put("status", payOrder.getStatus());
+        result.put("statusText", PayOrderStatus.getText(payOrder.getStatus()));
         result.put("payTime", payOrder.getPayTime() == null ? "" : payOrder.getPayTime().format(TIME_FORMATTER));
         return result;
-    }
-
-    private String getString(Map<String, Object> request, String key) {
-        Object value = request.get(key);
-        return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private Long getLong(Map<String, Object> request, String key, Long defaultValue) {
-        Object value = request.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            return defaultValue;
-        }
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.parseLong(String.valueOf(value));
-    }
-
-    private Integer getInteger(Map<String, Object> request, String key) {
-        Object value = request.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            return null;
-        }
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return Integer.parseInt(String.valueOf(value));
-    }
-
-    private Integer mapShowTypeToStatus(int showType) {
-        return switch (showType) {
-            case 1 -> 0;
-            case 2 -> 1;
-            case 3 -> 2;
-            case 4 -> 3;
-            case 5 -> -1;
-            default -> null;
-        };
     }
 
     private String generateOrderSn() {
         return LocalDateTime.now().format(ORDER_SN_FORMATTER)
                 + ThreadLocalRandom.current().nextInt(1000, 9999);
+    }
+
+    private void validateRequestId(String requestId) {
+        if (requestId == null || !requestId.matches("[A-Za-z0-9_-]{8,64}")) {
+            throw new ServerException(400, "订单请求标识格式不正确");
+        }
+    }
+
+    private TradeOrderDO findByRequestId(Long userId, String requestId) {
+        return tradeOrderMapper.selectOne(new LambdaQueryWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getRequestId, requestId)
+                .last("LIMIT 1"));
+    }
+
+    private Map<String, Object> buildSubmitResult(TradeOrderDO order) {
+        return Map.of("orderInfo", Map.of("id", order.getId(), "orderSn", order.getOrderSn()));
+    }
+
+    private record OrderLine(TradeCartDO cart, TradeProductSnapshot snapshot) {
     }
 }
