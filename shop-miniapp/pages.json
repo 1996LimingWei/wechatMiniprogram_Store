@@ -377,6 +377,14 @@
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/ucenter/profile/profile",
+			"style": {
+				"navigationBarTitleText": "个人资料",
+				"navigationBarBackgroundColor": "#FEFEFC",
+				"navigationBarTextStyle": "black"
+			}
 		}
 	],
 	"easycom": {
