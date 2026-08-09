@@ -87,4 +87,5 @@ module.exports = {
 	MemberCenter: 'member/center', //会员中心
 	MemberGoldCard: 'member/gold-card', //黄金卡详情
 	MemberGoldSubscribe: 'member/gold-card/subscribe', //开通黄金会员
+	MemberProfile: 'member/profile', //个人资料更新
 };

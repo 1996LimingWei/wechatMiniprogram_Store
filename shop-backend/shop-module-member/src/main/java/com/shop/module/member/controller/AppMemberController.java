@@ -130,6 +130,57 @@ public class AppMemberController {
         return CommonResult.success(data);
     }
 
+    /**
+     * 更新个人资料（昵称、头像、手机号）
+     */
+    @RequestMapping("/profile")
+    public CommonResult<Map<String, Object>> updateProfile(
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+        LoginUser loginUser = resolveLoginUser(request);
+        if (loginUser == null) {
+            return CommonResult.error(401, "请先登录");
+        }
+        MemberUserDO user = memberUserMapper.selectById(loginUser.getUserId());
+        if (user == null) {
+            return CommonResult.error(404, "用户不存在");
+        }
+
+        // 更新昵称
+        if (body.containsKey("nickname")) {
+            String nickname = (String) body.get("nickname");
+            if (nickname != null && !nickname.isBlank()) {
+                user.setNickname(nickname.trim());
+            }
+        }
+
+        // 更新头像
+        if (body.containsKey("avatar")) {
+            String avatar = (String) body.get("avatar");
+            if (avatar != null) {
+                user.setAvatar(avatar);
+            }
+        }
+
+        // 更新手机号
+        if (body.containsKey("mobile")) {
+            String mobile = (String) body.get("mobile");
+            if (mobile != null && !mobile.isBlank()) {
+                user.setMobile(mobile.trim());
+            }
+        }
+
+        memberUserMapper.updateById(user);
+
+        // 返回更新后的用户信息
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("nickname", user.getNickname());
+        data.put("avatar", user.getAvatar());
+        data.put("mobile", user.getMobile() != null ? user.getMobile() : "");
+        data.put("memberLevel", user.getMemberLevel() != null ? user.getMemberLevel() : 1);
+        return CommonResult.success(data);
+    }
+
     private LoginUser resolveLoginUser(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

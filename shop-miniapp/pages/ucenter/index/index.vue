@@ -195,6 +195,8 @@ export default {
 		onUserTap() {
 			if (!this.isLogin) {
 				uni.navigateTo({ url: '/pages/auth/btnAuth/btnAuth' });
+			} else {
+				uni.navigateTo({ url: '/pages/ucenter/profile/profile' });
 			}
 		},
 		goMember() {
