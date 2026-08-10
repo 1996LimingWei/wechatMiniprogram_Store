@@ -121,7 +121,7 @@ VALUES
 
 function New-TestUser([string]$Scene) {
     $code = "$RunCodePrefix$Scene`_$(Get-Date -Format 'yyyyMMddHHmmssfff')"
-    $data = Invoke-Api "/app-api/auth/LoginByMa" @{ code = $code }
+    $data = Invoke-Api "/app-api/auth/LoginByMa" @{ code = $code; privacyAccepted = $true }
     Assert-True ($data.token) "登录未返回 token"
     return @{
         Token = [string]$data.token
@@ -151,7 +151,8 @@ function New-PaidOrder([string]$Scene) {
     $user = New-TestUser $Scene
     $addressId = Save-TestAddress $user.Token $user.UserId
     Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $user.Token | Out-Null
-    $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId } $user.Token
+    $requestId = "PS$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())$([guid]::NewGuid().ToString('N').Substring(0,8))"
+    $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId; requestId = $requestId } $user.Token
     $orderId = [long]$submit.orderInfo.id
     Invoke-Api "/app-api/pay/prepay" @{ orderId = $orderId } $user.Token | Out-Null
     $amounts = Invoke-Sql "SELECT CONCAT(p.amount, ',', o.actual_price) FROM pay_order p JOIN trade_order o ON o.id=p.order_id WHERE p.order_id=$orderId;"
@@ -170,7 +171,8 @@ function New-UnpaidOrder([string]$Scene) {
     $user = New-TestUser $Scene
     $addressId = Save-TestAddress $user.Token $user.UserId
     Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $user.Token | Out-Null
-    $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId } $user.Token
+    $requestId = "PS$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())$([guid]::NewGuid().ToString('N').Substring(0,8))"
+    $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId; requestId = $requestId } $user.Token
     $orderId = [long]$submit.orderInfo.id
     Assert-Order $orderId 0 0 "提交订单后应为待付款且未支付"
     return @{
@@ -218,7 +220,7 @@ try {
 
     Write-Step "验收：无售后申请不能直接退款"
     $noApplyFlow = New-PaidOrder "no_apply_refund"
-    Assert-ApiRejected "/admin-api/trade/after-sale/approve" @{ orderId = $noApplyFlow.OrderId } $adminToken
+    Assert-ApiRejected "/admin-api/trade/after-sale/approve" @{ afterSaleId = 999999999 } $adminToken
     Assert-Order $noApplyFlow.OrderId 1 1 "无售后申请时订单状态不应变化"
 
     Write-Step "验收：下单、支付、管理端发货、确认收货"
@@ -247,7 +249,8 @@ try {
     $stockBeforeRefund = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
     $afterSaleList = Invoke-Api "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($approveFlow.OrderId)" @{} $adminToken
     Assert-True ([int]$afterSaleList.total -eq 1) "管理端售后列表未查到处理中售后单"
-    Invoke-Api "/admin-api/trade/after-sale/approve" @{ orderId = $approveFlow.OrderId } $adminToken | Out-Null
+    $approveAfterSaleId = [long]$afterSaleList.list[0].id
+    Invoke-Api "/admin-api/trade/after-sale/approve" @{ afterSaleId = $approveAfterSaleId } $adminToken | Out-Null
     Assert-Order $approveFlow.OrderId 5 2 "同意退款后订单支付状态应为已退款"
     Assert-AfterSale $approveFlow.OrderId 1 "同意退款后售后单应为已退款"
     Assert-LogExists $approveFlow.OrderId "REFUND_SUCCESS"
@@ -259,7 +262,9 @@ try {
     Write-Step "验收：管理端拒绝售后"
     $rejectFlow = New-PaidOrder "reject"
     Invoke-Api "/app-api/order/refund/apply" @{ orderId = $rejectFlow.OrderId; reason = "验收拒绝退款" } $rejectFlow.Token | Out-Null
-    Invoke-Api "/admin-api/trade/after-sale/reject" @{ orderId = $rejectFlow.OrderId; rejectReason = "验收拒绝原因" } $adminToken | Out-Null
+    $rejectAfterSaleList = Invoke-Api "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($rejectFlow.OrderId)" @{} $adminToken
+    $rejectAfterSaleId = [long]$rejectAfterSaleList.list[0].id
+    Invoke-Api "/admin-api/trade/after-sale/reject" @{ afterSaleId = $rejectAfterSaleId; rejectReason = "验收拒绝原因" } $adminToken | Out-Null
     Assert-Order $rejectFlow.OrderId 1 1 "拒绝售后后订单应恢复到待发货"
     Assert-AfterSale $rejectFlow.OrderId 2 "拒绝售后后售后单应为已拒绝"
     $rejectReasonLength = Invoke-Sql "SELECT CHAR_LENGTH(reject_reason) FROM trade_after_sale WHERE order_id = $($rejectFlow.OrderId) ORDER BY id DESC LIMIT 1;"

@@ -6,6 +6,8 @@ export const getAfterSalePage = (params: {
   page?: number;
   size?: number;
   status?: number;
+  userId?: number;
+  orderId?: number;
 }) => {
   return http.post<PageResult<AfterSale>, typeof params>(
     "/admin-api/trade/after-sale/list",

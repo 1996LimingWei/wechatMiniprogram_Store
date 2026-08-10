@@ -35,6 +35,27 @@ function Assert-Equal {
     }
 }
 
+function Initialize-TestDatabase([string]$Database) {
+    $temporaryFile = New-TemporaryFile
+    $containerFile = "/tmp/shop-init-$Database.sql"
+    try {
+        Get-Content (Join-Path $PSScriptRoot "..\sql\init.sql") -Encoding utf8 |
+            Select-Object -Skip 7 |
+            Set-Content $temporaryFile -Encoding utf8
+        & docker cp $temporaryFile.FullName "${MysqlContainer}:$containerFile" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "复制初始化 SQL 到 MySQL 容器失败"
+        }
+        & docker exec $MysqlContainer sh -c "mysql -u$MysqlUser -p$MysqlPassword --default-character-set=utf8mb4 $Database < $containerFile" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            throw "完整初始化 SQL 执行失败"
+        }
+    } finally {
+        Remove-Item -LiteralPath $temporaryFile.FullName -Force -ErrorAction SilentlyContinue
+        & docker exec $MysqlContainer rm -f $containerFile 2>$null | Out-Null
+    }
+}
+
 try {
     $deadline = (Get-Date).AddSeconds(60)
     do {
@@ -52,13 +73,7 @@ try {
 
     Invoke-Mysql 'mysql' "CREATE DATABASE $TestDatabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" | Out-Null
     $DatabaseCreated = $true
-    Invoke-Mysql $TestDatabase "CREATE TABLE trade_order (id bigint NOT NULL AUTO_INCREMENT, order_sn varchar(32) NOT NULL, user_id bigint NOT NULL, status tinyint NOT NULL DEFAULT 0, pay_status tinyint NOT NULL DEFAULT 0, mobile varchar(20) DEFAULT '', create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id), UNIQUE KEY uk_order_sn (order_sn), KEY idx_user_id (user_id), KEY idx_status (status)) ENGINE=InnoDB;" | Out-Null
-    Invoke-Mysql $TestDatabase "CREATE TABLE pay_order (id bigint NOT NULL AUTO_INCREMENT, pay_sn varchar(32) NOT NULL, order_id bigint NOT NULL, user_id bigint NOT NULL, amount int NOT NULL, channel varchar(32) NOT NULL DEFAULT 'mock', status tinyint NOT NULL DEFAULT 0, PRIMARY KEY (id), UNIQUE KEY uk_pay_sn (pay_sn), KEY idx_order_id (order_id)) ENGINE=InnoDB;" | Out-Null
-    Invoke-Mysql $TestDatabase "CREATE TABLE content_banner (id bigint NOT NULL AUTO_INCREMENT, title varchar(128) NOT NULL, pic_url varchar(512) NOT NULL, url varchar(512) DEFAULT '', sort int NOT NULL DEFAULT 0, status tinyint NOT NULL DEFAULT 1, create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id)) ENGINE=InnoDB;" | Out-Null
-    Invoke-Mysql $TestDatabase "CREATE TABLE product_category (id bigint NOT NULL AUTO_INCREMENT, parent_id bigint NOT NULL DEFAULT 0, name varchar(64) NOT NULL, icon varchar(512) DEFAULT '', sort int NOT NULL DEFAULT 0, status tinyint NOT NULL DEFAULT 1, create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id)) ENGINE=InnoDB;" | Out-Null
-    Invoke-Mysql $TestDatabase "CREATE TABLE product_spu (id bigint NOT NULL AUTO_INCREMENT, category_id bigint NOT NULL, name varchar(128) NOT NULL, keyword varchar(256) DEFAULT '', introduction varchar(256) DEFAULT '', description text, pic_url varchar(512) NOT NULL, slider_pic_urls varchar(2048) DEFAULT '[]', video_url varchar(512) DEFAULT '', type tinyint NOT NULL DEFAULT 1, price int NOT NULL, market_price int DEFAULT NULL, stock int NOT NULL DEFAULT 0, sales_count int NOT NULL DEFAULT 0, sort int NOT NULL DEFAULT 0, status tinyint NOT NULL DEFAULT 0, create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id), KEY idx_category (category_id), KEY idx_status (status)) ENGINE=InnoDB;" | Out-Null
-    Invoke-Mysql $TestDatabase "CREATE TABLE product_sku (id bigint NOT NULL AUTO_INCREMENT, spu_id bigint NOT NULL, properties varchar(512) DEFAULT '[]', price int NOT NULL, market_price int DEFAULT NULL, stock int NOT NULL DEFAULT 0, pic_url varchar(512) DEFAULT '', weight double DEFAULT NULL, volume double DEFAULT NULL, create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id), KEY idx_spu_id (spu_id)) ENGINE=InnoDB;" | Out-Null
-    Invoke-Mysql $TestDatabase "CREATE TABLE member_user (id bigint NOT NULL AUTO_INCREMENT, openid varchar(64) DEFAULT NULL, unionid varchar(64) DEFAULT NULL, session_key varchar(128) DEFAULT NULL, mobile varchar(20) DEFAULT NULL, nickname varchar(64) DEFAULT '', avatar varchar(512) DEFAULT '', status tinyint NOT NULL DEFAULT 1, create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted bit(1) NOT NULL DEFAULT b'0', PRIMARY KEY (id), UNIQUE KEY uk_openid (openid)) ENGINE=InnoDB;" | Out-Null
+    Initialize-TestDatabase $TestDatabase
 
     & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
     Assert-Equal $LASTEXITCODE 0 "迁移脚本应执行成功"
@@ -68,6 +83,7 @@ try {
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'trade_order' AND index_name = 'idx_expire_status';") 3 "订单过期索引应包含状态、支付状态和过期时间三列"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'trade_after_sale' AND column_name = 'before_order_status';") 1 "售后表应保留订单原状态"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'trade_after_sale' AND column_name = 'cancel_time';") 1 "售后表应支持撤销时间"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'member_user' AND column_name = 'member_level';") 1 "会员表结构应包含会员等级"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COLUMN_COMMENT LIKE '%3=%' FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pay_order' AND column_name = 'status';") 1 "支付状态定义应包含退款状态"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260727_01';") 1 "应记录已执行迁移"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'pay_order' AND index_name = 'uk_order_id';") 1 "支付单应按订单唯一约束"

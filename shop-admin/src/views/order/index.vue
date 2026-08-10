@@ -37,7 +37,10 @@ const createTimeRange = ref<[Date, Date] | null>(null);
 const query = reactive({
   page: 1,
   size: 10,
-  orderSn: ""
+  orderSn: "",
+  userId: "",
+  mobile: "",
+  payStatus: "all"
 });
 
 async function fetchData() {
@@ -52,6 +55,15 @@ async function fetchData() {
     }
     if (query.orderSn.trim()) {
       params.orderSn = query.orderSn.trim();
+    }
+    if (query.userId.trim()) {
+      params.userId = Number(query.userId.trim());
+    }
+    if (query.mobile.trim()) {
+      params.mobile = query.mobile.trim();
+    }
+    if (query.payStatus !== "all") {
+      params.payStatus = Number(query.payStatus);
     }
     if (createTimeRange.value) {
       params.createTimeStart = dayjs(createTimeRange.value[0]).format(
@@ -76,6 +88,9 @@ function handleSearch() {
 
 function handleReset() {
   query.orderSn = "";
+  query.userId = "";
+  query.mobile = "";
+  query.payStatus = "all";
   createTimeRange.value = null;
   activeStatus.value = "all";
   query.page = 1;
@@ -249,6 +264,33 @@ onMounted(fetchData);
             class="order-search"
             @keyup.enter="handleSearch"
           />
+        </el-form-item>
+        <el-form-item label="用户 ID">
+          <el-input
+            v-model="query.userId"
+            placeholder="输入用户 ID"
+            clearable
+            class="compact-search"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input
+            v-model="query.mobile"
+            placeholder="输入手机号前缀"
+            clearable
+            class="mobile-search"
+            maxlength="11"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="支付状态">
+          <el-select v-model="query.payStatus" class="compact-search">
+            <el-option label="全部" value="all" />
+            <el-option label="未支付" value="0" />
+            <el-option label="已支付" value="1" />
+            <el-option label="已退款" value="2" />
+          </el-select>
         </el-form-item>
         <el-form-item label="下单时间">
           <el-date-picker
@@ -638,6 +680,14 @@ onMounted(fetchData);
   width: 220px;
 }
 
+.compact-search {
+  width: 130px;
+}
+
+.mobile-search {
+  width: 160px;
+}
+
 .time-picker {
   width: 370px;
 }
@@ -792,6 +842,8 @@ onMounted(fetchData);
   }
 
   .order-search,
+  .compact-search,
+  .mobile-search,
   .time-picker {
     width: 100%;
   }

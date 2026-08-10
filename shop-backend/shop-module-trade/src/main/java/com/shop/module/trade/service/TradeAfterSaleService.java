@@ -27,7 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -173,12 +173,28 @@ public class TradeAfterSaleService {
 
         Integer fromStatus = order.getStatus();
         Integer restoreStatus = getRestoreOrderStatus(afterSale);
-        afterSale.setStatus(3);
-        afterSale.setCancelTime(LocalDateTime.now());
-        tradeAfterSaleMapper.updateById(afterSale);
+        LocalDateTime cancelTime = LocalDateTime.now();
+        int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                .eq(TradeAfterSaleDO::getStatus, 0)
+                .set(TradeAfterSaleDO::getStatus, 3)
+                .set(TradeAfterSaleDO::getCancelTime, cancelTime));
+        if (afterSaleUpdated != 1) {
+            throw new ServerException(400, "售后单状态已变更，不能撤销");
+        }
 
+        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, order.getId())
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getStatus, 5)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                .set(TradeOrderDO::getStatus, restoreStatus));
+        if (orderUpdated != 1) {
+            throw new ServerException(400, "订单状态已变更，不能撤销售后");
+        }
+        afterSale.setStatus(3);
+        afterSale.setCancelTime(cancelTime);
         order.setStatus(restoreStatus);
-        tradeOrderMapper.updateById(order);
         tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
                 "CANCEL_AFTER_SALE", fromStatus, order.getStatus(), "用户撤销售后申请");
         return toResp(afterSale);
@@ -253,6 +269,22 @@ public class TradeAfterSaleService {
         }
 
         String refundProvider = tradeRefundProviderService.currentType();
+        LocalDateTime auditTime = LocalDateTime.now();
+        int locked = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                .eq(TradeAfterSaleDO::getId, afterSale.getId())
+                .eq(TradeAfterSaleDO::getStatus, 0)
+                .set(TradeAfterSaleDO::getStatus, 4)
+                .set(TradeAfterSaleDO::getAuditTime, auditTime)
+                .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
+                .set(TradeAfterSaleDO::getRefundMessage, "退款请求提交中"));
+        if (locked != 1) {
+            return toResp(getAfterSaleById(afterSale.getId()));
+        }
+        afterSale.setStatus(4);
+        afterSale.setAuditTime(auditTime);
+        afterSale.setRefundProvider(refundProvider);
+        afterSale.setRefundMessage("退款请求提交中");
+
         TradeRefundProvider.RefundResult refundResult = tradeRefundProviderService.refund(
                 new TradeRefundProvider.RefundRequest(
                         afterSale.getAfterSaleSn(),
@@ -262,13 +294,12 @@ public class TradeAfterSaleService {
                         afterSale.getReason()));
         if (refundResult.status() == TradeRefundProvider.RefundStatus.FAILED) {
             return failRefund(afterSale, order, refundProvider, refundResult,
-                    0, operatorType, operatorId);
+                    4, operatorType, operatorId);
         }
         if (refundResult.status() == TradeRefundProvider.RefundStatus.PROCESSING) {
-            LocalDateTime auditTime = LocalDateTime.now();
             int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
                     .eq(TradeAfterSaleDO::getId, afterSale.getId())
-                    .eq(TradeAfterSaleDO::getStatus, 0)
+                    .eq(TradeAfterSaleDO::getStatus, 4)
                     .set(TradeAfterSaleDO::getStatus, 4)
                     .set(TradeAfterSaleDO::getAuditTime, auditTime)
                     .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
@@ -287,7 +318,7 @@ public class TradeAfterSaleService {
             return toResp(afterSale);
         }
         return completeRefund(afterSale, order, payOrder, refundProvider, refundResult,
-                0, operatorType, operatorId);
+                4, operatorType, operatorId);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -436,10 +467,13 @@ public class TradeAfterSaleService {
         payOrder.setStatus(PayOrderStatus.REFUNDED);
         order.setPayStatus(TradeOrderPayStatus.REFUNDED);
         order.setStatus(5);
+        List<TradeOrderItemDO> orderItems = tradeOrderItemMapper.selectList(
+                new LambdaQueryWrapper<TradeOrderItemDO>()
+                        .eq(TradeOrderItemDO::getOrderId, order.getId()));
+        for (TradeOrderItemDO orderItem : orderItems) {
+            tradeProductService.adjustSales(orderItem.getSpuId(), -orderItem.getCount());
+        }
         if (Integer.valueOf(1).equals(afterSale.getBeforeOrderStatus())) {
-            List<TradeOrderItemDO> orderItems = tradeOrderItemMapper.selectList(
-                    new LambdaQueryWrapper<TradeOrderItemDO>()
-                            .eq(TradeOrderItemDO::getOrderId, order.getId()));
             for (TradeOrderItemDO orderItem : orderItems) {
                 tradeProductService.recoverStock(orderItem.getSkuId(), orderItem.getCount());
             }
@@ -564,6 +598,7 @@ public class TradeAfterSaleService {
     }
 
     private String generateAfterSaleSn() {
-        return "R" + System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(1000, 9999);
+        return "R" + System.currentTimeMillis()
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 }

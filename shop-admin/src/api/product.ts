@@ -1,5 +1,6 @@
 import { http } from "@/utils/http";
 import type { PageParam, PageResult, ProductSpu } from "./types";
+import type { ProductSku } from "./types";
 
 /** 商品分页列表（支持筛选） */
 export const getProductPage = (
@@ -27,6 +28,14 @@ export const createProduct = (data: ProductSpu) => {
     return http.post<boolean, ProductSpu>("/admin-api/product/spu/create", {
         data
     });
+};
+
+/** 原子保存商品基础信息与 SKU，避免出现半成品商品。 */
+export const saveProduct = (spu: ProductSpu, skus: ProductSku[]) => {
+    return http.post<number, { spu: ProductSpu; skus: ProductSku[] }>(
+        "/admin-api/product/spu/save",
+        { data: { spu, skus } }
+    );
 };
 
 /** 更新商品 */

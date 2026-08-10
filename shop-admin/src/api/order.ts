@@ -10,8 +10,12 @@ import type {
 export const getOrderPage = (params: {
   page?: number;
   size?: number;
+  userId?: number;
+  orderId?: number;
   status?: number;
+  payStatus?: number;
   orderSn?: string;
+  mobile?: string;
   createTimeStart?: string;
   createTimeEnd?: string;
 }) => {

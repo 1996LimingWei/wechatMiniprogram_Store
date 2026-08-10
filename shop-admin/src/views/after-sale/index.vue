@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
-import { Check, Close, Refresh, View } from "@element-plus/icons-vue";
+import { Check, Close, Refresh, Search, View } from "@element-plus/icons-vue";
 import {
   approveAfterSale,
   getAfterSalePage,
@@ -29,7 +29,9 @@ const total = ref(0);
 const activeStatus = ref("all");
 const query = reactive({
   page: 1,
-  size: 10
+  size: 10,
+  orderId: "",
+  userId: ""
 });
 
 async function fetchData() {
@@ -41,6 +43,12 @@ async function fetchData() {
     };
     if (activeStatus.value !== "all") {
       params.status = Number(activeStatus.value);
+    }
+    if (query.orderId.trim()) {
+      params.orderId = Number(query.orderId.trim());
+    }
+    if (query.userId.trim()) {
+      params.userId = Number(query.userId.trim());
     }
     const result = await getAfterSalePage(params);
     tableData.value = result.list ?? [];
@@ -57,6 +65,8 @@ function handleTabChange() {
 
 function handleReset() {
   activeStatus.value = "all";
+  query.orderId = "";
+  query.userId = "";
   query.page = 1;
   fetchData();
 }
@@ -194,7 +204,32 @@ function refundDescription(row: AfterSale) {
           <strong>售后状态</strong>
           <span>仅“待审核”的申请可执行同意或拒绝</span>
         </div>
-        <el-button :icon="Refresh" @click="handleReset">重置筛选</el-button>
+        <el-form :inline="true" class="filter-form" @submit.prevent="fetchData">
+          <el-form-item label="订单 ID">
+            <el-input
+              v-model="query.orderId"
+              placeholder="输入订单 ID"
+              clearable
+              class="filter-input"
+              @keyup.enter="handleTabChange"
+            />
+          </el-form-item>
+          <el-form-item label="用户 ID">
+            <el-input
+              v-model="query.userId"
+              placeholder="输入用户 ID"
+              clearable
+              class="filter-input"
+              @keyup.enter="handleTabChange"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :icon="Search" @click="handleTabChange"
+              >搜索</el-button
+            >
+            <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
       </div>
     </el-card>
 
@@ -465,6 +500,14 @@ function refundDescription(row: AfterSale) {
   justify-content: space-between;
 }
 
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.filter-input {
+  width: 140px;
+}
+
 .filter-row > div,
 .detail-heading > div {
   display: flex;
@@ -557,6 +600,12 @@ function refundDescription(row: AfterSale) {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .filter-form,
+  .filter-form :deep(.el-form-item),
+  .filter-input {
+    width: 100%;
   }
 
   .reason-list > div {

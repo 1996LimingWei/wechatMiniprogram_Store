@@ -257,6 +257,7 @@ public class TradeOrderListAssembler {
             case 2 -> "退款已拒绝";
             case 3 -> "已撤销";
             case 4 -> "退款处理中";
+            case 5 -> "退款失败";
             default -> "未知";
         };
     }

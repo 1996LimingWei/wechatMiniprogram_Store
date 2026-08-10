@@ -9,6 +9,7 @@ import com.shop.module.trade.dal.dataobject.TradeCartDO;
 import com.shop.module.trade.dal.mysql.TradeCartMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,23 +67,56 @@ public class TradeCartService {
             cart.setPrice(snapshot.getPrice());
             cart.setCount(number);
             cart.setChecked(1);
-            tradeCartMapper.insert(cart);
-        } else {
-            int finalCount = buyNow ? number : cart.getCount() + number;
-            if (finalCount > MAX_CART_ITEM_COUNT) {
-                throw new ServerException(400, "单个规格最多购买 99 件");
+            try {
+                tradeCartMapper.insert(cart);
+            } catch (DuplicateKeyException exception) {
+                updateExistingCartAfterConcurrentInsert(userId, snapshot, number, buyNow);
             }
-            validateStock(snapshot, finalCount);
-            cart.setSpuId(snapshot.getSpuId());
-            cart.setGoodsName(snapshot.getName());
-            cart.setGoodsPicUrl(snapshot.getPicUrl());
-            cart.setSpecName(snapshot.getSpecName());
-            cart.setPrice(snapshot.getPrice());
-            cart.setCount(finalCount);
-            cart.setChecked(1);
-            tradeCartMapper.updateById(cart);
+        } else {
+            updateExistingCart(cart, snapshot, number, buyNow);
         }
         return Map.of("cartTotal", getCartTotal(userId));
+    }
+
+    private void updateExistingCartAfterConcurrentInsert(
+            Long userId, TradeProductSnapshot snapshot, int number, boolean buyNow) {
+        TradeCartDO concurrentCart = tradeCartMapper.selectOne(new LambdaQueryWrapper<TradeCartDO>()
+                .eq(TradeCartDO::getUserId, userId)
+                .eq(TradeCartDO::getSkuId, snapshot.getSkuId()));
+        if (concurrentCart == null) {
+            throw new ServerException(409, "购物车状态已变化，请重试");
+        }
+        updateExistingCart(concurrentCart, snapshot, number, buyNow);
+    }
+
+    private void updateExistingCart(TradeCartDO cart, TradeProductSnapshot snapshot, int number, boolean buyNow) {
+        int currentCount = cart.getCount() == null ? 0 : cart.getCount();
+        int finalCount = buyNow ? number : currentCount + number;
+        if (finalCount > MAX_CART_ITEM_COUNT) {
+            throw new ServerException(400, "单个规格最多购买 99 件");
+        }
+        validateStock(snapshot, finalCount);
+
+        LambdaUpdateWrapper<TradeCartDO> wrapper = new LambdaUpdateWrapper<TradeCartDO>()
+                .eq(TradeCartDO::getId, cart.getId())
+                .eq(TradeCartDO::getUserId, cart.getUserId())
+                .eq(TradeCartDO::getSkuId, snapshot.getSkuId())
+                .set(TradeCartDO::getSpuId, snapshot.getSpuId())
+                .set(TradeCartDO::getGoodsName, snapshot.getName())
+                .set(TradeCartDO::getGoodsPicUrl, snapshot.getPicUrl())
+                .set(TradeCartDO::getSpecName, snapshot.getSpecName())
+                .set(TradeCartDO::getPrice, snapshot.getPrice())
+                .set(TradeCartDO::getChecked, 1);
+        if (buyNow) {
+            wrapper.set(TradeCartDO::getCount, number);
+        } else {
+            wrapper.le(TradeCartDO::getCount, MAX_CART_ITEM_COUNT - number)
+                    .setSql("`count` = `count` + " + number);
+        }
+        int updated = tradeCartMapper.update(null, wrapper);
+        if (updated != 1) {
+            throw new ServerException(409, "购物车状态已变化，请重试");
+        }
     }
 
     public Map<String, Object> getCartIndex(Long userId) {
@@ -110,19 +144,25 @@ public class TradeCartService {
                 .orderByDesc(TradeCartDO::getUpdateTime));
     }
 
-    public void updateCart(Long userId, Long id, Long goodsId, Long productId, int number) {
+    public void updateCart(Long userId, Long id, Long goodsId, Long productId, int number, int expectedCount) {
         if (number <= 0 || number > MAX_CART_ITEM_COUNT) {
             throw new ServerException(400, "商品数量必须在 1 到 99 之间");
         }
         TradeCartDO cart = getCart(userId, id, goodsId, productId);
         TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
         validateStock(snapshot, number);
-        cart.setGoodsName(snapshot.getName());
-        cart.setGoodsPicUrl(snapshot.getPicUrl());
-        cart.setSpecName(snapshot.getSpecName());
-        cart.setPrice(snapshot.getPrice());
-        cart.setCount(number);
-        tradeCartMapper.updateById(cart);
+        LambdaUpdateWrapper<TradeCartDO> wrapper = new LambdaUpdateWrapper<TradeCartDO>()
+                .eq(TradeCartDO::getId, cart.getId())
+                .eq(TradeCartDO::getUserId, userId)
+                .eq(expectedCount > 0, TradeCartDO::getCount, expectedCount)
+                .set(TradeCartDO::getGoodsName, snapshot.getName())
+                .set(TradeCartDO::getGoodsPicUrl, snapshot.getPicUrl())
+                .set(TradeCartDO::getSpecName, snapshot.getSpecName())
+                .set(TradeCartDO::getPrice, snapshot.getPrice())
+                .set(TradeCartDO::getCount, number);
+        if (tradeCartMapper.update(null, wrapper) != 1) {
+            throw new ServerException(409, "购物车数量已变化，请刷新后重试");
+        }
     }
 
     public Map<String, Object> deleteCart(Long userId, String productIds) {
@@ -186,12 +226,12 @@ public class TradeCartService {
         int checkedGoodsAmount = 0;
         for (TradeCartDO cart : list) {
             int count = cart.getCount() == null ? 0 : cart.getCount();
-            int amount = (cart.getPrice() == null ? 0 : cart.getPrice()) * count;
-            goodsCount += count;
-            goodsAmount += amount;
+            int amount = Math.multiplyExact(cart.getPrice() == null ? 0 : cart.getPrice(), count);
+            goodsCount = Math.addExact(goodsCount, count);
+            goodsAmount = Math.addExact(goodsAmount, amount);
             if (cart.getChecked() != null && cart.getChecked() == 1) {
-                checkedGoodsCount += count;
-                checkedGoodsAmount += amount;
+                checkedGoodsCount = Math.addExact(checkedGoodsCount, count);
+                checkedGoodsAmount = Math.addExact(checkedGoodsAmount, amount);
             }
         }
         Map<String, Object> total = new LinkedHashMap<>();

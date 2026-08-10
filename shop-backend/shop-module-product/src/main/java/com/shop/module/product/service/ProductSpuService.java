@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class ProductSpuService {
 
     private final ProductSpuMapper productSpuMapper;
+    private final ProductAdminService productAdminService;
 
     public PageResult<ProductSpuDO> getSpuPage(PageParam pageParam, Long categoryId) {
         LambdaQueryWrapper<ProductSpuDO> wrapper = new LambdaQueryWrapper<ProductSpuDO>()
@@ -42,14 +43,14 @@ public class ProductSpuService {
     }
 
     public void createSpu(ProductSpuDO spu) {
-        productSpuMapper.insert(spu);
+        productAdminService.saveProduct(spu, null);
     }
 
     public void updateSpu(ProductSpuDO spu) {
-        productSpuMapper.updateById(spu);
+        productAdminService.updateSpu(spu);
     }
 
     public void deleteSpu(Long id) {
-        productSpuMapper.deleteById(id);
+        productAdminService.deleteProduct(id);
     }
 }

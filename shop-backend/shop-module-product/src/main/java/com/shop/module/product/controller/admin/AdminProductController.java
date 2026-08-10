@@ -5,6 +5,8 @@ import com.shop.common.pojo.PageParam;
 import com.shop.common.pojo.PageResult;
 import com.shop.module.product.dal.dataobject.ProductSpuDO;
 import com.shop.module.product.service.ProductSpuService;
+import com.shop.module.product.service.ProductAdminService;
+import com.shop.module.product.vo.ProductSaveReqVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class AdminProductController {
 
     private final ProductSpuService productSpuService;
+    private final ProductAdminService productAdminService;
+
+    @PostMapping("/save")
+    public CommonResult<Long> save(@RequestBody ProductSaveReqVO request) {
+        return CommonResult.success(productAdminService.saveProduct(request.getSpu(), request.getSkus()));
+    }
 
     @GetMapping("/page")
     public CommonResult<PageResult<ProductSpuDO>> page(PageParam pageParam,

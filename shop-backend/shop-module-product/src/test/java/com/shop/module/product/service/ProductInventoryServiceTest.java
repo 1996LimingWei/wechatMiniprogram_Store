@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProductInventoryServiceTest {
@@ -54,5 +55,39 @@ class ProductInventoryServiceTest {
                 () -> new ProductInventoryService(spuMapper, skuMapper).reduceSkuStock(20L, 2));
 
         assertEquals(1201, exception.getCode());
+    }
+
+    @Test
+    void shouldSynchronizeSpuStockAfterSkuDeduction() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        ProductSkuDO sku = new ProductSkuDO();
+        sku.setId(20L);
+        sku.setSpuId(10L);
+        when(skuMapper.update(isNull(), any())).thenReturn(1);
+        when(skuMapper.selectById(20L)).thenReturn(sku);
+
+        new ProductInventoryService(spuMapper, skuMapper).reduceSkuStock(20L, 2);
+
+        verify(spuMapper).update(isNull(), any());
+    }
+
+    @Test
+    void shouldRejectSkuThatBelongsToAnotherSpu() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        ProductSpuDO spu = new ProductSpuDO();
+        spu.setId(10L);
+        spu.setStatus(1);
+        ProductSkuDO sku = new ProductSkuDO();
+        sku.setId(20L);
+        sku.setSpuId(11L);
+        when(spuMapper.selectById(10L)).thenReturn(spu);
+        when(skuMapper.selectById(20L)).thenReturn(sku);
+
+        ServerException exception = assertThrows(ServerException.class,
+                () -> new ProductInventoryService(spuMapper, skuMapper).getAvailableSnapshot(10L, 20L));
+
+        assertEquals(1101, exception.getCode());
     }
 }

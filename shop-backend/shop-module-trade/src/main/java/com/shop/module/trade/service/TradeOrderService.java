@@ -24,13 +24,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class TradeOrderService {
 
-    private static final DateTimeFormatter ORDER_SN_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final DateTimeFormatter ORDER_SN_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final TradeCartService tradeCartService;
@@ -168,8 +168,20 @@ public class TradeOrderService {
             throw new ServerException(400, "当前订单不能确认收货");
         }
         Integer fromStatus = order.getStatus();
+        int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, orderId)
+                .eq(TradeOrderDO::getUserId, userId)
+                .eq(TradeOrderDO::getStatus, 2)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                .set(TradeOrderDO::getStatus, 3));
+        if (updated != 1) {
+            TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
+            if (latest != null && latest.getStatus() != null && latest.getStatus() == 3) {
+                return "已确认收货";
+            }
+            throw new ServerException(400, "订单状态已变更，不能确认收货");
+        }
         order.setStatus(3);
-        tradeOrderMapper.updateById(order);
         tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
                 "CONFIRM_RECEIPT", fromStatus, order.getStatus(), "用户确认收货");
         return "已确认收货";
@@ -214,6 +226,9 @@ public class TradeOrderService {
         if (updated == 1) {
             order.setStatus(1);
             order.setPayStatus(TradeOrderPayStatus.PAID);
+            for (TradeOrderItemDO item : getOrderItems(orderId)) {
+                tradeProductService.adjustSales(item.getSpuId(), item.getCount());
+            }
             tradeOrderLogService.recordPayChanged(order, operatorType, operatorId,
                     "PAY_SUCCESS", 0, 1, 0, 1, "支付成功");
             return;
@@ -410,7 +425,7 @@ public class TradeOrderService {
 
     private String generateOrderSn() {
         return LocalDateTime.now().format(ORDER_SN_FORMATTER)
-                + ThreadLocalRandom.current().nextInt(1000, 9999);
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     private void validateRequestId(String requestId) {

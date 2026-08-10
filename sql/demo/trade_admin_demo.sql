@@ -1,6 +1,8 @@
 -- 订单与售后管理演示数据，仅用于 local/dev 环境。
 -- 脚本只清理 810000-839999 预留 ID 区间，可重复执行。
 
+SET NAMES utf8mb4;
+
 START TRANSACTION;
 
 DELETE FROM `trade_order_log` WHERE `order_id` BETWEEN 810000 AND 819999;

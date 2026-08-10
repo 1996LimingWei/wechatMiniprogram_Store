@@ -41,8 +41,8 @@ public class TradeCheckoutService {
         }
         int freightPrice = calculateFreight(goodsTotalPrice);
         int couponPrice = 0;
-        int orderTotalPrice = goodsTotalPrice + freightPrice;
-        int actualPrice = orderTotalPrice - couponPrice;
+        int orderTotalPrice = Math.addExact(goodsTotalPrice, freightPrice);
+        int actualPrice = Math.subtractExact(orderTotalPrice, couponPrice);
         MemberAddressDO address = memberAddressService.getAddress(userId, addressId);
 
         Map<String, Object> data = new LinkedHashMap<>();

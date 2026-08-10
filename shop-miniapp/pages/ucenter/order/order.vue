@@ -151,19 +151,28 @@ export default {
 			});
 		},
 		applyRefund(item) {
-			uni.showModal({
-				title: '申请退款',
-				content: '将提交退款/售后申请，提交后商家会尽快处理，确定继续吗？',
-				confirmColor: '#5B8C5A',
-				success: (modalRes) => {
-					if (!modalRes.confirm) return;
-					util.request(api.OrderRefundApply, {
-						orderId: item.id,
-						reason: item.orderStatusText === '待发货' ? '未发货申请退款' : '收到商品后申请售后'
-					}, 'POST', 'application/json').then(res => {
-						if (res.code === 0) {
-							uni.showToast({ title: '已提交申请', icon: 'success' });
-							this.reload();
+			const reasons = item.orderStatusText === '待发货'
+				? ['不想要了', '信息填写错误', '拍错/多拍', '其他原因']
+				: ['商品与描述不符', '商品损坏/变质', '少件/漏发', '其他原因'];
+			uni.showActionSheet({
+				itemList: reasons,
+				success: (actionRes) => {
+					const reason = reasons[actionRes.tapIndex] || '用户申请退款';
+					uni.showModal({
+						title: '申请退款',
+						content: '申请原因：' + reason + '\n提交后商家会尽快处理，确定继续吗？',
+						confirmColor: '#5B8C5A',
+						success: (modalRes) => {
+							if (!modalRes.confirm) return;
+							util.request(api.OrderRefundApply, {
+								orderId: item.id,
+								reason: reason
+							}, 'POST', 'application/json').then(res => {
+								if (res.code === 0) {
+									uni.showToast({ title: '已提交申请', icon: 'success' });
+									this.reload();
+								}
+							});
 						}
 					});
 				}

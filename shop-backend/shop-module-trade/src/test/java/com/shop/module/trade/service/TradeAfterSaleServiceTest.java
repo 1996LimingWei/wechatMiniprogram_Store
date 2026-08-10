@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -115,6 +117,7 @@ class TradeAfterSaleServiceTest {
         payOrder.setStatus(PayOrderStatus.PAID);
         payOrder.setAmount(2990);
         TradeOrderItemDO orderItem = new TradeOrderItemDO();
+        orderItem.setSpuId(100L);
         orderItem.setSkuId(200L);
         orderItem.setCount(2);
 
@@ -129,6 +132,7 @@ class TradeAfterSaleServiceTest {
         tradeAfterSaleService.mockApprove(1L, 10L);
 
         verify(tradeProductService).recoverStock(200L, 2);
+        verify(tradeProductService).adjustSales(100L, -2);
     }
 
     @Test
@@ -167,6 +171,9 @@ class TradeAfterSaleServiceTest {
 
         assertEquals(4, result.get("status"));
         assertEquals("WX-R202608060001", result.get("providerRefundNo"));
+        InOrder inOrder = inOrder(tradeAfterSaleMapper, tradeRefundProviderService);
+        inOrder.verify(tradeAfterSaleMapper).update(isNull(), any());
+        inOrder.verify(tradeRefundProviderService).refund(any());
         verify(payOrderMapper, never()).update(isNull(), any());
         verify(tradeOrderMapper, never()).update(isNull(), any());
     }

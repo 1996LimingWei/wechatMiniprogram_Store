@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -326,6 +326,7 @@ public class PayOrderService {
     }
 
     private String generatePaySn() {
-        return "P" + System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(1000, 9999);
+        return "P" + System.currentTimeMillis()
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 }

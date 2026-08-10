@@ -31,4 +31,8 @@ public class TradeProductService {
     public void recoverStock(Long skuId, int count) {
         productSkuProvider.recoverStock(skuId, count);
     }
+
+    public void adjustSales(Long spuId, int delta) {
+        productSkuProvider.adjustSales(spuId, delta);
+    }
 }

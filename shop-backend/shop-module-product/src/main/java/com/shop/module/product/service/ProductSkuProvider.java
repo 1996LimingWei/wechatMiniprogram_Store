@@ -10,4 +10,6 @@ public interface ProductSkuProvider {
     void reduceStock(Long skuId, int count);
 
     void recoverStock(Long skuId, int count);
+
+    void adjustSales(Long spuId, int delta);
 }

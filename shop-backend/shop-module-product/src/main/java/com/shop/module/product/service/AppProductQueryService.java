@@ -1,6 +1,7 @@
 package com.shop.module.product.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shop.common.exception.ErrorCode;
@@ -43,19 +44,42 @@ public class AppProductQueryService {
     public Map<String, Object> goodsCategory(Long id) { return Map.of("brotherCategory", categories().stream().filter(c -> c.getParentId() == 0).map(this::categoryBrief).toList(), "currentCategory", categoryBrief(category(id))); }
     public Map<String, Object> count() { return Map.of("goodsCount", productSpuMapper.selectCount(available())); }
     public Map<String, Object> list(Long categoryId, String keyword, int isHot, int isNew, int page, int size) {
-        List<ProductSpuDO> all = productSpuMapper.selectList(available());
         Set<Long> ids = categoryIds(categoryId);
-        all = all.stream().filter(s -> ids.isEmpty() || ids.contains(s.getCategoryId())).filter(s -> keyword == null || keyword.isBlank() || (s.getName()+s.getKeyword()+s.getIntroduction()).contains(keyword)).sorted(isNew == 1 ? Comparator.comparing(ProductSpuDO::getCreateTime).reversed() : Comparator.comparing(ProductSpuDO::getSalesCount, Comparator.nullsLast(Integer::compareTo)).reversed()).toList();
-        int from = Math.min(Math.max(page - 1, 0) * size, all.size()), to = Math.min(from + size, all.size());
-        Map<String, Object> result = Map.of("goodsList", Map.of("records", all.subList(from, to).stream().map(this::goods).toList(), "current", page, "size", size, "total", all.size(), "pages", (all.size()+size-1)/size), "filterCategory", categories().stream().filter(c -> c.getParentId()==0).map(c -> Map.of("id",c.getId(),"name",c.getName(),"checked",Objects.equals(c.getId(),categoryId))).toList());
-        if (page <= 1) {
+        int finalPage = Math.max(page, 1);
+        int finalSize = Math.min(Math.max(size, 1), 100);
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        LambdaQueryWrapper<ProductSpuDO> wrapper = new LambdaQueryWrapper<ProductSpuDO>()
+                .eq(ProductSpuDO::getStatus, 1)
+                .in(!ids.isEmpty(), ProductSpuDO::getCategoryId, ids)
+                .and(!normalizedKeyword.isEmpty(), query -> query
+                        .like(ProductSpuDO::getName, normalizedKeyword)
+                        .or().like(ProductSpuDO::getKeyword, normalizedKeyword)
+                        .or().like(ProductSpuDO::getIntroduction, normalizedKeyword));
+        if (isNew == 1) {
+            wrapper.orderByDesc(ProductSpuDO::getCreateTime);
+        } else if (isHot == 1) {
+            wrapper.orderByDesc(ProductSpuDO::getSalesCount);
+        } else {
+            wrapper.orderByDesc(ProductSpuDO::getSort);
+        }
+        wrapper.orderByDesc(ProductSpuDO::getId);
+        Page<ProductSpuDO> pageResult = productSpuMapper.selectPage(new Page<>(finalPage, finalSize), wrapper);
+        Map<String, Object> goodsList = new LinkedHashMap<>();
+        goodsList.put("records", pageResult.getRecords().stream().map(this::goods).toList());
+        goodsList.put("current", finalPage);
+        goodsList.put("size", finalSize);
+        goodsList.put("total", pageResult.getTotal());
+        goodsList.put("pages", pageResult.getPages());
+        Map<String, Object> result = Map.of("goodsList", goodsList, "filterCategory", categories().stream().filter(c -> c.getParentId()==0).map(c -> Map.of("id",c.getId(),"name",c.getName(),"checked",Objects.equals(c.getId(),categoryId))).toList());
+        if (finalPage <= 1) {
             productSearchService.record(keyword);
         }
         return result;
     }
     public Map<String,Object> detail(Long id) {
-        ProductSpuDO s = productSpuMapper.selectById(id); if (s == null || s.getStatus() != 1) throw new ServerException(ErrorCode.PRODUCT_NOT_EXISTS);
+        ProductSpuDO s = productSpuMapper.selectById(id); if (s == null || !Integer.valueOf(1).equals(s.getStatus())) throw new ServerException(ErrorCode.PRODUCT_NOT_EXISTS);
         List<ProductSkuDO> skus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>().eq(ProductSkuDO::getSpuId,id));
+        if (skus.isEmpty()) throw new ServerException(1101, "商品暂无可售规格");
         List<SkuReadModel> skuModels = skus.stream().map(this::skuReadModel).sorted(this::compareSkuModels).toList();
         List<Map<String, Object>> specifications = specificationList(skuModels);
         Long userId = currentUserId();

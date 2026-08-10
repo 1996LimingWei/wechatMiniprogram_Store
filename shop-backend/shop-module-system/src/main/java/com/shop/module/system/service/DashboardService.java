@@ -32,9 +32,10 @@ public class DashboardService {
         result.put("todayOrderCount", todayOrderCount != null ? todayOrderCount : 0);
 
         // 今日销售额（分）
-        Integer todaySalesAmount = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(actual_price), 0) FROM trade_order WHERE deleted = 0 AND DATE(create_time) = ? AND pay_status = 1",
-                Integer.class, today);
+        Long todaySalesAmount = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(actual_price), 0) FROM trade_order " +
+                        "WHERE deleted = 0 AND DATE(pay_time) = ? AND pay_status = 1",
+                Long.class, today);
         result.put("todaySalesAmount", todaySalesAmount != null ? todaySalesAmount : 0);
 
         // 商品总数（上架）
@@ -63,10 +64,10 @@ public class DashboardService {
         String startStr = startDate.toString();
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT DATE(create_time) AS date, COUNT(*) AS order_count, " +
-                "COALESCE(SUM(CASE WHEN pay_status = 1 THEN actual_price ELSE 0 END), 0) AS sales_amount " +
-                "FROM trade_order WHERE deleted = 0 AND DATE(create_time) >= ? " +
-                "GROUP BY DATE(create_time) ORDER BY date ASC", startStr);
+                "SELECT DATE(pay_time) AS date, COUNT(*) AS order_count, " +
+                "COALESCE(SUM(actual_price), 0) AS sales_amount " +
+                "FROM trade_order WHERE deleted = 0 AND pay_status = 1 AND DATE(pay_time) >= ? " +
+                "GROUP BY DATE(pay_time) ORDER BY date ASC", startStr);
 
         // 构建完整日期序列（补齐无数据的日期为 0）
         Map<String, Map<String, Object>> dateMap = new LinkedHashMap<>();
@@ -85,7 +86,7 @@ public class DashboardService {
             item.put("date", dateStr);
             if (dayData != null) {
                 item.put("orderCount", ((Number) dayData.get("order_count")).intValue());
-                item.put("salesAmount", ((Number) dayData.get("sales_amount")).intValue());
+                item.put("salesAmount", ((Number) dayData.get("sales_amount")).longValue());
             } else {
                 item.put("orderCount", 0);
                 item.put("salesAmount", 0);
@@ -126,12 +127,13 @@ public class DashboardService {
         if (limit > 50) limit = 50;
 
         return jdbcTemplate.queryForList(
-                "SELECT oi.goods_name AS name, SUM(oi.count) AS sales_count, " +
+                "SELECT COALESCE(MAX(p.name), MAX(oi.goods_name)) AS name, SUM(oi.count) AS sales_count, " +
                 "SUM(oi.total_price) AS sales_amount, MAX(oi.goods_pic_url) AS pic_url " +
                 "FROM trade_order_item oi " +
                 "INNER JOIN trade_order o ON oi.order_id = o.id AND o.deleted = 0 " +
+                "LEFT JOIN product_spu p ON p.id = oi.spu_id AND p.deleted = 0 " +
                 "WHERE oi.deleted = 0 AND o.pay_status = 1 " +
-                "GROUP BY oi.goods_name ORDER BY sales_count DESC LIMIT ?", limit);
+                "GROUP BY oi.spu_id ORDER BY sales_count DESC LIMIT ?", limit);
     }
 
     /**
@@ -141,7 +143,7 @@ public class DashboardService {
         return jdbcTemplate.queryForList(
                 "SELECT o.id, o.order_sn, o.status, o.pay_status, o.actual_price, " +
                 "o.consignee, o.create_time, " +
-                "(SELECT COUNT(*) FROM trade_order_item oi WHERE oi.order_id = o.id AND oi.deleted = 0) AS item_count " +
+                "(SELECT COALESCE(SUM(oi.count), 0) FROM trade_order_item oi WHERE oi.order_id = o.id AND oi.deleted = 0) AS item_count " +
                 "FROM trade_order o WHERE o.deleted = 0 ORDER BY o.create_time DESC LIMIT 10");
     }
 }

@@ -330,6 +330,26 @@
 			}
 		},
 		{
+			"path": "pages/ucenter/settings/settings",
+			"style": {
+				"navigationBarTitleText": "账号设置",
+				"navigationBarBackgroundColor": "#FEFEFC",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/legal/privacy/privacy",
+			"style": {
+				"navigationBarTitleText": "隐私政策"
+			}
+		},
+		{
+			"path": "pages/legal/agreement/agreement",
+			"style": {
+				"navigationBarTitleText": "用户协议"
+			}
+		},
+		{
 			"path": "pages/ucenter/profile/profile",
 			"style": {
 				"navigationBarTitleText": "个人资料",

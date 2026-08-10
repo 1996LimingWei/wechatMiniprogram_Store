@@ -161,6 +161,38 @@ class TradeOrderServiceTest {
                 eq(0L), eq("SYSTEM_CLOSE"), eq(0), eq(4), any());
     }
 
+    @Test
+    void shouldConfirmReceiptByConditionalUpdate() {
+        TradeOrderDO pendingReceiptOrder = createOrder(2);
+        pendingReceiptOrder.setPayStatus(TradeOrderPayStatus.PAID);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(pendingReceiptOrder);
+        when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
+
+        String result = tradeOrderService.confirmOrder(1L, 10L);
+
+        assertEquals("已确认收货", result);
+        assertEquals(3, pendingReceiptOrder.getStatus());
+        verify(tradeOrderMapper, never()).updateById(any());
+        verify(tradeOrderLogService).recordStatusChanged(eq(pendingReceiptOrder),
+                eq(TradeOrderLogService.OPERATOR_USER), eq(1L), eq("CONFIRM_RECEIPT"),
+                eq(2), eq(3), any());
+    }
+
+    @Test
+    void shouldIncreaseProductSalesOnlyWhenPaymentStateChanges() {
+        TradeOrderDO pendingOrder = createOrder(0);
+        TradeOrderItemDO item = new TradeOrderItemDO();
+        item.setSpuId(100L);
+        item.setCount(3);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(pendingOrder);
+        when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
+        when(tradeOrderItemMapper.selectList(any())).thenReturn(List.of(item));
+
+        tradeOrderService.markPaid(1L, 10L);
+
+        verify(tradeProductService).adjustSales(100L, 3);
+    }
+
     private TradeOrderDO createOrder(int status) {
         TradeOrderDO order = new TradeOrderDO();
         order.setId(10L);

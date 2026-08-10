@@ -108,6 +108,21 @@ class TradeOrderListAssemblerTest {
     }
 
     @Test
+    void shouldRenderFailedRefundStatusTextInOrderList() {
+        TradeOrderListAssembler assembler = new TradeOrderListAssembler(
+                tradeOrderItemMapper, tradeOrderLogisticsMapper, tradeAfterSaleMapper);
+        TradeOrderDO order = createOrder(10L, 5);
+        when(tradeOrderItemMapper.selectList(any())).thenReturn(List.of());
+        when(tradeOrderLogisticsMapper.selectList(any())).thenReturn(List.of());
+        when(tradeAfterSaleMapper.selectList(any())).thenReturn(List.of(
+                createAfterSale(5L, 10L, LocalDateTime.of(2026, 8, 10, 10, 0), 5)));
+
+        Map<String, Object> result = assembler.assemble(List.of(order)).getFirst();
+
+        assertEquals("退款失败", childMap(result, "afterSale").get("statusText"));
+    }
+
+    @Test
     void shouldReturnEmptyPageWithoutAssociationQueries() {
         TradeOrderListAssembler assembler = new TradeOrderListAssembler(
                 tradeOrderItemMapper, tradeOrderLogisticsMapper, tradeAfterSaleMapper);

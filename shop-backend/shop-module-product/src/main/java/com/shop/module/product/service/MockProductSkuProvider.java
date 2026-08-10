@@ -73,6 +73,11 @@ public class MockProductSkuProvider implements ProductSkuProvider {
         }
     }
 
+    @Override
+    public void adjustSales(Long spuId, int delta) {
+        // Mock 数据不作为经营统计来源。
+    }
+
     private MockSku requireSku(Long skuId) {
         MockSku sku = skuCatalog.get(skuId);
         if (sku == null) {

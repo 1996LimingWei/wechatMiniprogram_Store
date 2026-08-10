@@ -35,7 +35,7 @@ public class AppCartController {
         Long userId = TradeSecurityUtils.getRequiredUserId();
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long goodsId = TradeRequestUtils.getLong(request, "goodsId", 0L);
-        Long productId = TradeRequestUtils.getLong(request, "productId", goodsId);
+        Long productId = TradeRequestUtils.getLong(request, "productId", 0L);
         int number = TradeRequestUtils.getInt(request, "number", 1);
         return CommonResult.success(tradeCartService.addCart(userId, goodsId, productId, number));
     }
@@ -46,7 +46,7 @@ public class AppCartController {
         Long userId = TradeSecurityUtils.getRequiredUserId();
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long goodsId = TradeRequestUtils.getLong(request, "goodsId", 0L);
-        Long productId = TradeRequestUtils.getLong(request, "productId", goodsId);
+        Long productId = TradeRequestUtils.getLong(request, "productId", 0L);
         int number = TradeRequestUtils.getInt(request, "number", 1);
         return CommonResult.success(tradeCartService.addBuyNow(userId, goodsId, productId, number));
     }
@@ -61,7 +61,8 @@ public class AppCartController {
                 TradeRequestUtils.getLong(request, "id", 0L),
                 TradeRequestUtils.getLong(request, "goodsId", 0L),
                 TradeRequestUtils.getLong(request, "productId", 0L),
-                TradeRequestUtils.getInt(request, "number", 1)
+                TradeRequestUtils.getInt(request, "number", 1),
+                TradeRequestUtils.getInt(request, "expectedCount", 0)
         );
         return CommonResult.success(true);
     }

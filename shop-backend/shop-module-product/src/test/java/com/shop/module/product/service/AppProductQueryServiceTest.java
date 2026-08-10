@@ -78,7 +78,9 @@ class AppProductQueryServiceTest {
         ProductSpuDO spu = new ProductSpuDO();
         spu.setId(1L); spu.setCategoryId(1L); spu.setStatus(1); spu.setName("测试商品"); spu.setPicUrl("pic"); spu.setPrice(9900); spu.setMarketPrice(10900); spu.setSalesCount(2);
         when(spuMapper.selectById(1L)).thenReturn(spu);
-        when(skuMapper.selectList(any())).thenReturn(List.of());
+        when(skuMapper.selectList(any())).thenReturn(List.of(
+                sku(1L, "[{\"id\":1,\"name\":\"规格\",\"valueId\":1,\"valueName\":\"默认\"}]",
+                        9900, 10900, 10, "pic")));
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(2);
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(Map.of("content", "很好", "addTime", "2026-07-30", "nickname", "用户", "avatar", "")));
 

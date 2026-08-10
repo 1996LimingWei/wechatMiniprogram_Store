@@ -1,4 +1,6 @@
 -- 专题与商品多对多关联表
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `content_topic_product` (
     `id` bigint NOT NULL AUTO_INCREMENT,
     `topic_id` bigint NOT NULL COMMENT '专题ID',

@@ -33,24 +33,41 @@ public class TradeLogisticsService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> mockShip(Long userId, Long orderId, Map<String, Object> request) {
-        return ship(userId, orderId, request, TradeOrderLogService.OPERATOR_USER, userId);
+        return ship(userId, orderId, request, TradeOrderLogService.OPERATOR_USER, userId, true);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> adminShip(Long adminId, Long orderId, Map<String, Object> request) {
-        return ship(null, orderId, request, TradeOrderLogService.OPERATOR_ADMIN, adminId);
+        return ship(null, orderId, request, TradeOrderLogService.OPERATOR_ADMIN, adminId, false);
     }
 
     private Map<String, Object> ship(Long userId, Long orderId, Map<String, Object> request,
-                                     String operatorType, Long operatorId) {
+                                     String operatorType, Long operatorId, boolean allowMockDefaults) {
         TradeOrderDO order = getUserOrder(userId, orderId);
         if (order.getStatus() == null || order.getStatus() != 1) {
             throw new ServerException(400, "当前订单不能发货");
         }
-        String company = TradeRequestUtils.getString(request, "logisticsCompany", "顺丰速运");
+        String company = TradeRequestUtils.getString(request, "logisticsCompany",
+                allowMockDefaults ? "顺丰速运" : "").trim();
         String logisticsNo = TradeRequestUtils.getString(request, "logisticsNo", "");
-        if (logisticsNo.isBlank()) {
+        if (allowMockDefaults && logisticsNo.isBlank()) {
             logisticsNo = "SF" + System.currentTimeMillis();
+        }
+        if (company.length() < 2 || company.length() > 64) {
+            throw new ServerException(400, "物流公司长度应为 2 至 64 个字符");
+        }
+        if (!logisticsNo.matches("[A-Za-z0-9-]{4,64}")) {
+            throw new ServerException(400, "物流单号仅支持 4 至 64 位字母、数字或连字符");
+        }
+
+        Integer fromStatus = order.getStatus();
+        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, order.getId())
+                .eq(TradeOrderDO::getStatus, 1)
+                .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                .set(TradeOrderDO::getStatus, 2));
+        if (orderUpdated != 1) {
+            throw new ServerException(409, "订单状态已变更，不能重复发货");
         }
 
         TradeOrderLogisticsDO logistics = getLogistics(orderId);
@@ -67,14 +84,6 @@ public class TradeLogisticsService {
             tradeOrderLogisticsMapper.updateById(logistics);
         }
 
-        Integer fromStatus = order.getStatus();
-        int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
-                .eq(TradeOrderDO::getId, order.getId())
-                .eq(TradeOrderDO::getStatus, 1)
-                .set(TradeOrderDO::getStatus, 2));
-        if (orderUpdated != 1) {
-            throw new ServerException(400, "订单状态已变更，不能重复发货");
-        }
         order.setStatus(2);
         tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
                 "SHIP_ORDER", fromStatus, order.getStatus(),

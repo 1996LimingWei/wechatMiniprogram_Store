@@ -5,11 +5,10 @@ import { ElMessage } from "element-plus";
 import { QuestionFilled } from "@element-plus/icons-vue";
 import {
     getProductDetail,
-    createProduct,
-    updateProduct
+    saveProduct
 } from "@/api/product";
 import { getCategoryList } from "@/api/category";
-import { getSkuList, saveSkuBatch } from "@/api/sku";
+import { getSkuList } from "@/api/sku";
 import type { ProductSpu, Category, ProductSku } from "@/api/types";
 
 defineOptions({ name: "ProductForm" });
@@ -181,6 +180,7 @@ function generateMatrix() {
             valueName
         }));
         return {
+            ...(old || {}),
             spuId: spuId.value ?? 0,
             properties: JSON.stringify(props),
             price: old?.price,
@@ -254,18 +254,8 @@ async function handleSave() {
     try {
         const payload = buildSpuPayload();
 
-        if (isEdit.value) {
-            // 编辑模式：更新 SPU + 保存 SKU
-            await updateProduct(payload);
-            if (skuMatrix.value.length > 0 && spuId.value) {
-                await saveSkuBatch(spuId.value, skuMatrix.value);
-            }
-            ElMessage.success("保存成功");
-        } else {
-            // 新增模式：创建 SPU 后跳转编辑
-            await createProduct(payload);
-            ElMessage.success("商品创建成功，请从列表进入编辑添加 SKU 规格");
-        }
+        await saveProduct(payload, skuMatrix.value);
+        ElMessage.success(isEdit.value ? "保存成功" : "商品创建成功");
         router.push("/product/spu");
     } finally {
         submitting.value = false;
@@ -427,7 +417,8 @@ onMounted(async () => {
                 </el-col>
                 <el-col :span="8">
                     <el-form-item label="库存" label-width="100px">
-                        <el-input-number v-model="form.stock" :min="0" controls-position="right" style="width: 100%" />
+                        <el-input-number v-model="form.stock" :min="0" :disabled="isEdit" controls-position="right" style="width: 100%" />
+                        <div v-if="isEdit" class="field-tip">库存由下方各 SKU 库存自动汇总</div>
                     </el-form-item>
                 </el-col>
             </el-row>
@@ -614,5 +605,11 @@ onMounted(async () => {
     color: #909399;
     cursor: help;
     vertical-align: middle;
+}
+.field-tip {
+    margin-top: 4px;
+    color: #909399;
+    font-size: 12px;
+    line-height: 18px;
 }
 </style>

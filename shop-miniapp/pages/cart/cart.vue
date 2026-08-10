@@ -278,20 +278,33 @@ export default {
 		},
 		cutNumber(index) {
 			const item = this.cartGoods[index];
-			if (item.number <= 1) return;
+			if (item.number <= 1 || item.updating) return;
+			const expectedCount = item.number;
 			item.number -= 1;
+			this.$set(item, 'updating', true);
 			this.cartGoods = [...this.cartGoods];
-			this.updateCart(item.productId, item.goodsId, item.number, item.id);
+			this.updateCart(item.productId, item.goodsId, item.number, item.id, expectedCount, index);
 		},
 		addNumber(index) {
 			const item = this.cartGoods[index];
+			if (item.updating) return;
+			const expectedCount = item.number;
 			item.number += 1;
+			this.$set(item, 'updating', true);
 			this.cartGoods = [...this.cartGoods];
-			this.updateCart(item.productId, item.goodsId, item.number, item.id);
+			this.updateCart(item.productId, item.goodsId, item.number, item.id, expectedCount, index);
 		},
-		updateCart(productId, goodsId, number, id) {
-			util.request(api.CartUpdate, { productId, goodsId, number, id }).then(res => {
+		updateCart(productId, goodsId, number, id, expectedCount, index) {
+			util.request(api.CartUpdate, { productId, goodsId, number, id, expectedCount }).then(res => {
+				if (res.code !== 0) {
+					this.getCartList();
+					return;
+				}
 				this.checkedAllStatus = this.isCheckedAll();
+			}).catch(() => {
+				this.getCartList();
+			}).finally(() => {
+				if (this.cartGoods[index]) this.$set(this.cartGoods[index], 'updating', false);
 			});
 		},
 		deleteCart() {
