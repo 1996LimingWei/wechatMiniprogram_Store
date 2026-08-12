@@ -27,13 +27,16 @@ public class WechatTradeRefundProvider implements TradeRefundProvider {
         if (request.amount() == null || request.amount() <= 0) {
             throw new ServerException(400, "退款金额必须大于 0");
         }
+        if (request.totalAmount() == null || request.totalAmount() < request.amount()) {
+            throw new ServerException(400, "原支付金额不能小于退款金额");
+        }
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("out_trade_no", request.paySn());
         payload.put("out_refund_no", request.afterSaleSn());
         payload.put("reason", normalizeReason(request.reason()));
         payload.put("amount", Map.of(
                 "refund", request.amount(),
-                "total", request.amount(),
+                "total", request.totalAmount(),
                 "currency", "CNY"));
         return toResult(wechatPayService.postJson(REFUND_PATH, payload), request);
     }
@@ -43,7 +46,7 @@ public class WechatTradeRefundProvider implements TradeRefundProvider {
         Map<String, Object> response = wechatPayService.getJson(
                 REFUND_PATH + "/" + query.afterSaleSn());
         return toResult(response, new RefundRequest(
-                query.afterSaleSn(), "", query.paySn(), query.amount(), ""));
+                query.afterSaleSn(), "", query.paySn(), query.amount(), query.amount(), ""));
     }
 
     private RefundResult toResult(Map<String, Object> response, RefundRequest request) {

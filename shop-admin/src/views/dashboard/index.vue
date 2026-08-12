@@ -23,6 +23,8 @@ defineOptions({ name: "Dashboard" });
 const loading = ref(true);
 const summary = ref<DashboardSummary>({
   todayOrderCount: 0,
+  todayGrossSalesAmount: 0,
+  todayRefundAmount: 0,
   todaySalesAmount: 0,
   productCount: 0,
   memberCount: 0
@@ -40,7 +42,8 @@ const orderStatusMap: Record<number, { label: string; type: TagType }> = {
   2: { label: "待收货", type: "primary" },
   3: { label: "已完成", type: "success" },
   4: { label: "已取消", type: "info" },
-  5: { label: "退款中", type: "danger" }
+  5: { label: "退款中", type: "danger" },
+  6: { label: "已退款", type: "info" }
 };
 
 /* ========== 图表实例 ========== */
@@ -62,11 +65,29 @@ const statCards = [
     format: (v: number) => String(v)
   },
   {
-    key: "todaySalesAmount",
-    title: "今日销售额",
+    key: "todayGrossSalesAmount",
+    title: "今日实收",
     icon: "ep/money",
     color: "#e6a23c",
     bg: "#fdf6ec",
+    prefix: "¥",
+    format: (v: number) => (v / 100).toFixed(2)
+  },
+  {
+    key: "todayRefundAmount",
+    title: "今日退款",
+    icon: "ep/refresh-left",
+    color: "#f56c6c",
+    bg: "#fef0f0",
+    prefix: "¥",
+    format: (v: number) => (v / 100).toFixed(2)
+  },
+  {
+    key: "todaySalesAmount",
+    title: "今日净销售",
+    icon: "ep/wallet",
+    color: "#00a870",
+    bg: "#e8f8f2",
     prefix: "¥",
     format: (v: number) => (v / 100).toFixed(2)
   },
@@ -327,7 +348,14 @@ onBeforeUnmount(() => {
   <div class="dashboard" v-loading="loading">
     <!-- 核心指标卡片 -->
     <el-row :gutter="16" class="stat-row">
-      <el-col :span="6" v-for="card in statCards" :key="card.key">
+      <el-col
+        v-for="card in statCards"
+        :key="card.key"
+        :xs="24"
+        :sm="12"
+        :lg="8"
+        :xl="4"
+      >
         <el-card shadow="hover" class="stat-card">
           <div class="stat-card-inner">
             <div
@@ -419,6 +447,16 @@ onBeforeUnmount(() => {
                 formatPrice(row.actual_price)
               }}</template>
             </el-table-column>
+            <el-table-column label="退款金额" width="120" align="right">
+              <template #default="{ row }">{{
+                formatPrice(row.refunded_amount)
+              }}</template>
+            </el-table-column>
+            <el-table-column label="净入账" width="120" align="right">
+              <template #default="{ row }">{{
+                formatPrice(row.net_amount)
+              }}</template>
+            </el-table-column>
             <el-table-column label="订单状态" width="100" align="center">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)" size="small">{{
@@ -429,9 +467,21 @@ onBeforeUnmount(() => {
             <el-table-column label="支付状态" width="100" align="center">
               <template #default="{ row }">
                 <el-tag
-                  :type="row.pay_status === 1 ? 'success' : 'warning'"
+                  :type="
+                    row.pay_status === 1
+                      ? 'success'
+                      : row.pay_status === 2
+                        ? 'info'
+                        : 'warning'
+                  "
                   size="small"
-                  >{{ row.pay_status === 1 ? "已支付" : "未支付" }}</el-tag
+                  >{{
+                    row.pay_status === 1
+                      ? "已支付"
+                      : row.pay_status === 2
+                        ? "已退款"
+                        : "未支付"
+                  }}</el-tag
                 >
               </template>
             </el-table-column>

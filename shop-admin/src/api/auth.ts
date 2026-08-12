@@ -1,4 +1,4 @@
-import { storageLocal } from "@pureadmin/utils";
+import { http } from "@/utils/http";
 import { type LoginParams, type LoginResult, loginApi } from "./user";
 
 /** 用户信息 */
@@ -14,34 +14,12 @@ export type UserInfo = {
 /** 管理员登录 */
 export { loginApi as login, type LoginParams, type LoginResult };
 
-/** 获取当前用户信息（前端本地存储读取，暂无后端接口） */
+/** 获取当前管理员及实时角色权限。 */
 export const getUserInfo = (): Promise<UserInfo> => {
-    return new Promise((resolve, reject) => {
-        const info = storageLocal().getItem<{
-            token?: string;
-            userId?: number;
-            username?: string;
-            nickname?: string;
-            avatar?: string;
-            roles?: string[];
-            permissions?: string[];
-        }>("user-info");
-        if (info?.token) {
-            resolve({
-                userId: info.userId ?? 0,
-                username: info.username ?? "",
-                nickname: info.nickname ?? "管理员",
-                avatar: info.avatar ?? "",
-                roles: info.roles ?? ["admin"],
-                permissions: info.permissions ?? ["*:*:*"]
-            });
-        } else {
-            reject(new Error("未登录"));
-        }
-    });
+    return http.get<UserInfo, undefined>("/admin-api/auth/profile");
 };
 
-/** 退出登录（纯前端操作，暂无后端接口） */
+/** 退出登录并立即注销服务端 Token。 */
 export const logoutApi = (): Promise<boolean> => {
-    return Promise.resolve(true);
+    return http.post<boolean, undefined>("/admin-api/auth/logout");
 };

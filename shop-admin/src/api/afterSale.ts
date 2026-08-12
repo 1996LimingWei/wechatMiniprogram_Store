@@ -38,3 +38,11 @@ export const syncAfterSale = (afterSaleId: number) => {
     { data: { afterSaleId } }
   );
 };
+
+/** 确认收到退货并发起退款 */
+export const receiveAfterSale = (afterSaleId: number, receiveRemark: string) => {
+  return http.post<AfterSale, { afterSaleId: number; receiveRemark: string }>(
+    "/admin-api/trade/after-sale/receive",
+    { data: { afterSaleId, receiveRemark } }
+  );
+};

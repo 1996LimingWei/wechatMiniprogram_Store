@@ -6,11 +6,13 @@ import com.shop.module.trade.dal.mysql.TradeOrderLogisticsMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.service.provider.TradeLogisticsProvider;
 import com.shop.module.trade.service.provider.TradeLogisticsProviderService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -38,6 +40,8 @@ class TradeLogisticsServiceTest {
     private TradeOrderLogService tradeOrderLogService;
     @Mock
     private TradeLogisticsProviderService tradeLogisticsProviderService;
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks
     private TradeLogisticsService tradeLogisticsService;
 
@@ -50,6 +54,7 @@ class TradeLogisticsServiceTest {
         logistics.setId(20L);
         logistics.setOrderId(10L);
         logistics.setLogisticsCompany("顺丰速运");
+        logistics.setLogisticsCode("shunfeng");
         logistics.setLogisticsNo("SF123456");
         logistics.setDeliveryTime(LocalDateTime.of(2026, 8, 6, 10, 30));
         when(tradeOrderMapper.selectOne(any())).thenReturn(order);

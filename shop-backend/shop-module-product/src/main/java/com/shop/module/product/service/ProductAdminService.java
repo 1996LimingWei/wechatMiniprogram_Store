@@ -22,12 +22,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class ProductAdminService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int MAX_SKU_STOCK = 1_000_000;
+    private static final int MAX_PRICE_CENTS = 100_000_000;
+    private static final Pattern DANGEROUS_HTML = Pattern.compile(
+            "(?i)<\\s*(script|iframe|object|embed|form|link|meta)|javascript\\s*:|on[a-z]+\\s*=");
 
     private final ProductSpuMapper productSpuMapper;
     private final ProductSkuMapper productSkuMapper;
@@ -55,7 +61,7 @@ public class ProductAdminService {
                 throw new ServerException(409, "商品信息已变化，请刷新后重试");
             }
         }
-        saveSkusInternal(spu.getId(), skus);
+        saveSkusInternal(spu.getId(), skus, adminStockBizNo());
         syncSpuSummary(spu.getId());
         return spu.getId();
     }
@@ -64,7 +70,7 @@ public class ProductAdminService {
     public void saveSkus(Long spuId, List<ProductSkuDO> requestedSkus) {
         ProductSpuDO spu = requireSpu(spuId);
         List<ProductSkuDO> skus = normalizeRequestedSkus(spu, requestedSkus);
-        saveSkusInternal(spuId, skus);
+        saveSkusInternal(spuId, skus, adminStockBizNo());
         syncSpuSummary(spuId);
     }
 
@@ -107,7 +113,7 @@ public class ProductAdminService {
         productSpuMapper.deleteById(spuId);
     }
 
-    private void saveSkusInternal(Long spuId, List<ProductSkuDO> requestedSkus) {
+    private void saveSkusInternal(Long spuId, List<ProductSkuDO> requestedSkus, String stockBizNo) {
         List<ProductSkuDO> existingSkus = productSkuMapper.selectList(
                 new LambdaQueryWrapper<ProductSkuDO>()
                         .eq(ProductSkuDO::getSpuId, spuId)
@@ -133,6 +139,7 @@ public class ProductAdminService {
             if (existing == null) {
                 requested.setId(null);
                 productSkuMapper.insert(requested);
+                recordAdminStockChange(requested.getId(), spuId, 0, requested.getStock(), stockBizNo);
                 retainedIds.add(requested.getId());
                 continue;
             }
@@ -150,6 +157,7 @@ public class ProductAdminService {
             if (updated != 1) {
                 throw new ServerException(409, "规格库存已被交易修改，请刷新商品后重新保存");
             }
+            recordAdminStockChange(existing.getId(), spuId, existing.getStock(), requested.getStock(), stockBizNo);
             retainedIds.add(existing.getId());
         }
 
@@ -158,6 +166,7 @@ public class ProductAdminService {
                 if (hasTradeReferenceBySku(existing.getId())) {
                     throw new ServerException(400, "规格已被购物车或未结束订单引用，不能删除");
                 }
+                recordAdminStockChange(existing.getId(), spuId, existing.getStock(), 0, stockBizNo);
                 productSkuMapper.deleteById(existing.getId());
             }
         }
@@ -205,17 +214,94 @@ public class ProductAdminService {
         if (spu.getStatus() == 1 && (spu.getPicUrl() == null || spu.getPicUrl().isBlank())) {
             throw new ServerException(400, "上架商品必须设置主图");
         }
+        spu.setPicUrl(normalizeResourceUrl(spu.getPicUrl(), "商品主图", spu.getStatus() == 1));
+        spu.setSliderPicUrls(normalizeSliderPicUrls(spu.getSliderPicUrls(), spu.getPicUrl(), spu.getStatus() == 1));
+        String introduction = spu.getIntroduction() == null ? "" : spu.getIntroduction().trim();
+        if (introduction.length() > 255) {
+            throw new ServerException(400, "商品简介不能超过 255 个字符");
+        }
+        spu.setIntroduction(introduction);
+        String keyword = spu.getKeyword() == null ? "" : spu.getKeyword().trim();
+        if (keyword.length() > 255) {
+            throw new ServerException(400, "商品关键词不能超过 255 个字符");
+        }
+        spu.setKeyword(keyword);
+        String description = spu.getDescription() == null ? "" : spu.getDescription().trim();
+        if (description.length() > 100_000) {
+            throw new ServerException(400, "商品详情内容过长");
+        }
+        if (DANGEROUS_HTML.matcher(description).find()) {
+            throw new ServerException(400, "商品详情包含不安全的脚本或标签");
+        }
+        spu.setDescription(description);
     }
 
     private void validateSku(ProductSkuDO sku) {
-        if (sku == null || sku.getPrice() == null || sku.getPrice() <= 0) {
+        if (sku == null || sku.getPrice() == null || sku.getPrice() <= 0
+                || sku.getPrice() > MAX_PRICE_CENTS) {
             throw new ServerException(400, "规格售价必须大于 0");
         }
         if (sku.getMarketPrice() != null && sku.getMarketPrice() > 0 && sku.getMarketPrice() < sku.getPrice()) {
             throw new ServerException(400, "规格市场价不能低于售价");
         }
-        if (sku.getStock() == null || sku.getStock() < 0) {
-            throw new ServerException(400, "规格库存不能为负数");
+        if (sku.getStock() == null || sku.getStock() < 0 || sku.getStock() > MAX_SKU_STOCK) {
+            throw new ServerException(400, "规格库存应为 0 至 1000000");
+        }
+        if (sku.getWeight() != null && sku.getWeight() < 0) {
+            throw new ServerException(400, "规格重量不能为负数");
+        }
+        if (sku.getVolume() != null && sku.getVolume() < 0) {
+            throw new ServerException(400, "规格体积不能为负数");
+        }
+        sku.setPicUrl(normalizeResourceUrl(sku.getPicUrl(), "规格图片", false));
+    }
+
+    private String normalizeSliderPicUrls(String rawValue, String mainPicUrl, boolean required) {
+        String source = rawValue == null || rawValue.isBlank()
+                ? (mainPicUrl == null || mainPicUrl.isBlank() ? "[]" : toJson(List.of(mainPicUrl)))
+                : rawValue.trim();
+        try {
+            JsonNode value = OBJECT_MAPPER.readTree(source);
+            if (!value.isArray() || value.size() > 10 || (required && value.isEmpty())) {
+                throw new ServerException(400, "商品轮播图应为 1 至 10 张");
+            }
+            Set<String> uniqueUrls = new HashSet<>();
+            List<String> urls = new ArrayList<>();
+            for (JsonNode node : value) {
+                if (!node.isTextual()) {
+                    throw new ServerException(400, "商品轮播图格式不正确");
+                }
+                String url = normalizeResourceUrl(node.asText(), "商品轮播图", true);
+                if (!uniqueUrls.add(url)) {
+                    throw new ServerException(400, "商品轮播图不能重复");
+                }
+                urls.add(url);
+            }
+            return OBJECT_MAPPER.writeValueAsString(urls);
+        } catch (ServerException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ServerException(400, "商品轮播图格式不正确");
+        }
+    }
+
+    private String normalizeResourceUrl(String rawValue, String fieldName, boolean required) {
+        String value = rawValue == null ? "" : rawValue.trim();
+        if (value.isEmpty()) {
+            if (required) throw new ServerException(400, fieldName + "不能为空");
+            return "";
+        }
+        if (value.length() > 1024 || (!value.startsWith("https://") && !value.startsWith("/"))) {
+            throw new ServerException(400, fieldName + "必须使用 HTTPS 或站内路径");
+        }
+        return value;
+    }
+
+    private String toJson(Object value) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(value);
+        } catch (Exception exception) {
+            throw new ServerException(500, "商品图片数据序列化失败");
         }
     }
 
@@ -258,9 +344,8 @@ public class ProductAdminService {
 
     private void validateProductCanBeOnSale(Long spuId) {
         ProductSpuDO spu = requireSpu(spuId);
-        if (spu.getPicUrl() == null || spu.getPicUrl().isBlank()) {
-            throw new ServerException(400, "上架商品必须设置主图");
-        }
+        spu.setStatus(1);
+        validateSpu(spu);
         List<ProductSkuDO> skus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>()
                 .eq(ProductSkuDO::getSpuId, spuId));
         if (skus.isEmpty()) {
@@ -321,5 +406,21 @@ public class ProductAdminService {
                 )
                 """, Integer.class, spuId, spuId);
         return count != null && count > 0;
+    }
+
+    private String adminStockBizNo() {
+        return "ADMIN-" + System.currentTimeMillis() + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    }
+
+    private void recordAdminStockChange(Long skuId, Long spuId, int beforeStock, int afterStock, String bizNo) {
+        int change = Math.subtractExact(afterStock, beforeStock);
+        if (change == 0) return;
+        jdbcTemplate.update("""
+                INSERT INTO product_stock_log
+                    (sku_id, spu_id, biz_type, biz_no, change_quantity, before_stock,
+                     after_stock, operator_type, operator_id, remark)
+                VALUES (?, ?, 'ADMIN_ADJUST', ?, ?, ?, ?, 'admin', 0, '后台保存商品调整库存')
+                """, skuId, spuId, bizNo, change, beforeStock, afterStock);
     }
 }

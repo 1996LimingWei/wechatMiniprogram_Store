@@ -72,7 +72,10 @@ function Assert-HttpDenied([string]$Path, [string]$Token = "") {
 function Assert-ApiRejected([string]$Path, [object]$Body, [string]$Token) {
     $headers = @{ Authorization = "Bearer $Token" }
     $json = $Body | ConvertTo-Json -Depth 8 -Compress
-    $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers -ContentType "application/json" -Body $json
+    $httpResponse = Invoke-WebRequest -Uri "$BaseUrl$Path" -Method Post -Headers $headers `
+        -ContentType "application/json" -Body $json -SkipHttpErrorCheck
+    $response = $httpResponse.Content | ConvertFrom-Json
+    Assert-True ($httpResponse.StatusCode -ge 400) "$Path 应返回 HTTP 错误状态"
     Assert-True ($response.code -ne 0) "$Path 应拒绝当前操作"
 }
 
@@ -81,6 +84,11 @@ function Cleanup-TestData {
     $sql = @"
 DELETE FROM trade_order_log WHERE order_id IN (
   SELECT id FROM trade_order WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%')
+);
+DELETE FROM trade_after_sale_item WHERE after_sale_id IN (
+  SELECT id FROM trade_after_sale WHERE order_id IN (
+    SELECT id FROM trade_order WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%')
+  )
 );
 DELETE FROM trade_after_sale WHERE order_id IN (
   SELECT id FROM trade_order WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%')
@@ -98,6 +106,7 @@ DELETE FROM trade_order WHERE user_id IN (SELECT id FROM member_user WHERE openi
 DELETE FROM trade_cart WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%');
 DELETE FROM member_address WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%');
 DELETE FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%';
+DELETE FROM product_stock_log WHERE spu_id = $ProductId OR sku_id = $SkuId;
 DELETE FROM product_sku WHERE id = $SkuId AND spu_id = $ProductId;
 DELETE FROM product_spu WHERE id = $ProductId AND name = '$ProductName';
 "@
@@ -232,6 +241,7 @@ try {
     Invoke-Api "/admin-api/trade/order/ship" @{
         orderId = $shipFlow.OrderId
         logisticsCompany = "顺丰速运"
+        logisticsCode = "shunfeng"
         logisticsNo = "SFTRADE$($shipFlow.OrderId)"
     } $adminToken | Out-Null
     Assert-Order $shipFlow.OrderId 2 1 "管理端发货后订单应为待收货"

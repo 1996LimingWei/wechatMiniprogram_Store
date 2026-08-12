@@ -53,14 +53,28 @@ trade:
     sync-job-enabled: true
     sync-job-fixed-delay: ${TRADE_REFUND_SYNC_FIXED_DELAY:60000}
     sync-batch-size: ${TRADE_REFUND_SYNC_BATCH_SIZE:50}
+    return-expire-batch-size: ${TRADE_RETURN_EXPIRE_BATCH_SIZE:100}
+    return-expire-job-fixed-delay: ${TRADE_RETURN_EXPIRE_FIXED_DELAY:3600000}
   logistics:
-    provider: ${TRADE_LOGISTICS_PROVIDER:disabled}
+    provider: ${TRADE_LOGISTICS_PROVIDER:kuaidi100}
+    kuaidi100:
+      customer: ${KUAIDI100_CUSTOMER:}
+      key: ${KUAIDI100_KEY:}
+  freight:
+    free-threshold: ${TRADE_FREE_FREIGHT_THRESHOLD:19900}
+    base-fee: ${TRADE_BASE_FREIGHT_FEE:1000}
+  order:
+    unpaid-timeout-minutes: ${TRADE_UNPAID_TIMEOUT_MINUTES:30}
+    expire-job-enabled: true
+    expire-batch-size: ${TRADE_EXPIRE_BATCH_SIZE:100}
+    auto-confirm-days: ${TRADE_AUTO_CONFIRM_DAYS:10}
+    auto-confirm-batch-size: ${TRADE_AUTO_CONFIRM_BATCH_SIZE:100}
+    auto-confirm-job-fixed-delay: ${TRADE_AUTO_CONFIRM_FIXED_DELAY:3600000}
 
 admin:
   auth:
-    user-id: ${ADMIN_USER_ID:1}
-    username: ${ADMIN_USERNAME:}
-    password: ${ADMIN_PASSWORD:}
+    max-failed-attempts: ${ADMIN_MAX_FAILED_ATTEMPTS:5}
+    lock-minutes: ${ADMIN_LOCK_MINUTES:15}
 
 web:
   cors:
@@ -78,3 +92,14 @@ mybatis-plus:
 logging:
   level:
     com.shop: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

@@ -9,8 +9,10 @@ import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeCartDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderItemDO;
+import com.shop.module.trade.dal.dataobject.TradeOrderLogisticsDO;
 import com.shop.module.trade.dal.mysql.PayOrderMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
+import com.shop.module.trade.dal.mysql.TradeOrderLogisticsMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,7 @@ public class TradeOrderService {
     private final TradeOrderLogService tradeOrderLogService;
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
+    private final TradeOrderLogisticsMapper tradeOrderLogisticsMapper;
     private final PayOrderMapper payOrderMapper;
     private final WechatPayService wechatPayService;
 
@@ -112,7 +115,8 @@ public class TradeOrderService {
         for (OrderLine orderLine : orderLines) {
             TradeCartDO cart = orderLine.cart();
             TradeProductSnapshot snapshot = orderLine.snapshot();
-            tradeProductService.reduceStock(snapshot, cart.getCount());
+            tradeProductService.reduceStock(snapshot, cart.getCount(), "ORDER", order.getOrderSn(),
+                    TradeOrderLogService.OPERATOR_USER, userId);
             TradeOrderItemDO item = new TradeOrderItemDO();
             item.setOrderId(order.getId());
             item.setUserId(userId);
@@ -376,7 +380,8 @@ public class TradeOrderService {
         tradeOrderLogService.recordStatusChanged(closedOrder, operatorType, operatorId, action,
                 0, 4, closeReason);
         for (TradeOrderItemDO item : getOrderItems(orderId)) {
-            tradeProductService.recoverStock(item.getSkuId(), item.getCount());
+            tradeProductService.recoverStock(item.getSkuId(), item.getCount(), "ORDER_CANCEL",
+                    closedOrder.getOrderSn(), operatorType, operatorId);
         }
         payOrderMapper.update(null, new LambdaUpdateWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getOrderId, orderId)
@@ -384,6 +389,48 @@ public class TradeOrderService {
                 .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
                 .set(PayOrderDO::getStatus, PayOrderStatus.CLOSED));
         return true;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public boolean closeIfExpiredBeforePayment(TradeOrderDO order) {
+        if (order == null || order.getExpireTime() == null
+                || order.getExpireTime().isAfter(LocalDateTime.now())) {
+            return false;
+        }
+        closeUnpaidOrder(order.getId(), order.getUserId(), TradeOrderLogService.OPERATOR_SYSTEM, 0L,
+                "EXPIRE_BEFORE_PAYMENT", "订单已超过支付有效期");
+        return true;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public int autoConfirmDeliveredOrders(int confirmDays, int limit) {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(Math.max(confirmDays, 1));
+        List<TradeOrderLogisticsDO> logisticsList = tradeOrderLogisticsMapper.selectList(
+                new LambdaQueryWrapper<TradeOrderLogisticsDO>()
+                        .inSql(TradeOrderLogisticsDO::getOrderId,
+                                "SELECT id FROM trade_order WHERE status = 2 AND pay_status = 1 AND deleted = b'0'")
+                        .isNotNull(TradeOrderLogisticsDO::getDeliveryTime)
+                        .le(TradeOrderLogisticsDO::getDeliveryTime, cutoff)
+                        .orderByAsc(TradeOrderLogisticsDO::getDeliveryTime)
+                        .last("LIMIT " + Math.min(Math.max(limit, 1), 200)));
+        int confirmed = 0;
+        for (TradeOrderLogisticsDO logistics : logisticsList) {
+            TradeOrderDO order = tradeOrderMapper.selectById(logistics.getOrderId());
+            if (order == null || !Integer.valueOf(2).equals(order.getStatus())
+                    || !Integer.valueOf(TradeOrderPayStatus.PAID).equals(order.getPayStatus())) continue;
+            int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                    .eq(TradeOrderDO::getId, order.getId())
+                    .eq(TradeOrderDO::getStatus, 2)
+                    .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
+                    .set(TradeOrderDO::getStatus, 3));
+            if (updated == 1) {
+                order.setStatus(3);
+                tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_SYSTEM, 0L,
+                        "AUTO_CONFIRM_RECEIPT", 2, 3, "发货超过 " + confirmDays + " 天自动确认收货");
+                confirmed++;
+            }
+        }
+        return confirmed;
     }
 
     private String getOrderStatusText(TradeOrderDO order) {

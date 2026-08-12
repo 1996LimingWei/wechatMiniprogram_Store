@@ -10,6 +10,7 @@ import com.shop.module.trade.dal.mysql.TradeCartMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,9 @@ public class TradeCartService {
 
     private final TradeCartMapper tradeCartMapper;
     private final TradeProductService tradeProductService;
+
+    @Value("${trade.freight.free-threshold:19900}")
+    private int freeFreightThreshold = 19900;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> addCart(Long userId, Long goodsId, Long productId, int number) {
@@ -119,12 +123,15 @@ public class TradeCartService {
         }
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> getCartIndex(Long userId) {
         List<TradeCartDO> list = getCartList(userId);
-        return Map.of(
-                "cartList", list.stream().map(this::toCartItem).toList(),
-                "cartTotal", buildCartTotal(list)
-        );
+        List<Map<String, Object>> cartItems = list.stream().map(this::refreshCartItem).toList();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("cartList", cartItems);
+        result.put("cartTotal", buildCartTotal(list));
+        result.put("freeFreightThreshold", TradeMoneyUtils.formatYuan(freeFreightThreshold));
+        return result;
     }
 
     public Map<String, Object> getCartTotal(Long userId) {
@@ -202,6 +209,55 @@ public class TradeCartService {
         return item;
     }
 
+    private Map<String, Object> refreshCartItem(TradeCartDO cart) {
+        Map<String, Object> item = toCartItem(cart);
+        try {
+            TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
+            boolean priceChanged = !snapshot.getPrice().equals(cart.getPrice());
+            boolean stockInsufficient = snapshot.getStock() == null || snapshot.getStock() < cart.getCount();
+            boolean snapshotChanged = priceChanged
+                    || !java.util.Objects.equals(snapshot.getName(), cart.getGoodsName())
+                    || !java.util.Objects.equals(snapshot.getPicUrl(), cart.getGoodsPicUrl())
+                    || !java.util.Objects.equals(snapshot.getSpecName(), cart.getSpecName());
+            if (snapshotChanged || stockInsufficient) {
+                LambdaUpdateWrapper<TradeCartDO> update = new LambdaUpdateWrapper<TradeCartDO>()
+                        .eq(TradeCartDO::getId, cart.getId())
+                        .eq(TradeCartDO::getUserId, cart.getUserId())
+                        .set(TradeCartDO::getGoodsName, snapshot.getName())
+                        .set(TradeCartDO::getGoodsPicUrl, snapshot.getPicUrl())
+                        .set(TradeCartDO::getSpecName, snapshot.getSpecName())
+                        .set(TradeCartDO::getPrice, snapshot.getPrice());
+                if (stockInsufficient) update.set(TradeCartDO::getChecked, 0);
+                tradeCartMapper.update(null, update);
+                cart.setGoodsName(snapshot.getName());
+                cart.setGoodsPicUrl(snapshot.getPicUrl());
+                cart.setSpecName(snapshot.getSpecName());
+                cart.setPrice(snapshot.getPrice());
+                if (stockInsufficient) cart.setChecked(0);
+                item = toCartItem(cart);
+            }
+            item.put("available", !stockInsufficient);
+            item.put("priceChanged", priceChanged);
+            item.put("currentStock", snapshot.getStock());
+            item.put("stockInsufficient", stockInsufficient);
+            item.put("statusMessage", stockInsufficient ? "库存不足，请调整数量"
+                    : priceChanged ? "商品价格已更新" : "");
+        } catch (ServerException exception) {
+            tradeCartMapper.update(null, new LambdaUpdateWrapper<TradeCartDO>()
+                    .eq(TradeCartDO::getId, cart.getId())
+                    .eq(TradeCartDO::getUserId, cart.getUserId())
+                    .set(TradeCartDO::getChecked, 0));
+            cart.setChecked(0);
+            item = toCartItem(cart);
+            item.put("available", false);
+            item.put("priceChanged", false);
+            item.put("currentStock", 0);
+            item.put("stockInsufficient", true);
+            item.put("statusMessage", "商品已下架或规格已失效");
+        }
+        return item;
+    }
+
     private TradeCartDO getCart(Long userId, Long id, Long goodsId, Long productId) {
         LambdaQueryWrapper<TradeCartDO> wrapper = new LambdaQueryWrapper<TradeCartDO>()
                 .eq(TradeCartDO::getUserId, userId);
@@ -246,11 +302,17 @@ public class TradeCartService {
         if (ids == null || ids.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(ids.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(Long::parseLong)
-                .toList();
+        try {
+            return Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Long::parseLong)
+                    .filter(id -> id > 0)
+                    .distinct()
+                    .toList();
+        } catch (NumberFormatException exception) {
+            throw new ServerException(400, "购物车商品 ID 格式不正确");
+        }
     }
 
     /** 将 SKU properties JSON 解析为可读格式，如 "规格: 10斤" */

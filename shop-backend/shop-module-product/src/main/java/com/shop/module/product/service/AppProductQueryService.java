@@ -95,16 +95,22 @@ public class AppProductQueryService {
         }
         int userHasCollect = userId == null ? 0 : count("SELECT COUNT(*) FROM member_collect WHERE user_id=? AND spu_id=? AND deleted=0", userId, id) > 0 ? 1 : 0;
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("info", goods(s)); result.put("gallery", List.of(Map.of("id",1,"imgUrl",s.getPicUrl()))); result.put("specificationList", specifications); result.put("productList",skuModels.stream().map(this::product).toList()); result.put("attribute",List.of()); result.put("issue",List.of()); result.put("comment",comment); result.put("brand",Map.of()); result.put("userHasCollect",userHasCollect);
+        result.put("info", goods(s)); result.put("gallery", gallery(s)); result.put("specificationList", specifications); result.put("productList",skuModels.stream().map(this::product).toList()); result.put("attribute",List.of()); result.put("issue",List.of()); result.put("comment",comment); result.put("brand",Map.of()); result.put("userHasCollect",userHasCollect);
         return result;
     }
-    public List<Map<String,Object>> related(Long id) { ProductSpuDO s=productSpuMapper.selectById(id); return s==null?List.of():productSpuMapper.selectList(available()).stream().filter(x->!Objects.equals(x.getId(),id)&&Objects.equals(x.getCategoryId(),s.getCategoryId())).limit(4).map(this::goods).toList(); }
+    public List<Map<String,Object>> related(Long id) { ProductSpuDO s=productSpuMapper.selectById(id); return s==null?List.of():productSpuMapper.selectList(available().eq(ProductSpuDO::getCategoryId,s.getCategoryId()).ne(ProductSpuDO::getId,id).last("LIMIT 4")).stream().map(this::goods).toList(); }
     private LambdaQueryWrapper<ProductSpuDO> available(){return new LambdaQueryWrapper<ProductSpuDO>().eq(ProductSpuDO::getStatus,1).orderByDesc(ProductSpuDO::getSort);}
     private List<CategoryDO> categories(){return categoryMapper.selectList(new LambdaQueryWrapper<CategoryDO>().eq(CategoryDO::getStatus,1).orderByDesc(CategoryDO::getSort));}
     private CategoryDO category(Long id){return categories().stream().filter(c->Objects.equals(c.getId(),id)).findFirst().orElseThrow(()->new ServerException(ErrorCode.PRODUCT_NOT_EXISTS));}
-    private Set<Long> categoryIds(Long id){if(id==null||id==0)return Set.of(); return categories().stream().filter(c->Objects.equals(c.getId(),id)||Objects.equals(c.getParentId(),id)).map(CategoryDO::getId).collect(Collectors.toSet());}
+    private Set<Long> categoryIds(Long id){if(id==null||id==0)return Set.of(); List<CategoryDO> all=categories(); Set<Long> ids=new HashSet<>(); ids.add(id); boolean changed; do{int before=ids.size(); all.stream().filter(c->ids.contains(c.getParentId())).forEach(c->ids.add(c.getId())); changed=ids.size()>before;}while(changed); return ids;}
     private Map<String,Object> categoryBrief(CategoryDO c){return Map.of("id",c.getId(),"name",c.getName(),"wapBannerUrl",c.getIcon()==null?"":c.getIcon());}
     private Map<String,Object> goods(ProductSpuDO s){return Map.of("id",s.getId(),"name",s.getName(),"goodsBrief",s.getIntroduction()==null?"":s.getIntroduction(),"goodsDesc",s.getDescription()==null?"":s.getDescription(),"listPicUrl",s.getPicUrl(),"retailPrice",AppProductResponseAssembler.formatPrice(s.getPrice()),"counterPrice",AppProductResponseAssembler.formatPrice(s.getMarketPrice()),"sellVolume",s.getSalesCount()==null?0:s.getSalesCount(),"categoryId",s.getCategoryId());}
+    private List<Map<String,Object>> gallery(ProductSpuDO spu){
+        List<String> urls=new ArrayList<>();
+        try{if(spu.getSliderPicUrls()!=null&&!spu.getSliderPicUrls().isBlank()) urls.addAll(OBJECT_MAPPER.readValue(spu.getSliderPicUrls(),new TypeReference<List<String>>(){}).stream().filter(url->url!=null&&!url.isBlank()).toList());}catch(Exception ignored){}
+        if(urls.isEmpty()&&spu.getPicUrl()!=null&&!spu.getPicUrl().isBlank()) urls.add(spu.getPicUrl());
+        List<Map<String,Object>> result=new ArrayList<>(); for(int i=0;i<urls.size();i++) result.add(Map.of("id",i+1,"imgUrl",urls.get(i))); return result;
+    }
     private List<Map<String, Object>> specificationList(List<SkuReadModel> skus) {
         Map<Long, Map<Long, SkuProperty>> dimensions = new TreeMap<>();
         for (SkuReadModel sku : skus) for (SkuProperty property : sku.properties()) dimensions.computeIfAbsent(property.specificationId(), ignored -> new TreeMap<>()).putIfAbsent(property.valueId(), property);

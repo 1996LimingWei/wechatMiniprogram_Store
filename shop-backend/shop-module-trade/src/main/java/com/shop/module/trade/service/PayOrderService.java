@@ -33,6 +33,9 @@ public class PayOrderService {
 
     public Map<String, Object> prepay(Long userId, Long orderId) {
         TradeOrderDO order = tradeOrderService.getUserOrder(userId, orderId);
+        if (tradeOrderService.closeIfExpiredBeforePayment(order)) {
+            throw new ServerException(400, "订单已超过支付有效期，请重新下单");
+        }
         if (order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID) {
             throw new ServerException(400, "订单已支付");
         }

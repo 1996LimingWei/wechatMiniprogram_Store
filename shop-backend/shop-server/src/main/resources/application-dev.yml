@@ -37,17 +37,22 @@ trade:
     provider: mock
   logistics:
     provider: mock
+  freight:
+    free-threshold: 19900
+    base-fee: 1000
   order:
     unpaid-timeout-minutes: 30
     expire-job-enabled: true
     expire-batch-size: 100
     expire-job-fixed-delay: 60000
+    auto-confirm-days: 10
+    auto-confirm-batch-size: 100
+    auto-confirm-job-fixed-delay: 3600000
 
 admin:
   auth:
-    user-id: 1
-    username: admin
-    password: admin123
+    max-failed-attempts: 5
+    lock-minutes: 15
 
 web:
   cors:

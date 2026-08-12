@@ -68,6 +68,7 @@ module.exports = {
 	OrderRefundApply: 'order/refund/apply', //申请退款/售后
 	OrderRefundDetail: 'order/refund/detail', //退款/售后详情
 	OrderRefundCancel: 'order/refund/cancel', //撤销退款/售后申请
+	OrderRefundReturnLogistics: 'order/refund/return-logistics', //提交退货物流
 
 	FootprintList: 'footprint/list', //足迹列表
 	FootprintDelete: 'footprint/delete', //删除足迹

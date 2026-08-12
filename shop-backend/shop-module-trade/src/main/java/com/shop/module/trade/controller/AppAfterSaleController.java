@@ -54,4 +54,17 @@ public class AppAfterSaleController {
         Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);
         return CommonResult.success(tradeAfterSaleService.cancel(userId, orderId));
     }
+
+    @PostMapping("/app-api/order/refund/return-logistics")
+    public CommonResult<Map<String, Object>> submitReturnLogistics(
+            @RequestBody(required = false) String rawBody,
+            @RequestParam Map<String, Object> params) {
+        Long userId = TradeSecurityUtils.getRequiredUserId();
+        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        return CommonResult.success(tradeAfterSaleService.submitReturn(
+                userId,
+                TradeRequestUtils.getLong(request, "orderId", 0L),
+                TradeRequestUtils.getString(request, "logisticsCompany", ""),
+                TradeRequestUtils.getString(request, "logisticsNo", "")));
+    }
 }

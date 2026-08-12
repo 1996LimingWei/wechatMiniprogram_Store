@@ -130,21 +130,56 @@ SELECT COUNT(*) FROM trade_order o WHERE o.deleted=0 AND NOT (
 )
 "@
 
-Assert-Zero "退款成功状态在售后、订单和支付单之间一致" @"
-SELECT COUNT(*) FROM trade_after_sale a
-JOIN trade_order o ON o.id=a.order_id AND o.deleted=0
+Assert-Zero "退款累计金额在售后、订单和支付单之间一致" @"
+SELECT COUNT(*) FROM trade_order o
 LEFT JOIN pay_order p ON p.order_id=o.id AND p.deleted=0
-WHERE a.deleted=0 AND a.status=1 AND (o.pay_status<>2 OR p.status<>3)
+WHERE o.deleted=0 AND (
+  o.refunded_amount<>(SELECT COALESCE(SUM(a.refund_amount),0) FROM trade_after_sale a WHERE a.order_id=o.id AND a.status=1 AND a.deleted=0)
+  OR p.refunded_amount<>o.refunded_amount
+  OR (o.refunded_amount=o.actual_price AND (o.pay_status<>2 OR p.status<>3))
+  OR (o.refunded_amount<o.actual_price AND o.refunded_amount>0 AND (o.pay_status<>1 OR p.status<>1))
+)
 "@
 
-Assert-Zero "商品销量等于未退款已支付订单数量" @"
+Assert-Zero "商品销量等于支付数量扣除成功售后数量" @"
 SELECT COUNT(*) FROM product_spu p
 WHERE p.deleted=0 AND p.sales_count<>(
-  SELECT COALESCE(SUM(oi.count),0)
+  SELECT COALESCE(SUM(oi.count),0) - COALESCE((
+    SELECT SUM(ai.apply_count)
+    FROM trade_after_sale_item ai
+    JOIN trade_after_sale a ON a.id=ai.after_sale_id AND a.status=1 AND a.deleted=0
+    WHERE ai.spu_id=p.id AND ai.deleted=0
+  ),0)
   FROM trade_order_item oi
   JOIN trade_order o ON o.id=oi.order_id AND o.deleted=0
-  WHERE oi.spu_id=p.id AND oi.deleted=0 AND o.pay_status=1
+  WHERE oi.spu_id=p.id AND oi.deleted=0 AND o.pay_status IN (1,2)
 )
+"@
+
+Assert-Zero "库存流水单笔余额公式正确" @"
+SELECT COUNT(*) FROM product_stock_log
+WHERE change_quantity=0 OR before_stock<0 OR after_stock<0
+   OR after_stock<>before_stock+change_quantity
+"@
+
+Assert-Zero "库存流水逐笔前后余额连续" @"
+WITH ordered_log AS (
+    SELECT sku_id, before_stock,
+           LAG(after_stock) OVER (PARTITION BY sku_id ORDER BY create_time, id) AS previous_after
+    FROM product_stock_log
+)
+SELECT COUNT(*) FROM ordered_log
+WHERE before_stock<>COALESCE(previous_after,0)
+"@
+
+Assert-Zero "SKU 当前库存等于库存流水累计变化" @"
+SELECT COUNT(*)
+FROM product_sku sku
+LEFT JOIN (
+    SELECT sku_id,SUM(change_quantity) AS ledger_stock
+    FROM product_stock_log GROUP BY sku_id
+) ledger ON ledger.sku_id=sku.id
+WHERE sku.deleted=b'0' AND sku.stock<>COALESCE(ledger.ledger_stock,0)
 "@
 
 $appIds = Get-AppProductIds

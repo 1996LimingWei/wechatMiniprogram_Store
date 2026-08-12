@@ -23,7 +23,7 @@ class WechatTradeRefundProviderTest {
 
         TradeRefundProvider.RefundResult result = provider.refund(
                 new TradeRefundProvider.RefundRequest(
-                        "R202608080001", "O202608080001", "P202608080001", 2990, "用户退款"));
+                        "R202608080001", "O202608080001", "P202608080001", 2990, 2990, "用户退款"));
 
         assertEquals(TradeRefundProvider.RefundStatus.PROCESSING, result.status());
         assertEquals("WX-R202608080001", result.providerRefundNo());

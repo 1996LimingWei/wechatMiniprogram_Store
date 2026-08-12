@@ -5,6 +5,7 @@ import com.shop.module.trade.dal.dataobject.TradeAfterSaleDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
 import com.shop.module.trade.dal.mysql.PayOrderMapper;
 import com.shop.module.trade.dal.mysql.TradeAfterSaleMapper;
+import com.shop.module.trade.dal.mysql.TradeAfterSaleItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.service.provider.TradeRefundProviderService;
@@ -32,6 +33,8 @@ class TradeAfterSaleAdminListTest {
 
     @Mock
     private TradeAfterSaleMapper tradeAfterSaleMapper;
+    @Mock
+    private TradeAfterSaleItemMapper tradeAfterSaleItemMapper;
     @Mock
     private TradeOrderMapper tradeOrderMapper;
     @Mock

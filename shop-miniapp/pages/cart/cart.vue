@@ -12,7 +12,7 @@
 			</view>
 			<view class="guarantee-item">
 				<text class="guarantee-dot">✓</text>
-				<text>满299包邮</text>
+				<text>满{{freeShippingThreshold}}包邮</text>
 			</view>
 		</view>
 
@@ -64,9 +64,10 @@
 					<view class="item-info">
 						<text class="item-name">{{item.goodsName}}</text>
 						<text class="item-spec" v-if="item.goodsSpecifitionNameValue">{{item.goodsSpecifitionNameValue}}</text>
+						<text class="item-status" v-if="item.statusMessage">{{item.statusMessage}}</text>
 						<view class="item-bottom">
 							<text class="item-price">¥{{item.retailPrice}}</text>
-							<view class="stepper">
+							<view class="stepper" :class="{disabled: !item.available}">
 								<view class="stepper-btn minus" :class="{disabled: item.number <= 1}" @tap="cutNumber(index)">
 									<text>−</text>
 								</view>
@@ -149,6 +150,7 @@ export default {
 			isEditCart: false,
 			checkedAllStatus: true,
 			recommendList: [],
+			freeShippingThreshold: 199,
 			touchStartX: 0,
 			touchStartY: 0,
 			touchMoveX: 0
@@ -156,13 +158,13 @@ export default {
 	},
 	computed: {
 		freeShippingDiff() {
-			const threshold = 299;
+			const threshold = this.freeShippingThreshold;
 			const amount = parseFloat(this.cartTotal.checkedGoodsAmount) || 0;
 			const diff = threshold - amount;
 			return diff > 0 ? diff.toFixed(2) : 0;
 		},
 		shippingPercent() {
-			const threshold = 299;
+			const threshold = this.freeShippingThreshold;
 			const amount = parseFloat(this.cartTotal.checkedGoodsAmount) || 0;
 			return Math.min(100, (amount / threshold) * 100);
 		}
@@ -176,6 +178,7 @@ export default {
 						swipeOffset: 0
 					}));
 					this.cartTotal = res.data.cartTotal;
+					this.freeShippingThreshold = parseFloat(res.data.freeFreightThreshold) || 199;
 				}
 				this.checkedAllStatus = this.isCheckedAll();
 			});
@@ -228,6 +231,9 @@ export default {
 			return count;
 		},
 		checkedItem(index) {
+			if (!this.cartGoods[index].available && !this.isEditCart) {
+				return util.toast(this.cartGoods[index].statusMessage || '商品当前不可购买');
+			}
 			if (!this.isEditCart) {
 				util.request(api.CartChecked, {
 					productIds: this.cartGoods[index].productId,
@@ -248,7 +254,8 @@ export default {
 		},
 		checkedAll() {
 			if (!this.isEditCart) {
-				const productIds = this.cartGoods.map(v => v.productId);
+				const productIds = this.cartGoods.filter(v => v.available).map(v => v.productId);
+				if (!productIds.length) return util.toast('没有可结算商品');
 				util.request(api.CartChecked, {
 					productIds: productIds.join(','),
 					isChecked: this.isCheckedAll() ? 0 : 1
@@ -287,6 +294,7 @@ export default {
 		},
 		addNumber(index) {
 			const item = this.cartGoods[index];
+			if (!item.available) return util.toast(item.statusMessage || '商品当前不可购买');
 			if (item.updating) return;
 			const expectedCount = item.number;
 			item.number += 1;
@@ -594,7 +602,7 @@ page {
 	line-height: 1.4;
 }
 
-.item-spec {
+	.item-spec {
 	font-size: 22rpx;
 	color: #839083;
 	background: rgba(232, 236, 232, 0.8);
@@ -639,6 +647,18 @@ page {
 	&.disabled {
 		color: $text-hint;
 		opacity: 0.5;
+	}
+
+	.item-status {
+		display: block;
+		font-size: 22rpx;
+		color: #c84f43;
+		margin-top: 8rpx;
+	}
+
+	.stepper.disabled {
+		opacity: 0.45;
+		pointer-events: none;
 	}
 
 	&.plus {

@@ -18,6 +18,10 @@ public class TradeOrderLogisticsDO extends BaseDO {
     private Long id;
     private Long orderId;
     private String logisticsCompany;
+    private String logisticsCode;
     private String logisticsNo;
     private LocalDateTime deliveryTime;
+    private LocalDateTime lastQueryTime;
+    private String tracesJson;
+    private String queryMessage;
 }

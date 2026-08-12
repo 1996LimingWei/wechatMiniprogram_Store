@@ -31,27 +31,6 @@ const utils = {
 			}
 		})
 	},
-	isAndroid: function () {
-		const res = uni.getSystemInfoSync();
-		return res.platform.toLocaleLowerCase() == "android"
-	},
-	isIphoneX: function () {
-		const res = uni.getSystemInfoSync();
-		let iphonex = false;
-		let models = ['iphonex', 'iphonexr', 'iphonexsmax', 'iphone11', 'iphone11pro', 'iphone11promax']
-		const model = res.model.replace(/\s/g, "").toLowerCase()
-		if (models.includes(model)) {
-			iphonex = true;
-		}
-		return iphonex;
-	},
-	constNum: function () {
-		let time = 0;
-		// #ifdef APP-PLUS
-		time = this.isAndroid() ? 300 : 0;
-		// #endif
-		return time
-	},
 	loadingTimer: null,
 	loadingCount: 0,
 	refreshPromise: null,
@@ -110,12 +89,14 @@ const utils = {
 				method: method, //'GET','POST'
 				timeout: 15000,
 				success: (res) => {
-					if (res.statusCode !== 200) {
-						utils.toast('服务暂时不可用，请稍后再试')
-						reject(res)
-						return
-					}
 					const data = res.data || { code: 500, msg: '接口返回为空' }
+					if (res.statusCode < 200 || res.statusCode >= 300) {
+						if (data.code !== 401) {
+							utils.toast(data.msg || '服务暂时不可用，请稍后再试')
+							resolve(data)
+							return
+						}
+					}
 					if (data.code === 401) {
 							// 尝试刷新 Token
 							const oldToken = utils.getToken();

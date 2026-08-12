@@ -1,6 +1,7 @@
 package com.shop.module.trade.controller;
 
 import com.shop.module.trade.service.PayOrderService;
+import com.shop.module.trade.service.PaymentNotifyAuditService;
 import com.shop.module.trade.service.WechatPayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class WechatPayNotifyController {
 
     private final WechatPayService wechatPayService;
     private final PayOrderService payOrderService;
+    private final PaymentNotifyAuditService paymentNotifyAuditService;
 
     @PostMapping("/notify")
     public ResponseEntity<Map<String, String>> notifyPayment(
@@ -30,13 +32,20 @@ public class WechatPayNotifyController {
             @RequestHeader("Wechatpay-Signature") String signature,
             @RequestHeader("Wechatpay-Serial") String serial,
             @RequestBody String body) {
+        WechatPayService.PaymentNotification notification = null;
         try {
-            WechatPayService.PaymentNotification notification = wechatPayService.parseNotification(
+            notification = wechatPayService.parseNotification(
                     timestamp, nonce, signature, serial, body);
             payOrderService.handleWechatNotification(notification, body);
             return ResponseEntity.ok(Map.of("code", "SUCCESS", "message", "成功"));
         } catch (Exception exception) {
             log.warn("[notifyPayment] 微信支付通知处理失败: {}", exception.getMessage());
+            try {
+                paymentNotifyAuditService.recordFailure(
+                        timestamp, serial, body, notification, exception.getMessage());
+            } catch (Exception auditException) {
+                log.error("[notifyPayment] 微信支付失败审计写入失败", auditException);
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", "FAIL", "message", "支付通知处理失败"));
         }

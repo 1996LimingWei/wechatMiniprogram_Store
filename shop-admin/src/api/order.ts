@@ -37,6 +37,7 @@ export const getOrderDetail = (orderId: number) => {
 export const shipOrder = (data: {
   orderId: number;
   logisticsCompany?: string;
+  logisticsCode?: string;
   logisticsNo?: string;
 }) => {
   return http.post<TradeLogistics, typeof data>("/admin-api/trade/order/ship", {

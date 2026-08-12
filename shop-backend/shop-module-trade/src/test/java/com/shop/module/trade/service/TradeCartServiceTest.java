@@ -11,6 +11,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
 
 import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -61,6 +64,23 @@ class TradeCartServiceTest {
         tradeCartService.addCart(1L, 100L, 200L, 2);
 
         verify(tradeCartMapper).insert(any(TradeCartDO.class));
+        verify(tradeCartMapper).update(isNull(), any());
+    }
+
+    @Test
+    void shouldUncheckCartItemWhenRealtimeStockIsInsufficient() {
+        TradeProductSnapshot snapshot = createSnapshot();
+        snapshot.setStock(0);
+        TradeCartDO cart = createCart();
+        when(tradeCartMapper.selectList(any())).thenReturn(List.of(cart));
+        when(tradeProductService.getSnapshot(100L, 200L)).thenReturn(snapshot);
+
+        Map<String, Object> result = tradeCartService.getCartIndex(1L);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> item = ((List<Map<String, Object>>) result.get("cartList")).getFirst();
+        assertFalse((Boolean) item.get("available"));
+        assertFalse((Boolean) item.get("checked"));
         verify(tradeCartMapper).update(isNull(), any());
     }
 

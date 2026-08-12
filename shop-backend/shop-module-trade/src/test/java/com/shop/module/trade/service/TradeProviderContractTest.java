@@ -24,7 +24,7 @@ class TradeProviderContractTest {
         TradeRefundProviderService service = new TradeRefundProviderService(
                 List.of(new MockTradeRefundProvider(), new DisabledTradeRefundProvider()), "mock");
         TradeRefundProvider.RefundRequest request = new TradeRefundProvider.RefundRequest(
-                "R202608060001", "202608060001", "P202608060001", 2990, "不想要了");
+                "R202608060001", "202608060001", "P202608060001", 2990, 2990, "不想要了");
 
         TradeRefundProvider.RefundResult first = service.refund(request);
         TradeRefundProvider.RefundResult second = service.refund(request);
@@ -38,7 +38,7 @@ class TradeProviderContractTest {
         TradeRefundProviderService service = new TradeRefundProviderService(
                 List.of(new DisabledTradeRefundProvider()), "disabled");
         TradeRefundProvider.RefundRequest request = new TradeRefundProvider.RefundRequest(
-                "R202608060001", "202608060001", "P202608060001", 2990, "不想要了");
+                "R202608060001", "202608060001", "P202608060001", 2990, 2990, "不想要了");
 
         assertThrows(ServerException.class, () -> service.refund(request));
     }
@@ -48,7 +48,8 @@ class TradeProviderContractTest {
         TradeLogisticsProviderService service = new TradeLogisticsProviderService(
                 List.of(new MockTradeLogisticsProvider(), new DisabledTradeLogisticsProvider()), "mock");
         TradeLogisticsProvider.LogisticsQuery query = new TradeLogisticsProvider.LogisticsQuery(
-                10L, "顺丰速运", "SF123456", LocalDateTime.of(2026, 8, 6, 10, 30), 3);
+                10L, "顺丰速运", "shunfeng", "SF123456", "13800000000",
+                LocalDateTime.of(2026, 8, 6, 10, 30), 3);
 
         List<TradeLogisticsProvider.LogisticsTrace> traces = service.query(query);
 

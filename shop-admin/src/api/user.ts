@@ -10,6 +10,11 @@ export type LoginParams = {
 export type LoginResult = {
   token: string;
   userId: number;
+  username: string;
+  nickname: string;
+  avatar?: string;
+  roles: string[];
+  permissions: string[];
 };
 
 /** 管理员登录 */

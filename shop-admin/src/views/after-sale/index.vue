@@ -6,6 +6,7 @@ import { Check, Close, Refresh, Search, View } from "@element-plus/icons-vue";
 import {
   approveAfterSale,
   getAfterSalePage,
+  receiveAfterSale,
   rejectAfterSale,
   syncAfterSale
 } from "@/api/afterSale";
@@ -18,6 +19,8 @@ const statusTabs = [
   { label: "待审核", value: "0" },
   { label: "退款处理中", value: "4" },
   { label: "退款失败", value: "5" },
+  { label: "待买家寄回", value: "6" },
+  { label: "待商家收货", value: "7" },
   { label: "已退款", value: "1" },
   { label: "已拒绝", value: "2" },
   { label: "已撤销", value: "3" }
@@ -91,7 +94,9 @@ function statusType(status?: number) {
     2: "danger",
     3: "info",
     4: "primary",
-    5: "danger"
+    5: "danger",
+    6: "warning",
+    7: "primary"
   };
   return types[status ?? -1] ?? "info";
 }
@@ -107,11 +112,13 @@ function openDetail(row: AfterSale) {
 
 async function handleApprove(row: AfterSale) {
   await ElMessageBox.confirm(
-    `确认同意售后单 ${row.afterSaleSn} 的退款申请？退款金额为 ${money(row.refundAmount)}。`,
-    "确认同意退款",
+    row.type === 2
+      ? `确认审核通过售后单 ${row.afterSaleSn}？通过后等待买家寄回，收货前不会退款。`
+      : `确认同意售后单 ${row.afterSaleSn} 的退款申请？退款金额为 ${money(row.refundAmount)}。`,
+    row.type === 2 ? "确认通过退货申请" : "确认同意退款",
     {
       type: "warning",
-      confirmButtonText: "同意退款",
+      confirmButtonText: row.type === 2 ? "审核通过" : "同意退款",
       cancelButtonText: "取消"
     }
   );
@@ -123,6 +130,26 @@ async function handleApprove(row: AfterSale) {
       result.status === 4 ? "退款请求已提交渠道处理" : "退款已完成"
     );
   }
+  if (detail.value?.id === row.id) detailVisible.value = false;
+  await fetchData();
+}
+
+async function handleReceive(row: AfterSale) {
+  const { value } = await ElMessageBox.prompt(
+    `请确认已收到售后单 ${row.afterSaleSn} 的退货商品。确认后将发起 ${money(row.refundAmount)} 退款。`,
+    "确认收货并退款",
+    {
+      confirmButtonText: "确认收货",
+      cancelButtonText: "取消",
+      inputPlaceholder: "质检说明（可选）",
+      inputValidator: input =>
+        !input || input.length <= 255 || "质检说明不能超过 255 个字符"
+    }
+  );
+  const result = await receiveAfterSale(row.id, value || "");
+  ElMessage.success(
+    result.status === 4 ? "已收货，退款渠道处理中" : "已收货并完成退款"
+  );
   if (detail.value?.id === row.id) detailVisible.value = false;
   await fetchData();
 }
@@ -309,6 +336,14 @@ function refundDescription(row: AfterSale) {
               >拒绝</el-button
             >
             <el-button
+              v-if="row.status === 7"
+              type="success"
+              link
+              :icon="Check"
+              @click="handleReceive(row)"
+              >确认收货</el-button
+            >
+            <el-button
               v-if="row.status === 4"
               type="primary"
               link
@@ -374,6 +409,29 @@ function refundDescription(row: AfterSale) {
           </el-descriptions>
         </section>
 
+        <section v-if="detail.items?.length" class="detail-section">
+          <h4>售后商品</h4>
+          <el-table :data="detail.items" border size="small">
+            <el-table-column prop="goodsName" label="商品" min-width="160" />
+            <el-table-column prop="specName" label="规格" min-width="100" />
+            <el-table-column prop="applyCount" label="数量" width="70" align="center" />
+            <el-table-column prop="refundAmount" label="退款金额" width="110" align="right">
+              <template #default="{ row }">{{ money(row.refundAmount) }}</template>
+            </el-table-column>
+          </el-table>
+        </section>
+
+        <section v-if="detail.returnNo || detail.status === 6" class="detail-section">
+          <h4>退货履约</h4>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="寄回期限">{{ detail.returnDeadline || "—" }}</el-descriptions-item>
+            <el-descriptions-item label="退货物流">{{ detail.returnNo ? `${detail.returnCompany} ${detail.returnNo}` : "等待买家寄回" }}</el-descriptions-item>
+            <el-descriptions-item label="寄回时间">{{ detail.returnTime || "—" }}</el-descriptions-item>
+            <el-descriptions-item label="收货时间">{{ detail.receiveTime || "—" }}</el-descriptions-item>
+            <el-descriptions-item label="质检说明">{{ detail.receiveRemark || "—" }}</el-descriptions-item>
+          </el-descriptions>
+        </section>
+
         <section class="detail-section">
           <h4>申请说明</h4>
           <dl class="reason-list">
@@ -429,6 +487,9 @@ function refundDescription(row: AfterSale) {
           <el-button type="success" :icon="Check" @click="handleApprove(detail)"
             >同意退款</el-button
           >
+        </div>
+        <div v-if="detail.status === 7" class="drawer-actions">
+          <el-button type="success" :icon="Check" @click="handleReceive(detail)">确认收货并退款</el-button>
         </div>
         <div v-else-if="detail.status === 4" class="drawer-actions">
           <el-button

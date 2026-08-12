@@ -12,13 +12,17 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityAutoConfiguration {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, TokenService tokenService) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, TokenService tokenService,
+                                           JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) throws Exception {
+        TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(tokenService);
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -29,6 +33,7 @@ public class SecurityAutoConfiguration {
                         "/app-api/auth/refresh-token",
                         "/app-api/pay/wechat/notify"
                 ).permitAll()
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 // 商品、首页、品牌、专题、帮助与公开评价允许游客浏览。
                 .requestMatchers(
                         "/app-api/product/**",
@@ -51,15 +56,23 @@ public class SecurityAutoConfiguration {
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     response.setCharacterEncoding("UTF-8");
                     response.getWriter().write(
                         new ObjectMapper().writeValueAsString(CommonResult.error(ErrorCode.UNAUTHORIZED))
                     );
                 })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write(
+                            objectMapper.writeValueAsString(CommonResult.error(403, "没有访问权限")));
+                })
             )
-            .addFilterBefore(new TokenAuthenticationFilter(tokenService),
-                UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(new AdminSecurityFilter(jdbcTemplate, objectMapper), TokenAuthenticationFilter.class);
         return http.build();
     }
 }

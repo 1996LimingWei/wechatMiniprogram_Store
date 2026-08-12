@@ -49,10 +49,14 @@
 		</view>
 
 		<!-- 金刚区 -->
-		<view class="grid-menu" v-if="currentTab === 0 && channel.length > 0">
-			<view class="menu-item" v-for="item in channel" :key="item.id" @tap="onChannelTap(item)">
+		<view
+			class="grid-menu"
+			:class="channelGridClass"
+			v-if="currentTab === 0 && visibleChannels.length > 0"
+		>
+			<view class="menu-item" v-for="item in visibleChannels" :key="item.id" @tap="onChannelTap(item)">
 				<view class="menu-icon">
-					<image class="menu-icon-image" :src="item.iconUrl" mode="aspectFit"></image>
+					<image class="menu-icon-image" :src="item.iconUrl" mode="aspectFill" @error="onChannelIconError(item)"></image>
 				</view>
 				<text class="menu-label">{{item.name}}</text>
 			</view>
@@ -210,6 +214,19 @@ export default {
 		}
 	},
 	computed: {
+		visibleChannels() {
+			const visited = Object.create(null);
+			return this.channel.filter(item => {
+				if (!item) return false;
+				const key = item.url ? item.url.trim() : String(item.id);
+				if (!key || visited[key]) return false;
+				visited[key] = true;
+				return true;
+			});
+		},
+		channelGridClass() {
+			return 'grid-menu--' + Math.min(this.visibleChannels.length, 5) + '-columns';
+		},
 		displayGoods() {
 			if (this.currentTab > 0) {
 				return this.goodsList;
@@ -294,6 +311,15 @@ export default {
 			} else {
 				uni.navigateTo({ url: item.url });
 			}
+		},
+		onChannelIconError(item) {
+			const fallbackIcons = {
+				'/pages/newGoods/newGoods': '/static/images/service/service_coupon.svg',
+				'/pages/hotGoods/hotGoods': '/static/images/service/service_vip.svg',
+				'/pages/catalog/catalog': '/static/tabbar/category.png'
+			};
+			const fallback = fallbackIcons[item.url] || '/static/tabbar/category.png';
+			if (item.iconUrl !== fallback) this.$set(item, 'iconUrl', fallback);
 		},
 		goToGoods(id) {
 			uni.navigateTo({ url: '/pages/goods/goods?id=' + id });
@@ -508,39 +534,70 @@ $text-hint: #9A9A9A;
 
 /* 金刚区 */
 .grid-menu {
-	display: flex;
-	justify-content: space-around;
-	padding: 28rpx 20rpx 32rpx;
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	column-gap: 8rpx;
+	row-gap: 24rpx;
+	padding: 28rpx 20rpx 30rpx;
 	background: linear-gradient(180deg, rgba(254, 254, 252, 0.96) 0%, rgba(250, 251, 247, 0.98) 100%);
 	margin: 0 24rpx;
 	border-radius: 20rpx;
 	box-shadow: 0 12rpx 28rpx rgba(103, 125, 108, 0.08);
 }
 
+.grid-menu--1-columns {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.grid-menu--2-columns {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-menu--3-columns {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-menu--4-columns {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .menu-item {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	width: 20%;
+	width: 100%;
+	min-width: 0;
 }
 
 .menu-icon {
-	width: 88rpx;
-	height: 88rpx;
-	border-radius: 28rpx;
+	width: 84rpx;
+	height: 84rpx;
+	border-radius: 24rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	margin-bottom: 12rpx;
+	overflow: hidden;
+	background: #EEF3ED;
 	box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.72), 0 8rpx 18rpx rgba(104, 126, 109, 0.10);
 }
 
 .menu-icon-image {
-	width: 42rpx;
-	height: 42rpx;
+	width: 100%;
+	height: 100%;
 }
 
 .menu-label {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 32rpx;
+	padding: 0 4rpx;
+	line-height: 32rpx;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: 22rpx;
 	color: #526856;
 	font-weight: 600;

@@ -20,6 +20,7 @@ public class PayOrderDO extends BaseDO {
     private Long orderId;
     private Long userId;
     private Integer amount;
+    private Integer refundedAmount;
     private String channel;
     private String channelTradeNo;
     private Integer status;

@@ -57,10 +57,11 @@ export const useUserStore = defineStore("pure-user", {
       setToken({
         token: result.token,
         userId: result.userId,
-        username: data.username,
-        nickname: "管理员",
-        roles: ["admin"],
-        permissions: ["*:*:*"]
+        username: result.username,
+        nickname: result.nickname,
+        avatar: result.avatar ?? "",
+        roles: result.roles,
+        permissions: result.permissions
       });
       return result;
     },

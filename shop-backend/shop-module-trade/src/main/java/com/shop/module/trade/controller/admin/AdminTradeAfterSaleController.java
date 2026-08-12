@@ -63,6 +63,16 @@ public class AdminTradeAfterSaleController {
                 TradeRequestUtils.getLong(request, "afterSaleId", 0L)));
     }
 
+    @PostMapping("/receive")
+    public CommonResult<Map<String, Object>> receive(@RequestBody(required = false) String rawBody,
+                                                      @RequestParam Map<String, Object> params) {
+        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        return CommonResult.success(tradeAfterSaleService.adminReceive(
+                TradeSecurityUtils.getRequiredUserId(),
+                TradeRequestUtils.getLong(request, "afterSaleId", 0L),
+                TradeRequestUtils.getString(request, "receiveRemark", "")));
+    }
+
     private Integer getInteger(Map<String, Object> request, String key) {
         Object value = request.get(key);
         if (value == null || String.valueOf(value).isBlank()) {

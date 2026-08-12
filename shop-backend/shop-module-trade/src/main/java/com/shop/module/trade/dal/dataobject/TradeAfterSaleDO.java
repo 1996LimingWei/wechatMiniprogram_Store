@@ -34,4 +34,11 @@ public class TradeAfterSaleDO extends BaseDO {
     private LocalDateTime refundTime;
     private LocalDateTime rejectTime;
     private LocalDateTime cancelTime;
+    private String returnCompany;
+    private String returnNo;
+    private LocalDateTime returnDeadline;
+    private LocalDateTime returnTime;
+    private LocalDateTime receiveTime;
+    private String receiveRemark;
+    private Integer stockRecovered;
 }

@@ -115,17 +115,19 @@ class PureHttp {
         // HTTP 状态码处理
         if (error.response) {
           const { status } = error.response;
+          const backend = error.response.data as Partial<BackendResponse>;
+          const backendMessage = backend?.msg;
           if (status === 401) {
             // 未授权：清除 token 并跳转登录页
             removeToken();
             router.push("/login");
-            ElMessage.error("登录已过期，请重新登录");
+            ElMessage.error(backendMessage || "登录已过期，请重新登录");
           } else if (status === 403) {
-            ElMessage.error("没有权限访问该资源");
+            ElMessage.error(backendMessage || "没有权限访问该资源");
           } else if (status === 500) {
-            ElMessage.error("服务器内部错误");
+            ElMessage.error(backendMessage || "服务器内部错误");
           } else {
-            ElMessage.error(`请求失败 (${status})`);
+            ElMessage.error(backendMessage || `请求失败 (${status})`);
           }
         } else if (!error.isCancelRequest) {
           ElMessage.error("网络异常，请检查网络连接");

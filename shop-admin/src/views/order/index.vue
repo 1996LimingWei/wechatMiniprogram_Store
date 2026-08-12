@@ -168,37 +168,44 @@ const shipForm = reactive({
   orderId: 0,
   orderSn: "",
   logisticsCompany: "顺丰速运",
+  logisticsCode: "shunfeng",
   logisticsNo: ""
 });
 const shipRules: FormRules = {
-  logisticsCompany: [
+  logisticsCode: [
     { required: true, message: "请选择物流公司", trigger: "change" }
   ],
   logisticsNo: [
     { required: true, message: "请输入物流单号", trigger: "blur" },
     {
-      min: 4,
-      max: 64,
-      message: "物流单号长度应为 4 至 64 个字符",
+      min: 6,
+      max: 32,
+      message: "物流单号长度应为 6 至 32 个字符",
       trigger: "blur"
     }
   ]
 };
 const logisticsCompanies = [
-  "顺丰速运",
-  "中通快递",
-  "圆通速递",
-  "韵达快递",
-  "极兔速递",
-  "申通快递",
-  "京东物流",
-  "邮政 EMS"
+  { name: "顺丰速运", code: "shunfeng" },
+  { name: "中通快递", code: "zhongtong" },
+  { name: "圆通速递", code: "yuantong" },
+  { name: "韵达快递", code: "yunda" },
+  { name: "极兔速递", code: "jtexpress" },
+  { name: "申通快递", code: "shentong" },
+  { name: "京东物流", code: "jd" },
+  { name: "邮政 EMS", code: "ems" }
 ];
+
+function handleLogisticsCompanyChange(code: string) {
+  const company = logisticsCompanies.find(item => item.code === code);
+  shipForm.logisticsCompany = company?.name ?? "";
+}
 
 function openShip(row: TradeOrder) {
   shipForm.orderId = row.id;
   shipForm.orderSn = row.orderSn;
   shipForm.logisticsCompany = "顺丰速运";
+  shipForm.logisticsCode = "shunfeng";
   shipForm.logisticsNo = "";
   shipVisible.value = true;
 }
@@ -215,6 +222,7 @@ async function submitShip() {
     await shipOrder({
       orderId: shipForm.orderId,
       logisticsCompany: shipForm.logisticsCompany,
+      logisticsCode: shipForm.logisticsCode,
       logisticsNo: shipForm.logisticsNo.trim()
     });
     ElMessage.success("发货成功，订单已变为待收货");
@@ -594,17 +602,18 @@ onMounted(fetchData);
         :rules="shipRules"
         label-width="90px"
       >
-        <el-form-item label="物流公司" prop="logisticsCompany">
+        <el-form-item label="物流公司" prop="logisticsCode">
           <el-select
-            v-model="shipForm.logisticsCompany"
+            v-model="shipForm.logisticsCode"
             filterable
             style="width: 100%"
+            @change="handleLogisticsCompanyChange"
           >
             <el-option
               v-for="company in logisticsCompanies"
-              :key="company"
-              :label="company"
-              :value="company"
+              :key="company.code"
+              :label="company.name"
+              :value="company.code"
             />
           </el-select>
         </el-form-item>

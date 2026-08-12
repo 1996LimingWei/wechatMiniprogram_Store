@@ -20,6 +20,7 @@ public interface TradeRefundProvider {
             String orderSn,
             String paySn,
             Integer amount,
+            Integer totalAmount,
             String reason) {
     }
 

@@ -2,10 +2,12 @@ package com.shop.module.trade.service;
 
 import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeAfterSaleDO;
+import com.shop.module.trade.dal.dataobject.TradeAfterSaleItemDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeOrderItemDO;
 import com.shop.module.trade.dal.mysql.PayOrderMapper;
 import com.shop.module.trade.dal.mysql.TradeAfterSaleMapper;
+import com.shop.module.trade.dal.mysql.TradeAfterSaleItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderItemMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.service.provider.TradeRefundProvider;
@@ -22,6 +24,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.inOrder;
@@ -39,6 +42,8 @@ class TradeAfterSaleServiceTest {
 
     @Mock
     private TradeAfterSaleMapper tradeAfterSaleMapper;
+    @Mock
+    private TradeAfterSaleItemMapper tradeAfterSaleItemMapper;
     @Mock
     private TradeOrderMapper tradeOrderMapper;
     @Mock
@@ -116,10 +121,7 @@ class TradeAfterSaleServiceTest {
         payOrder.setUserId(1L);
         payOrder.setStatus(PayOrderStatus.PAID);
         payOrder.setAmount(2990);
-        TradeOrderItemDO orderItem = new TradeOrderItemDO();
-        orderItem.setSpuId(100L);
-        orderItem.setSkuId(200L);
-        orderItem.setCount(2);
+        TradeAfterSaleItemDO afterSaleItem = createAfterSaleItem();
 
         when(tradeOrderMapper.selectOne(any())).thenReturn(order);
         when(tradeAfterSaleMapper.selectOne(any())).thenReturn(afterSale);
@@ -127,11 +129,13 @@ class TradeAfterSaleServiceTest {
         when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
         when(payOrderMapper.update(isNull(), any())).thenReturn(1);
         when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
-        when(tradeOrderItemMapper.selectList(any())).thenReturn(java.util.List.of(orderItem));
+        when(tradeAfterSaleItemMapper.selectList(any())).thenReturn(java.util.List.of(afterSaleItem));
 
         tradeAfterSaleService.mockApprove(1L, 10L);
 
-        verify(tradeProductService).recoverStock(200L, 2);
+        verify(tradeProductService).recoverStock(
+                eq(200L), eq(2), eq("AFTER_SALE"), isNull(),
+                eq(TradeOrderLogService.OPERATOR_USER), eq(1L));
         verify(tradeProductService).adjustSales(100L, -2);
     }
 
@@ -273,12 +277,21 @@ class TradeAfterSaleServiceTest {
         order.setStatus(2);
         order.setPayStatus(TradeOrderPayStatus.PAID);
         order.setActualPrice(2990);
+        TradeOrderItemDO orderItem = new TradeOrderItemDO();
+        orderItem.setId(40L);
+        orderItem.setOrderId(10L);
+        orderItem.setSpuId(100L);
+        orderItem.setSkuId(200L);
+        orderItem.setGoodsName("测试商品");
+        orderItem.setPrice(2990);
+        orderItem.setCount(1);
         TradeAfterSaleDO rejected = new TradeAfterSaleDO();
         rejected.setId(30L);
         rejected.setOrderId(10L);
         rejected.setStatus(2);
         when(tradeOrderMapper.selectOne(any())).thenReturn(order);
         when(tradeAfterSaleMapper.selectOne(any())).thenReturn(rejected);
+        when(tradeOrderItemMapper.selectList(any())).thenReturn(java.util.List.of(orderItem));
         when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
 
         Map<String, Object> result = tradeAfterSaleService.apply(
@@ -295,5 +308,19 @@ class TradeAfterSaleServiceTest {
                         "MOCK-R202608060001",
                         TradeRefundProvider.RefundStatus.SUCCESS,
                         "Mock 退款成功"));
+    }
+
+    private TradeAfterSaleItemDO createAfterSaleItem() {
+        TradeAfterSaleItemDO item = new TradeAfterSaleItemDO();
+        item.setAfterSaleId(30L);
+        item.setOrderItemId(40L);
+        item.setSpuId(100L);
+        item.setSkuId(200L);
+        item.setGoodsName("测试商品");
+        item.setSpecName("标准规格");
+        item.setPrice(1495);
+        item.setApplyCount(2);
+        item.setRefundAmount(2990);
+        return item;
     }
 }

@@ -126,7 +126,9 @@ class TradeOrderServiceTest {
         verify(tradeOrderItemMapper).insert(itemCaptor.capture());
         assertEquals(1299, itemCaptor.getValue().getPrice());
         assertEquals(2598, itemCaptor.getValue().getTotalPrice());
-        verify(tradeProductService).reduceStock(snapshot, 2);
+        verify(tradeProductService).reduceStock(
+                eq(snapshot), eq(2), eq("ORDER"), any(),
+                eq(TradeOrderLogService.OPERATOR_USER), eq(1L));
     }
 
     @Test

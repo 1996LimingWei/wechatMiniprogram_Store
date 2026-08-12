@@ -42,6 +42,21 @@
 			</view>
 		</view>
 
+		<view class="refund-form" v-if="showRefundForm">
+			<view class="section-header">
+				<text class="section-title">选择售后商品</text>
+				<text class="form-close" @tap="showRefundForm = false">取消</text>
+			</view>
+			<view class="refund-item" v-for="item in orderGoods" :key="item.id" @tap="toggleRefundItem(item)">
+				<view class="refund-check" :class="{ checked: isRefundSelected(item.id) }">{{isRefundSelected(item.id) ? '✓' : ''}}</view>
+				<text class="refund-name">{{item.goodsName}}</text>
+				<input v-if="isRefundSelected(item.id)" class="refund-count" type="number" :value="refundCount(item.id)" @tap.stop @input="updateRefundCount(item, $event)" />
+				<text class="refund-max">/ {{item.number}}</text>
+			</view>
+			<input class="refund-reason" v-model="refundReason" maxlength="128" placeholder="请填写售后原因" />
+			<view class="refund-submit" @tap="submitRefund">提交售后申请</view>
+		</view>
+
 		<view class="order-address">
 			<view class="address-info">
 				<text class="address-name">{{orderInfo.consignee}}</text>
@@ -93,6 +108,16 @@
 				<text class="after-label">拒绝原因</text>
 				<text class="after-value">{{afterSale.rejectReason}}</text>
 			</view>
+			<view class="return-form" v-if="afterSale.status === 6">
+				<input class="return-input" v-model="returnCompany" maxlength="64" placeholder="退货物流公司" />
+				<input class="return-input" v-model="returnNo" maxlength="64" placeholder="退货物流单号" />
+				<view class="return-submit" @tap="submitReturnLogistics">提交退货物流</view>
+				<text class="return-deadline" v-if="afterSale.returnDeadline">请在 {{afterSale.returnDeadline}} 前寄回</text>
+			</view>
+			<view class="after-row" v-if="afterSale.returnNo">
+				<text class="after-label">退货物流</text>
+				<text class="after-value">{{afterSale.returnCompany}} {{afterSale.returnNo}}</text>
+			</view>
 		</view>
 
 		<view class="order-total">
@@ -123,7 +148,12 @@
 				orderGoods: [],
 				handleOption: {},
 				logistics: {},
-				afterSale: {}
+				afterSale: {},
+				showRefundForm: false,
+				refundReason: '',
+				refundItems: [],
+				returnCompany: '',
+				returnNo: ''
 			}
 		},
 		methods: {
@@ -215,31 +245,54 @@
 				});
 			},
 			applyRefund() {
-				let that = this;
-				const reasons = that.orderInfo.orderStatusText === '待发货'
-					? ['不想要了', '信息填写错误', '拍错/多拍', '其他原因']
-					: ['商品与描述不符', '商品损坏/变质', '少件/漏发', '其他原因'];
-				uni.showActionSheet({
-					itemList: reasons,
-					success: function(actionRes) {
-						const reason = reasons[actionRes.tapIndex] || '用户申请退款';
-						uni.showModal({
-							title: '申请退款',
-							content: '申请原因：' + reason + '\n提交后商家会尽快处理，确定继续吗？',
-							confirmColor: '#5B8C5A',
-							success: function(res) {
-								if (!res.confirm) return;
-								util.request(api.OrderRefundApply, {
-									orderId: that.orderInfo.id,
-									reason: reason
-								}, 'POST', 'application/json').then(function(res) {
-									if (res.code === 0) {
-										uni.showToast({ title: '已提交申请', icon: 'success' });
-										that.getOrderDetail();
-									}
-								});
-							}
-						});
+				this.refundItems = this.orderGoods.map(item => ({ orderItemId: item.id, count: item.number }));
+				this.refundReason = this.orderInfo.orderStatusText === '待发货' ? '不想要了' : '商品问题退货';
+				this.showRefundForm = true;
+			},
+			isRefundSelected(orderItemId) {
+				return this.refundItems.some(item => item.orderItemId === orderItemId);
+			},
+			refundCount(orderItemId) {
+				const item = this.refundItems.find(value => value.orderItemId === orderItemId);
+				return item ? item.count : 1;
+			},
+			toggleRefundItem(item) {
+				const index = this.refundItems.findIndex(value => value.orderItemId === item.id);
+				if (index >= 0) this.refundItems.splice(index, 1);
+				else this.refundItems.push({ orderItemId: item.id, count: item.number });
+			},
+			updateRefundCount(item, event) {
+				const selected = this.refundItems.find(value => value.orderItemId === item.id);
+				if (!selected) return;
+				const count = parseInt(event.detail.value, 10);
+				selected.count = Math.max(1, Math.min(item.number, Number.isFinite(count) ? count : 1));
+			},
+			submitRefund() {
+				if (!this.refundItems.length) return util.toast('请至少选择一件商品');
+				if ((this.refundReason || '').trim().length < 2) return util.toast('请填写售后原因');
+				util.request(api.OrderRefundApply, {
+					orderId: this.orderInfo.id,
+					reason: this.refundReason.trim(),
+					items: this.refundItems
+				}, 'POST', 'application/json').then(res => {
+					if (res.code === 0) {
+						this.showRefundForm = false;
+						uni.showToast({ title: '已提交申请', icon: 'success' });
+						this.getOrderDetail();
+					}
+				});
+			},
+			submitReturnLogistics() {
+				if ((this.returnCompany || '').trim().length < 2) return util.toast('请填写物流公司');
+				if (!/^[A-Za-z0-9-]{6,32}$/.test((this.returnNo || '').trim())) return util.toast('物流单号需为 6 至 32 位字母、数字或连字符');
+				util.request(api.OrderRefundReturnLogistics, {
+					orderId: this.orderInfo.id,
+					logisticsCompany: this.returnCompany.trim(),
+					logisticsNo: this.returnNo.trim()
+				}, 'POST', 'application/json').then(res => {
+					if (res.code === 0) {
+						uni.showToast({ title: '退货物流已提交', icon: 'success' });
+						this.getOrderDetail();
 					}
 				});
 			},
@@ -420,6 +473,96 @@
 		font-size: 22rpx;
 		color: #999;
 		margin-bottom: 12rpx;
+	}
+
+	.refund-form,
+	.return-form {
+		background: #FEFEFC;
+		border-radius: 16rpx;
+		padding: 0 30rpx 28rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.form-close {
+		font-size: 24rpx;
+		color: #777;
+	}
+
+	.refund-item {
+		display: flex;
+		align-items: center;
+		min-height: 84rpx;
+		border-bottom: 1rpx solid #f1f1f1;
+	}
+
+	.refund-check {
+		width: 34rpx;
+		height: 34rpx;
+		line-height: 34rpx;
+		text-align: center;
+		border: 1rpx solid #bbb;
+		border-radius: 4rpx;
+		margin-right: 18rpx;
+		color: #fff;
+	}
+
+	.refund-check.checked {
+		background: $green;
+		border-color: $green;
+	}
+
+	.refund-name {
+		flex: 1;
+		font-size: 25rpx;
+		color: #333;
+	}
+
+	.refund-count {
+		width: 90rpx;
+		height: 54rpx;
+		text-align: center;
+		border: 1rpx solid #ddd;
+		border-radius: 6rpx;
+	}
+
+	.refund-max,
+	.return-deadline {
+		font-size: 22rpx;
+		color: #999;
+		margin-left: 10rpx;
+	}
+
+	.refund-reason,
+	.return-input {
+		height: 76rpx;
+		padding: 0 20rpx;
+		margin-top: 20rpx;
+		background: #f7f8f6;
+		border: 1rpx solid #e5e7e2;
+		border-radius: 8rpx;
+		font-size: 25rpx;
+	}
+
+	.refund-submit,
+	.return-submit {
+		height: 76rpx;
+		line-height: 76rpx;
+		text-align: center;
+		background: $green;
+		color: #fff;
+		border-radius: 8rpx;
+		margin-top: 22rpx;
+		font-size: 26rpx;
+	}
+
+	.return-form {
+		padding: 6rpx 0 20rpx;
+		margin: 0;
+	}
+
+	.return-deadline {
+		display: block;
+		margin: 14rpx 0 0;
 	}
 
 	.goods-price {

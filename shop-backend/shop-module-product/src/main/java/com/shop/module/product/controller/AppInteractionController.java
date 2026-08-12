@@ -52,8 +52,14 @@ public class AppInteractionController {
 
     @RequestMapping("/comment/list")
     public Map<String,Object> commentList(@RequestParam Long valueId, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int size) {
-        int offset = Math.max(page - 1, 0) * size;
-        List<Map<String,Object>> rows = jdbc.queryForList("SELECT c.id,c.content,DATE_FORMAT(c.create_time,'%Y-%m-%d') addTime,u.nickname,u.avatar FROM product_comment c JOIN member_user u ON u.id=c.user_id WHERE c.spu_id=? AND c.status=1 AND c.deleted=0 ORDER BY c.create_time DESC LIMIT ? OFFSET ?", valueId, size, offset).stream().map(row -> { row.put("userInfo", Map.of("nickname", row.get("nickname"), "avatar", row.get("avatar") == null ? "" : row.get("avatar"))); row.put("picList", List.of()); return row; }).toList();
+        int safePage = Math.min(Math.max(page, 1), 10_000);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        int offset = (safePage - 1) * safeSize;
+        List<Map<String,Object>> rows = jdbc.queryForList("SELECT c.id,c.content,DATE_FORMAT(c.create_time,'%Y-%m-%d') addTime,u.nickname,u.avatar FROM product_comment c JOIN member_user u ON u.id=c.user_id WHERE c.spu_id=? AND c.status=1 AND c.deleted=0 ORDER BY c.create_time DESC LIMIT ? OFFSET ?", valueId, safeSize, offset).stream().map(row -> {
+            Object nickname = row.remove("nickname"); Object avatar = row.remove("avatar");
+            row.put("userInfo", Map.of("nickname", nickname == null ? "用户" : nickname,
+                    "avatar", avatar == null ? "" : avatar)); row.put("picList", List.of()); return row;
+        }).toList();
         Integer total = jdbc.queryForObject("SELECT COUNT(*) FROM product_comment WHERE spu_id=? AND status=1 AND deleted=0", Integer.class, valueId);
         return ok(Map.of("records", rows, "total", total == null ? 0 : total));
     }
@@ -62,7 +68,23 @@ public class AppInteractionController {
     public Map<String,Object> commentCount(@RequestParam Long valueId) { Integer count=jdbc.queryForObject("SELECT COUNT(*) FROM product_comment WHERE spu_id=? AND status=1 AND deleted=0",Integer.class,valueId); return ok(Map.of("allCount",count==null?0:count,"hasPicCount",0)); }
 
     @PostMapping("/comment/post")
-    public Map<String,Object> postComment(@RequestParam Long valueId, @RequestParam String content) { requireGoods(valueId); if(content==null||content.isBlank()) throw new ServerException(400,"评论内容不能为空"); jdbc.update("INSERT INTO product_comment(user_id,spu_id,content) VALUES (?,?,?)",userId(),valueId,content.trim()); return ok(Map.of()); }
+    @Transactional
+    public Map<String,Object> postComment(@RequestParam Long valueId, @RequestParam String content) {
+        requireGoods(valueId); Long user = userId(); String normalized = content == null ? "" : content.trim();
+        if (normalized.isEmpty() || normalized.length() > 500) throw new ServerException(400,"评论内容应为 1 至 500 个字符");
+        List<Long> orders = jdbc.queryForList("""
+                SELECT o.id FROM trade_order o
+                  JOIN trade_order_item oi ON oi.order_id=o.id AND oi.deleted=0
+                 WHERE o.user_id=? AND oi.spu_id=? AND o.status=3 AND o.pay_status=1 AND o.deleted=0
+                   AND NOT EXISTS (
+                       SELECT 1 FROM product_comment c
+                        WHERE c.order_id=o.id AND c.spu_id=? AND c.user_id=? AND c.deleted=0)
+                 ORDER BY o.create_time ASC, o.id ASC LIMIT 1
+                """, Long.class, user, valueId, valueId, user);
+        if (orders.isEmpty()) throw new ServerException(400,"完成购买并确认收货后才能评价该商品");
+        jdbc.update("INSERT INTO product_comment(user_id,order_id,spu_id,content) VALUES (?,?,?,?)",
+                user, orders.get(0), valueId, normalized); return ok(Map.of());
+    }
 
     @PostMapping("/footprint/record")
     @Transactional

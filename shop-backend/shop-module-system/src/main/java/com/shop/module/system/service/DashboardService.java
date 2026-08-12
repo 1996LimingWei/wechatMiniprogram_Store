@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -23,20 +24,29 @@ public class DashboardService {
     public Map<String, Object> getSummary() {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        String today = LocalDate.now().toString();
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
         // 今日订单数
         Integer todayOrderCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM trade_order WHERE deleted = 0 AND DATE(create_time) = ?",
-                Integer.class, today);
+                "SELECT COUNT(*) FROM trade_order WHERE deleted = 0 AND create_time >= ? AND create_time < ?",
+                Integer.class, todayStart, tomorrowStart);
         result.put("todayOrderCount", todayOrderCount != null ? todayOrderCount : 0);
 
         // 今日销售额（分）
-        Long todaySalesAmount = jdbcTemplate.queryForObject(
+        Long todayGrossSalesAmount = jdbcTemplate.queryForObject(
                 "SELECT COALESCE(SUM(actual_price), 0) FROM trade_order " +
-                        "WHERE deleted = 0 AND DATE(pay_time) = ? AND pay_status = 1",
-                Long.class, today);
-        result.put("todaySalesAmount", todaySalesAmount != null ? todaySalesAmount : 0);
+                        "WHERE deleted = 0 AND pay_time >= ? AND pay_time < ? AND pay_status IN (1, 2)",
+                Long.class, todayStart, tomorrowStart);
+        Long todayRefundAmount = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(refund_amount), 0) FROM trade_after_sale " +
+                        "WHERE deleted = 0 AND status = 1 AND refund_time >= ? AND refund_time < ?",
+                Long.class, todayStart, tomorrowStart);
+        long grossSales = todayGrossSalesAmount == null ? 0 : todayGrossSalesAmount;
+        long refundAmount = todayRefundAmount == null ? 0 : todayRefundAmount;
+        result.put("todayGrossSalesAmount", grossSales);
+        result.put("todayRefundAmount", refundAmount);
+        result.put("todaySalesAmount", grossSales - refundAmount);
 
         // 商品总数（上架）
         Integer productCount = jdbcTemplate.queryForObject(
@@ -61,13 +71,20 @@ public class DashboardService {
         if (days > 90) days = 90;
 
         LocalDate startDate = LocalDate.now().minusDays(days - 1);
-        String startStr = startDate.toString();
+        LocalDateTime startTime = startDate.atStartOfDay();
+        LocalDateTime endTime = LocalDate.now().plusDays(1).atStartOfDay();
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT DATE(pay_time) AS date, COUNT(*) AS order_count, " +
-                "COALESCE(SUM(actual_price), 0) AS sales_amount " +
-                "FROM trade_order WHERE deleted = 0 AND pay_status = 1 AND DATE(pay_time) >= ? " +
-                "GROUP BY DATE(pay_time) ORDER BY date ASC", startStr);
+                "SELECT date, SUM(order_count) AS order_count, SUM(sales_amount) AS sales_amount FROM (" +
+                "  SELECT DATE(pay_time) AS date, COUNT(*) AS order_count, SUM(actual_price) AS sales_amount " +
+                "  FROM trade_order WHERE deleted=0 AND pay_status IN (1,2) " +
+                "    AND pay_time>=? AND pay_time<? GROUP BY DATE(pay_time) " +
+                "  UNION ALL " +
+                "  SELECT DATE(refund_time) AS date, 0 AS order_count, -SUM(refund_amount) AS sales_amount " +
+                "  FROM trade_after_sale WHERE deleted=0 AND status=1 " +
+                "    AND refund_time>=? AND refund_time<? GROUP BY DATE(refund_time)" +
+                ") daily GROUP BY date ORDER BY date ASC",
+                startTime, endTime, startTime, endTime);
 
         // 构建完整日期序列（补齐无数据的日期为 0）
         Map<String, Map<String, Object>> dateMap = new LinkedHashMap<>();
@@ -101,12 +118,14 @@ public class DashboardService {
      */
     public List<Map<String, Object>> getOrderStatusDistribution() {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT status, COUNT(*) AS count FROM trade_order WHERE deleted = 0 GROUP BY status ORDER BY status");
+                "SELECT CASE WHEN pay_status = 2 THEN 6 ELSE status END AS status, COUNT(*) AS count " +
+                        "FROM trade_order WHERE deleted = 0 " +
+                        "GROUP BY CASE WHEN pay_status = 2 THEN 6 ELSE status END ORDER BY status");
 
         // 状态映射
         Map<Integer, String> statusNames = Map.of(
                 0, "待付款", 1, "待发货", 2, "待收货",
-                3, "已完成", 4, "已取消", 5, "退款中");
+                3, "已完成", 4, "已取消", 5, "退款中", 6, "已退款");
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> row : rows) {
@@ -127,13 +146,23 @@ public class DashboardService {
         if (limit > 50) limit = 50;
 
         return jdbcTemplate.queryForList(
-                "SELECT COALESCE(MAX(p.name), MAX(oi.goods_name)) AS name, SUM(oi.count) AS sales_count, " +
-                "SUM(oi.total_price) AS sales_amount, MAX(oi.goods_pic_url) AS pic_url " +
+                "SELECT COALESCE(MAX(p.name), MAX(oi.goods_name)) AS name, " +
+                "SUM(oi.count - COALESCE(refund.refund_count, 0)) AS sales_count, " +
+                "SUM(oi.total_price - COALESCE(refund.refund_amount, 0)) AS sales_amount, " +
+                "MAX(oi.goods_pic_url) AS pic_url " +
                 "FROM trade_order_item oi " +
                 "INNER JOIN trade_order o ON oi.order_id = o.id AND o.deleted = 0 " +
                 "LEFT JOIN product_spu p ON p.id = oi.spu_id AND p.deleted = 0 " +
-                "WHERE oi.deleted = 0 AND o.pay_status = 1 " +
-                "GROUP BY oi.spu_id ORDER BY sales_count DESC LIMIT ?", limit);
+                "LEFT JOIN (" +
+                "  SELECT ai.order_item_id, SUM(ai.apply_count) refund_count, " +
+                "         SUM(ai.refund_amount) refund_amount " +
+                "  FROM trade_after_sale_item ai " +
+                "  JOIN trade_after_sale a ON a.id=ai.after_sale_id AND a.status=1 AND a.deleted=0 " +
+                "  WHERE ai.deleted=0 GROUP BY ai.order_item_id" +
+                ") refund ON refund.order_item_id=oi.id " +
+                "WHERE oi.deleted = 0 AND o.pay_status IN (1, 2) " +
+                "GROUP BY oi.spu_id HAVING sales_count > 0 " +
+                "ORDER BY sales_count DESC LIMIT ?", limit);
     }
 
     /**
@@ -142,6 +171,7 @@ public class DashboardService {
     public List<Map<String, Object>> getRecentOrders() {
         return jdbcTemplate.queryForList(
                 "SELECT o.id, o.order_sn, o.status, o.pay_status, o.actual_price, " +
+                "o.refunded_amount, (o.actual_price-o.refunded_amount) AS net_amount, " +
                 "o.consignee, o.create_time, " +
                 "(SELECT COALESCE(SUM(oi.count), 0) FROM trade_order_item oi WHERE oi.order_id = o.id AND oi.deleted = 0) AS item_count " +
                 "FROM trade_order o WHERE o.deleted = 0 ORDER BY o.create_time DESC LIMIT 10");

@@ -26,6 +26,7 @@ public class TradeOrderDO extends BaseDO {
     private Integer couponPrice;
     private Integer orderPrice;
     private Integer actualPrice;
+    private Integer refundedAmount;
     private Long addressId;
     private String consignee;
     private String mobile;

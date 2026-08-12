@@ -104,13 +104,13 @@
 				if (address.provinceId > 0 && address.cityId > 0 && address.districtId > 0) {
 					let selectRegionList = that.selectRegionList;
 					selectRegionList[0].id = address.provinceId;
-					selectRegionList[0].name = address.province_name;
+					selectRegionList[0].name = address.provinceName || address.province_name;
 					selectRegionList[0].parentId = 1;
 					selectRegionList[1].id = address.cityId;
-					selectRegionList[1].name = address.city_name;
+					selectRegionList[1].name = address.cityName || address.city_name;
 					selectRegionList[1].parentId = address.provinceId;
 					selectRegionList[2].id = address.districtId;
-					selectRegionList[2].name = address.district_name;
+					selectRegionList[2].name = address.districtName || address.district_name;
 					selectRegionList[2].parentId = address.cityId;
 					that.selectRegionList = selectRegionList;
 					that.regionType = 3;
@@ -168,9 +168,9 @@
 				address.provinceId = selectRegionList[0].id;
 				address.cityId = selectRegionList[1].id;
 				address.districtId = selectRegionList[2].id;
-				address.province_name = selectRegionList[0].name;
-				address.city_name = selectRegionList[1].name;
-				address.district_name = selectRegionList[2].name;
+				address.provinceName = selectRegionList[0].name;
+				address.cityName = selectRegionList[1].name;
+				address.districtName = selectRegionList[2].name;
 				address.fullRegion = selectRegionList.map(item => item.name).join('');
 				this.address = address;
 				this.openSelectRegion = false;
@@ -195,10 +195,13 @@
 			},
 			saveAddress() {
 				let address = this.address;
-				if (address.userName == '') { util.toast('请输入姓名'); return; }
-				if (address.telNumber == '') { util.toast('请输入手机号码'); return; }
+				address.userName = (address.userName || '').trim();
+				address.telNumber = (address.telNumber || '').trim();
+				address.detailInfo = (address.detailInfo || '').trim();
+				if (!address.userName || address.userName.length > 32) { util.toast('请输入正确的收货人姓名'); return; }
+				if (!/^1[3-9]\d{9}$/.test(address.telNumber)) { util.toast('请输入正确的手机号码'); return; }
 				if (address.districtId == 0) { util.toast('请选择省市区'); return; }
-				if (address.detailInfo == '') { util.toast('请输入详细地址'); return; }
+				if (address.detailInfo.length < 2 || address.detailInfo.length > 128) { util.toast('详细地址应为2至128个字符'); return; }
 
 				util.request(api.AddressSave, {
 					id: address.id,
@@ -208,9 +211,9 @@
 					cityId: address.cityId,
 					districtId: address.districtId,
 					isDefault: address.isDefault,
-					provinceName: address.province_name,
-					cityName: address.city_name,
-					countyName: address.district_name,
+					provinceName: address.provinceName,
+					cityName: address.cityName,
+					countyName: address.districtName,
 					detailInfo: address.detailInfo,
 				}, 'POST', 'application/json').then(function(res) {
 					if (res.code === 0) {

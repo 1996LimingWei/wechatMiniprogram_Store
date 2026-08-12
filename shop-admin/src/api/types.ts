@@ -117,8 +117,11 @@ export interface TradeLogistics {
   orderId?: number;
   orderStatus?: number;
   logisticsCompany?: string;
+  logisticsCode?: string;
   logisticsNo?: string;
   deliveryTime?: string;
+  lastQueryTime?: string;
+  queryMessage?: string;
   traces?: LogisticsTrace[];
 }
 
@@ -192,6 +195,20 @@ export interface AfterSale {
   refundTime?: string;
   rejectTime?: string;
   cancelTime?: string;
+  returnCompany?: string;
+  returnNo?: string;
+  returnDeadline?: string;
+  returnTime?: string;
+  receiveTime?: string;
+  receiveRemark?: string;
+  items?: Array<{
+    orderItemId: number;
+    goodsName: string;
+    specName?: string;
+    price: string;
+    applyCount: number;
+    refundAmount: string;
+  }>;
 }
 
 /** 会员用户 */
@@ -302,6 +319,8 @@ export interface ProductComment {
 /** 数据看板 - 汇总指标 */
 export interface DashboardSummary {
   todayOrderCount: number;
+  todayGrossSalesAmount: number;
+  todayRefundAmount: number;
   todaySalesAmount: number;
   productCount: number;
   memberCount: number;
@@ -335,6 +354,8 @@ export interface DashboardRecentOrder {
     status: number;
     pay_status: number;
     actual_price: number;
+    refunded_amount: number;
+    net_amount: number;
     consignee: string;
     create_time: string;
     item_count: number;

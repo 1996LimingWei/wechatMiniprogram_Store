@@ -12,6 +12,11 @@ RUN --mount=type=cache,target=/root/.m2/repository \
 
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
+RUN addgroup -S shop && adduser -S shop -G shop
 COPY --from=build /app/shop-server/target/*.jar app.jar
+RUN chown -R shop:shop /app
+USER shop
 EXPOSE 8085
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -q -O - http://127.0.0.1:8085/actuator/health >/dev/null || exit 1
 ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]

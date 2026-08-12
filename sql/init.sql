@@ -102,6 +102,7 @@ CREATE TABLE `sys_admin_user` (
     `username` varchar(64) NOT NULL COMMENT '用户名',
     `password` varchar(128) NOT NULL COMMENT '密码(BCrypt)',
     `nickname` varchar(64) DEFAULT '' COMMENT '昵称',
+    `avatar` varchar(512) NOT NULL DEFAULT '' COMMENT '头像地址',
     `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态 1=正常 0=禁用',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -112,7 +113,7 @@ CREATE TABLE `sys_admin_user` (
 
 -- 插入默认管理员 (密码: admin123)
 INSERT INTO `sys_admin_user` (`username`, `password`, `nickname`)
-VALUES ('admin', '$2a$10$YMpimV4T/3Cq.UoFqMFJ6eOPHoGRTnr9X8tJLBXvBL7Uh3LQFX6G', '超级管理员');
+VALUES ('admin', '$2a$10$5ajKqxodMJAf3NeshVkMa.0C2CRpXnzos8ylffU07tsRVq.F4q/fO', '超级管理员');
 
 -- 插入Demo分类
 INSERT INTO `product_category` (`name`, `icon`, `sort`, `status`) VALUES

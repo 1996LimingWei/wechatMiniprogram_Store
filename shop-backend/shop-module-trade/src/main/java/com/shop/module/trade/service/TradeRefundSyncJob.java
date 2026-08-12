@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import java.time.Duration;
 
 @Slf4j
 @Component
@@ -14,19 +15,25 @@ import org.springframework.stereotype.Component;
 public class TradeRefundSyncJob {
 
     private final TradeAfterSaleService tradeAfterSaleService;
+    private final DistributedJobLockService jobLockService;
 
     @Value("${trade.refund.sync-batch-size:50}")
     private int batchSize;
 
     @Scheduled(fixedDelayString = "${trade.refund.sync-job-fixed-delay:60000}")
     public void syncProcessingRefunds() {
-        for (Long afterSaleId : tradeAfterSaleService.listProcessingIds(batchSize)) {
-            try {
-                tradeAfterSaleService.syncProcessingBySystem(afterSaleId);
-            } catch (Exception exception) {
-                log.warn("[TradeRefundSyncJob] 退款状态同步失败, afterSaleId={}, message={}",
-                        afterSaleId, exception.getMessage());
+        if (!jobLockService.tryLock("trade-refund-sync", Duration.ofMinutes(10))) return;
+        try {
+            for (Long afterSaleId : tradeAfterSaleService.listProcessingIds(batchSize)) {
+                try {
+                    tradeAfterSaleService.syncProcessingBySystem(afterSaleId);
+                } catch (Exception exception) {
+                    log.warn("[TradeRefundSyncJob] 退款状态同步失败, afterSaleId={}, message={}",
+                            afterSaleId, exception.getMessage());
+                }
             }
+        } finally {
+            jobLockService.release("trade-refund-sync");
         }
     }
 }

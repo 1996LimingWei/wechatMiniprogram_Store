@@ -193,10 +193,13 @@
 			},
 			saveAddress() {
 				let address = this.address;
-				if (address.userName == '') { util.toast('请输入姓名'); return; }
-				if (address.telNumber == '') { util.toast('请输入手机号码'); return; }
+				address.userName = (address.userName || '').trim();
+				address.telNumber = (address.telNumber || '').trim();
+				address.detailInfo = (address.detailInfo || '').trim();
+				if (!address.userName || address.userName.length > 32) { util.toast('请输入正确的收货人姓名'); return; }
+				if (!/^1[3-9]\d{9}$/.test(address.telNumber)) { util.toast('请输入正确的手机号码'); return; }
 				if (address.districtId == 0) { util.toast('请选择省市区'); return; }
-				if (address.detailInfo == '') { util.toast('请输入详细地址'); return; }
+				if (address.detailInfo.length < 2 || address.detailInfo.length > 128) { util.toast('详细地址应为2至128个字符'); return; }
 
 				util.request(api.AddressSave, {
 					id: address.id,

@@ -13,7 +13,9 @@ public interface TradeLogisticsProvider {
     record LogisticsQuery(
             Long orderId,
             String logisticsCompany,
+            String logisticsCode,
             String logisticsNo,
+            String receiverMobile,
             LocalDateTime deliveryTime,
             Integer orderStatus) {
     }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import java.time.Duration;
 
 @Slf4j
 @Service
@@ -13,15 +14,21 @@ public class TradeOrderExpireJob {
 
     private final TradeOrderProperties tradeOrderProperties;
     private final TradeOrderService tradeOrderService;
+    private final DistributedJobLockService jobLockService;
 
     @Scheduled(fixedDelayString = "${trade.order.expire-job-fixed-delay:60000}")
     public void closeExpiredUnpaidOrders() {
         if (!tradeOrderProperties.isExpireJobEnabled()) {
             return;
         }
-        int closedCount = tradeOrderService.closeExpiredUnpaidOrders();
-        if (closedCount > 0) {
-            log.info("自动关闭超时未支付订单完成，本次关闭 {} 单", closedCount);
+        if (!jobLockService.tryLock("trade-order-expire", Duration.ofMinutes(10))) return;
+        try {
+            int closedCount = tradeOrderService.closeExpiredUnpaidOrders();
+            if (closedCount > 0) {
+                log.info("自动关闭超时未支付订单完成，本次关闭 {} 单", closedCount);
+            }
+        } finally {
+            jobLockService.release("trade-order-expire");
         }
     }
 }

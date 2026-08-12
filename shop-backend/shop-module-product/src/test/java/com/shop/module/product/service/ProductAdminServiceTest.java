@@ -73,6 +73,30 @@ class ProductAdminServiceTest {
         assertEquals(409, exception.getCode());
     }
 
+    @Test
+    void shouldRejectDangerousProductDescription() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        CategoryMapper categoryMapper = mock(CategoryMapper.class);
+        ProductSpuDO spu = spu(null);
+        spu.setName("安全测试商品");
+        spu.setCategoryId(8L);
+        spu.setSliderPicUrls("[\"https://example.com/product.png\"]");
+        spu.setDescription("<script>alert(1)</script>");
+        CategoryDO category = new CategoryDO();
+        category.setId(8L);
+        category.setStatus(1);
+        when(categoryMapper.selectById(8L)).thenReturn(category);
+
+        ProductAdminService service = new ProductAdminService(
+                spuMapper, skuMapper, categoryMapper, mock(ProductInventoryService.class),
+                mock(JdbcTemplate.class));
+
+        ServerException exception = assertThrows(ServerException.class,
+                () -> service.saveProduct(spu, List.of(sku(null, null, 8))));
+        assertEquals(400, exception.getCode());
+    }
+
     private ProductAdminService service(ProductSpuMapper spuMapper, ProductSkuMapper skuMapper,
                                         ProductInventoryService inventoryService) {
         return new ProductAdminService(spuMapper, skuMapper, mock(CategoryMapper.class),

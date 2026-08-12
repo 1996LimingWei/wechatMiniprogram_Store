@@ -7,20 +7,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-/** 尚未持久化的通用只读支持接口。 */
+/** 尚未启用的通用只读支持接口，不返回会误导交易的演示权益。 */
 @RestController
 public class AppSupportController {
     @RequestMapping("/app-api/coupon/list")
     public CommonResult<List<Map<String, Object>>> couponList() {
-        return CommonResult.success(List.of(
-                Map.of("id", 1, "name", "新人专享券", "typeMoney", 10, "minGoodsAmount", 99, "useEndDate", "2026-12-31", "couponStatus", 1),
-                Map.of("id", 2, "name", "满减优惠券", "typeMoney", 20, "minGoodsAmount", 199, "useEndDate", "2026-08-31", "couponStatus", 1),
-                Map.of("id", 3, "name", "会员折扣券", "typeMoney", 50, "minGoodsAmount", 399, "useEndDate", "2026-06-01", "couponStatus", 3)));
-    }
-
-    @RequestMapping("/app-api/user/info")
-    public CommonResult<Map<String, Object>> userInfo() {
-        return CommonResult.success(Map.of("userInfo", Map.of("nickName", "测试用户", "avatarUrl", "", "mobile", "138****8888")));
+        return CommonResult.success(List.of());
     }
 
     @RequestMapping("/app-api/helpissue/typeList")
