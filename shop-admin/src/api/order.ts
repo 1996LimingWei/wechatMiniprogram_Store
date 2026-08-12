@@ -19,17 +19,17 @@ export const getOrderPage = (params: {
   createTimeStart?: string;
   createTimeEnd?: string;
 }) => {
-  return http.post<PageResult<TradeOrder>, typeof params>(
+  return http.get<PageResult<TradeOrder>, typeof params>(
     "/admin-api/trade/order/list",
-    { data: params }
+    { params }
   );
 };
 
 /** 订单详情 */
 export const getOrderDetail = (orderId: number) => {
-  return http.post<TradeOrderDetail, { orderId: number }>(
+  return http.get<TradeOrderDetail, { orderId: number }>(
     "/admin-api/trade/order/detail",
-    { data: { orderId } }
+    { params: { orderId } }
   );
 };
 

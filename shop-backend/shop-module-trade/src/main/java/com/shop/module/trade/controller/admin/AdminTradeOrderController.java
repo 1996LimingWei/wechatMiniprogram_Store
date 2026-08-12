@@ -21,28 +21,26 @@ public class AdminTradeOrderController {
     private final TradeOrderQueryService tradeOrderQueryService;
     private final TradeLogisticsService tradeLogisticsService;
 
-    @RequestMapping("/list")
-    public CommonResult<PageResult<Map<String, Object>>> list(@RequestBody(required = false) String rawBody,
-                                                              @RequestParam Map<String, Object> params,
+    @GetMapping("/list")
+    public CommonResult<PageResult<Map<String, Object>>> list(@RequestParam Map<String, Object> params,
                                                               @RequestParam(value = "page", required = false) Integer page,
                                                               @RequestParam(value = "size", required = false) Integer size) {
-        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        Map<String, Object> request = TradeRequestUtils.parse(null, params);
         int finalPage = page != null ? page : TradeRequestUtils.getInt(request, "page", 1);
         int finalSize = size != null ? size : TradeRequestUtils.getInt(request, "size", 10);
         return CommonResult.success(tradeOrderQueryService.getAdminOrderPage(finalPage, finalSize, request));
     }
 
-    @RequestMapping("/detail")
-    public CommonResult<Map<String, Object>> detail(@RequestBody(required = false) String rawBody,
-                                                    @RequestParam Map<String, Object> params,
+    @GetMapping("/detail")
+    public CommonResult<Map<String, Object>> detail(@RequestParam Map<String, Object> params,
                                                     @RequestParam(value = "orderId", required = false) Long orderId,
                                                     @RequestParam(value = "id", required = false) Long id) {
-        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        Map<String, Object> request = TradeRequestUtils.parse(null, params);
         Long finalOrderId = orderId != null ? orderId : (id != null ? id : TradeRequestUtils.getLong(request, "orderId", 0L));
         return CommonResult.success(tradeOrderService.getAdminOrderDetail(finalOrderId));
     }
 
-    @RequestMapping("/ship")
+    @PostMapping("/ship")
     public CommonResult<Map<String, Object>> ship(@RequestBody(required = false) String rawBody,
                                                   @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);

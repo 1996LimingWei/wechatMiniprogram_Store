@@ -43,6 +43,12 @@ public class ProductAdminService {
 
     @Transactional(rollbackFor = Exception.class)
     public Long saveProduct(ProductSpuDO spu, List<ProductSkuDO> requestedSkus) {
+        return saveProduct(spu, requestedSkus, 0L, "系统初始化库存");
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Long saveProduct(ProductSpuDO spu, List<ProductSkuDO> requestedSkus,
+                            Long adminId, String stockAdjustReason) {
         if (spu == null) {
             throw new ServerException(400, "商品信息不能为空");
         }
@@ -50,7 +56,8 @@ public class ProductAdminService {
         applySkuSummary(spu, skus);
         validateSpu(spu);
 
-        if (spu.getId() == null) {
+        boolean creating = spu.getId() == null;
+        if (creating) {
             spu.setSalesCount(0);
             productSpuMapper.insert(spu);
         } else if (productSpuMapper.selectById(spu.getId()) == null) {
@@ -61,16 +68,24 @@ public class ProductAdminService {
                 throw new ServerException(409, "商品信息已变化，请刷新后重试");
             }
         }
-        saveSkusInternal(spu.getId(), skus, adminStockBizNo());
+        String reason = creating && (stockAdjustReason == null || stockAdjustReason.isBlank())
+                ? "商品创建初始化库存" : stockAdjustReason;
+        saveSkusInternal(spu.getId(), skus, adminStockBizNo(), adminId, reason);
         syncSpuSummary(spu.getId());
         return spu.getId();
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void saveSkus(Long spuId, List<ProductSkuDO> requestedSkus) {
+        saveSkus(spuId, requestedSkus, 0L, "系统调整库存");
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void saveSkus(Long spuId, List<ProductSkuDO> requestedSkus,
+                         Long adminId, String stockAdjustReason) {
         ProductSpuDO spu = requireSpu(spuId);
         List<ProductSkuDO> skus = normalizeRequestedSkus(spu, requestedSkus);
-        saveSkusInternal(spuId, skus, adminStockBizNo());
+        saveSkusInternal(spuId, skus, adminStockBizNo(), adminId, stockAdjustReason);
         syncSpuSummary(spuId);
     }
 
@@ -113,7 +128,8 @@ public class ProductAdminService {
         productSpuMapper.deleteById(spuId);
     }
 
-    private void saveSkusInternal(Long spuId, List<ProductSkuDO> requestedSkus, String stockBizNo) {
+    private void saveSkusInternal(Long spuId, List<ProductSkuDO> requestedSkus, String stockBizNo,
+                                  Long adminId, String stockAdjustReason) {
         List<ProductSkuDO> existingSkus = productSkuMapper.selectList(
                 new LambdaQueryWrapper<ProductSkuDO>()
                         .eq(ProductSkuDO::getSpuId, spuId)
@@ -139,7 +155,8 @@ public class ProductAdminService {
             if (existing == null) {
                 requested.setId(null);
                 productSkuMapper.insert(requested);
-                recordAdminStockChange(requested.getId(), spuId, 0, requested.getStock(), stockBizNo);
+                recordAdminStockChange(requested.getId(), spuId, 0, requested.getStock(), stockBizNo,
+                        adminId, stockAdjustReason);
                 retainedIds.add(requested.getId());
                 continue;
             }
@@ -157,7 +174,8 @@ public class ProductAdminService {
             if (updated != 1) {
                 throw new ServerException(409, "规格库存已被交易修改，请刷新商品后重新保存");
             }
-            recordAdminStockChange(existing.getId(), spuId, existing.getStock(), requested.getStock(), stockBizNo);
+            recordAdminStockChange(existing.getId(), spuId, existing.getStock(), requested.getStock(), stockBizNo,
+                    adminId, stockAdjustReason);
             retainedIds.add(existing.getId());
         }
 
@@ -166,7 +184,8 @@ public class ProductAdminService {
                 if (hasTradeReferenceBySku(existing.getId())) {
                     throw new ServerException(400, "规格已被购物车或未结束订单引用，不能删除");
                 }
-                recordAdminStockChange(existing.getId(), spuId, existing.getStock(), 0, stockBizNo);
+                recordAdminStockChange(existing.getId(), spuId, existing.getStock(), 0, stockBizNo,
+                        adminId, stockAdjustReason);
                 productSkuMapper.deleteById(existing.getId());
             }
         }
@@ -413,14 +432,22 @@ public class ProductAdminService {
                 + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
-    private void recordAdminStockChange(Long skuId, Long spuId, int beforeStock, int afterStock, String bizNo) {
+    private void recordAdminStockChange(Long skuId, Long spuId, int beforeStock, int afterStock, String bizNo,
+                                        Long adminId, String stockAdjustReason) {
         int change = Math.subtractExact(afterStock, beforeStock);
         if (change == 0) return;
+        String reason = stockAdjustReason == null ? "" : stockAdjustReason.trim();
+        if (reason.length() < 4 || reason.length() > 200) {
+            throw new ServerException(400, "库存发生变化时，调整原因长度应为 4 至 200 个字符");
+        }
+        if (adminId == null || adminId < 0) {
+            throw new ServerException(401, "库存调整缺少管理员身份");
+        }
         jdbcTemplate.update("""
                 INSERT INTO product_stock_log
                     (sku_id, spu_id, biz_type, biz_no, change_quantity, before_stock,
                      after_stock, operator_type, operator_id, remark)
-                VALUES (?, ?, 'ADMIN_ADJUST', ?, ?, ?, ?, 'admin', 0, '后台保存商品调整库存')
-                """, skuId, spuId, bizNo, change, beforeStock, afterStock);
+                VALUES (?, ?, 'ADMIN_ADJUST', ?, ?, ?, ?, 'admin', ?, ?)
+                """, skuId, spuId, bizNo, change, beforeStock, afterStock, adminId, reason);
     }
 }

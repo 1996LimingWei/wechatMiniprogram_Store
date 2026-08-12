@@ -43,7 +43,11 @@ public class ProductSpuService {
     }
 
     public void createSpu(ProductSpuDO spu) {
-        productAdminService.saveProduct(spu, null);
+        createSpu(spu, 0L);
+    }
+
+    public void createSpu(ProductSpuDO spu, Long adminId) {
+        productAdminService.saveProduct(spu, null, adminId, "商品创建初始化库存");
     }
 
     public void updateSpu(ProductSpuDO spu) {

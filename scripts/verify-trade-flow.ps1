@@ -48,13 +48,28 @@ function Invoke-Api([string]$Path, [object]$Body = @{}, [string]$Token = "") {
     return $response.data
 }
 
-function Assert-HttpDenied([string]$Path, [string]$Token = "") {
+function Invoke-GetApi([string]$Path, [string]$Token = "") {
+    $headers = @{}
+    if ($Token) {
+        $headers["Authorization"] = "Bearer $Token"
+    }
+    $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Get -Headers $headers
+    Assert-True ($response.code -eq 0) "$Path 返回失败：$($response.msg)"
+    return $response.data
+}
+
+function Assert-HttpDenied([string]$Path, [string]$Token = "", [string]$Method = "Post") {
     $headers = @{}
     if ($Token) {
         $headers["Authorization"] = "Bearer $Token"
     }
     try {
-        $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers -ContentType "application/json" -Body "{}"
+        $request = @{ Uri = "$BaseUrl$Path"; Method = $Method; Headers = $headers }
+        if ($Method -eq "Post") {
+            $request.ContentType = "application/json"
+            $request.Body = "{}"
+        }
+        $response = Invoke-RestMethod @request
         if ($response.code -eq 401 -or $response.code -eq 403) {
             return
         }
@@ -201,6 +216,18 @@ function Assert-AfterSale([long]$OrderId, [int]$Status, [string]$Message) {
     Assert-True ($row -eq "$Status") "$Message，实际售后状态为 $row"
 }
 
+function Wait-RefundCompleted([long]$OrderId) {
+    $deadline = (Get-Date).AddSeconds($TimeoutWaitSeconds)
+    do {
+        $row = Invoke-Sql "SELECT CONCAT(o.status, ',', o.pay_status, ',', a.status, ',', p.status) FROM trade_order o JOIN trade_after_sale a ON a.order_id=o.id JOIN pay_order p ON p.order_id=o.id WHERE o.id=$OrderId ORDER BY a.id DESC LIMIT 1;"
+        if ($row -eq "5,2,1,3") {
+            return
+        }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+    throw "验收失败：退款未在 $TimeoutWaitSeconds 秒内完成，订单/支付/售后/支付单状态为 $row"
+}
+
 function Assert-LogExists([long]$OrderId, [string]$Action) {
     $count = Invoke-Sql "SELECT COUNT(*) FROM trade_order_log WHERE order_id = $OrderId AND action = '$Action';"
     Assert-True ([int]$count -ge 1) "订单 $OrderId 缺少日志 $Action"
@@ -212,9 +239,9 @@ try {
     Seed-TestProduct
 
     Write-Step "验收：管理端鉴权边界"
-    Assert-HttpDenied "/admin-api/trade/order/list?page=1&size=10"
+    Assert-HttpDenied "/admin-api/trade/order/list?page=1&size=10" "" "Get"
     $memberForAuth = New-TestUser "member_auth"
-    Assert-HttpDenied "/admin-api/trade/order/list?page=1&size=10" $memberForAuth.Token
+    Assert-HttpDenied "/admin-api/trade/order/list?page=1&size=10" $memberForAuth.Token "Get"
     $adminLogin = Invoke-Api "/admin-api/auth/login" @{ username = "admin"; password = "admin123" }
     $adminToken = [string]$adminLogin.token
     Assert-True ($adminToken) "管理员登录未返回 token"
@@ -234,9 +261,9 @@ try {
 
     Write-Step "验收：下单、支付、管理端发货、确认收货"
     $shipFlow = New-PaidOrder "ship"
-    $adminList = Invoke-Api "/admin-api/trade/order/list?page=1&size=10&orderId=$($shipFlow.OrderId)" @{} $adminToken
+    $adminList = Invoke-GetApi "/admin-api/trade/order/list?page=1&size=10&orderId=$($shipFlow.OrderId)" $adminToken
     Assert-True ([int]$adminList.total -eq 1) "管理端订单列表未查到测试订单"
-    $adminDetail = Invoke-Api "/admin-api/trade/order/detail?orderId=$($shipFlow.OrderId)" @{} $adminToken
+    $adminDetail = Invoke-GetApi "/admin-api/trade/order/detail?orderId=$($shipFlow.OrderId)" $adminToken
     Assert-True ($adminDetail.orderInfo.id -eq $shipFlow.OrderId) "管理端订单详情订单 ID 不匹配"
     Invoke-Api "/admin-api/trade/order/ship" @{
         orderId = $shipFlow.OrderId
@@ -257,10 +284,11 @@ try {
     Invoke-Api "/app-api/order/refund/apply" @{ orderId = $approveFlow.OrderId; reason = "验收同意退款" } $approveFlow.Token | Out-Null
     Assert-Order $approveFlow.OrderId 5 1 "申请售后后订单应为退款中"
     $stockBeforeRefund = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
-    $afterSaleList = Invoke-Api "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($approveFlow.OrderId)" @{} $adminToken
+    $afterSaleList = Invoke-GetApi "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($approveFlow.OrderId)" $adminToken
     Assert-True ([int]$afterSaleList.total -eq 1) "管理端售后列表未查到处理中售后单"
     $approveAfterSaleId = [long]$afterSaleList.list[0].id
     Invoke-Api "/admin-api/trade/after-sale/approve" @{ afterSaleId = $approveAfterSaleId } $adminToken | Out-Null
+    Wait-RefundCompleted $approveFlow.OrderId
     Assert-Order $approveFlow.OrderId 5 2 "同意退款后订单支付状态应为已退款"
     Assert-AfterSale $approveFlow.OrderId 1 "同意退款后售后单应为已退款"
     Assert-LogExists $approveFlow.OrderId "REFUND_SUCCESS"
@@ -272,7 +300,7 @@ try {
     Write-Step "验收：管理端拒绝售后"
     $rejectFlow = New-PaidOrder "reject"
     Invoke-Api "/app-api/order/refund/apply" @{ orderId = $rejectFlow.OrderId; reason = "验收拒绝退款" } $rejectFlow.Token | Out-Null
-    $rejectAfterSaleList = Invoke-Api "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($rejectFlow.OrderId)" @{} $adminToken
+    $rejectAfterSaleList = Invoke-GetApi "/admin-api/trade/after-sale/list?page=1&size=10&status=0&orderId=$($rejectFlow.OrderId)" $adminToken
     $rejectAfterSaleId = [long]$rejectAfterSaleList.list[0].id
     Invoke-Api "/admin-api/trade/after-sale/reject" @{ afterSaleId = $rejectAfterSaleId; rejectReason = "验收拒绝原因" } $adminToken | Out-Null
     Assert-Order $rejectFlow.OrderId 1 1 "拒绝售后后订单应恢复到待发货"

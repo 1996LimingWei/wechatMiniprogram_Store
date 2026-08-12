@@ -11,4 +11,5 @@ public class ProductSaveReqVO {
 
     private ProductSpuDO spu;
     private List<ProductSkuDO> skus;
+    private String stockAdjustReason;
 }

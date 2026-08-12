@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -94,6 +95,47 @@ class ProductAdminServiceTest {
 
         ServerException exception = assertThrows(ServerException.class,
                 () -> service.saveProduct(spu, List.of(sku(null, null, 8))));
+        assertEquals(400, exception.getCode());
+    }
+
+    @Test
+    void shouldRecordRealAdminAndReasonForStockAdjustment() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        ProductSpuDO spu = spu(10L);
+        ProductSkuDO existing = sku(20L, 10L, 5);
+        ProductSkuDO requested = sku(20L, 10L, 8);
+        when(spuMapper.selectById(10L)).thenReturn(spu);
+        when(skuMapper.selectList(any())).thenReturn(List.of(existing));
+        when(skuMapper.update(isNull(), any())).thenReturn(1);
+        when(skuMapper.selectOne(any())).thenReturn(requested);
+
+        ProductAdminService service = new ProductAdminService(
+                spuMapper, skuMapper, mock(CategoryMapper.class),
+                mock(ProductInventoryService.class), jdbcTemplate);
+        service.saveSkus(10L, List.of(requested), 99L, "仓库盘点补录库存");
+
+        verify(jdbcTemplate).update(any(String.class),
+                eq(20L), eq(10L), any(String.class), eq(3), eq(5), eq(8),
+                eq(99L), eq("仓库盘点补录库存"));
+    }
+
+    @Test
+    void shouldRejectStockAdjustmentWithoutReason() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        ProductSpuDO spu = spu(10L);
+        ProductSkuDO existing = sku(20L, 10L, 5);
+        ProductSkuDO requested = sku(20L, 10L, 8);
+        when(spuMapper.selectById(10L)).thenReturn(spu);
+        when(skuMapper.selectList(any())).thenReturn(List.of(existing));
+        when(skuMapper.update(isNull(), any())).thenReturn(1);
+
+        ServerException exception = assertThrows(ServerException.class,
+                () -> service(spuMapper, skuMapper, mock(ProductInventoryService.class))
+                        .saveSkus(10L, List.of(requested), 99L, ""));
+
         assertEquals(400, exception.getCode());
     }
 

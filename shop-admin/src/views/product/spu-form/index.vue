@@ -52,6 +52,19 @@ interface SpecDimension {
 
 const specs = ref<SpecDimension[]>([]);
 const skuMatrix = ref<ProductSku[]>([]);
+const originalSkuStocks = ref(new Map<number, number>());
+const stockAdjustReason = ref("");
+
+const stockChanged = computed(() => {
+    if (!isEdit.value) return false;
+    const currentIds = new Set<number>();
+    for (const sku of skuMatrix.value) {
+        if (!sku.id || !originalSkuStocks.value.has(sku.id)) return true;
+        currentIds.add(sku.id);
+        if ((originalSkuStocks.value.get(sku.id) ?? 0) !== (sku.stock ?? 0)) return true;
+    }
+    return currentIds.size !== originalSkuStocks.value.size;
+});
 
 /** 解析轮播图 URL（兼容 JSON 数组字符串和逗号分隔） */
 function parseSliderPics(raw: string): string[] {
@@ -92,6 +105,9 @@ async function loadProduct() {
             const parsed = parseSpecsFromSkus(skus);
             specs.value = parsed.dims;
             skuMatrix.value = skus.map(s => ({ ...s }));
+            originalSkuStocks.value = new Map(
+                skus.filter(s => !!s.id).map(s => [s.id!, s.stock ?? 0])
+            );
         }
     } finally {
         loading.value = false;
@@ -249,12 +265,19 @@ async function handleSave() {
         ElMessage.warning("请选择商品分类");
         return;
     }
+    if (stockChanged.value) {
+        const reason = stockAdjustReason.value.trim();
+        if (reason.length < 4 || reason.length > 200) {
+            ElMessage.warning("库存发生变化，请填写 4 至 200 个字符的调整原因");
+            return;
+        }
+    }
 
     submitting.value = true;
     try {
         const payload = buildSpuPayload();
 
-        await saveProduct(payload, skuMatrix.value);
+        await saveProduct(payload, skuMatrix.value, stockAdjustReason.value.trim());
         ElMessage.success(isEdit.value ? "保存成功" : "商品创建成功");
         router.push("/product/spu");
     } finally {
@@ -528,6 +551,24 @@ onMounted(async () => {
                     </template>
                 </el-table-column>
             </el-table>
+            <el-alert
+                v-if="stockChanged"
+                title="检测到 SKU 库存变化，本次保存将写入库存审计流水"
+                type="warning"
+                :closable="false"
+                show-icon
+                class="stock-audit-alert"
+            />
+            <el-form-item v-if="stockChanged" label="调整原因" required label-width="100px">
+                <el-input
+                    v-model="stockAdjustReason"
+                    type="textarea"
+                    :rows="3"
+                    maxlength="200"
+                    show-word-limit
+                    placeholder="填写盘点入库、损耗修正等具体原因"
+                />
+            </el-form-item>
         </el-card>
 
         <!-- 底部按钮 -->
@@ -605,6 +646,9 @@ onMounted(async () => {
     color: #909399;
     cursor: help;
     vertical-align: middle;
+}
+.stock-audit-alert {
+    margin: 16px 0;
 }
 .field-tip {
     margin-top: 4px;

@@ -190,6 +190,10 @@ export interface AfterSale {
   refundProvider?: string;
   providerRefundNo?: string;
   refundMessage?: string;
+  refundAttemptCount?: number;
+  refundLastAttemptTime?: string;
+  refundNextAttemptTime?: string;
+  refundLastError?: string;
   applyTime?: string;
   auditTime?: string;
   refundTime?: string;

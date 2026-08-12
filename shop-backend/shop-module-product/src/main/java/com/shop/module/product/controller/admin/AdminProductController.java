@@ -7,6 +7,7 @@ import com.shop.module.product.dal.dataobject.ProductSpuDO;
 import com.shop.module.product.service.ProductSpuService;
 import com.shop.module.product.service.ProductAdminService;
 import com.shop.module.product.vo.ProductSaveReqVO;
+import com.shop.framework.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,9 @@ public class AdminProductController {
 
     @PostMapping("/save")
     public CommonResult<Long> save(@RequestBody ProductSaveReqVO request) {
-        return CommonResult.success(productAdminService.saveProduct(request.getSpu(), request.getSkus()));
+        return CommonResult.success(productAdminService.saveProduct(
+                request.getSpu(), request.getSkus(), SecurityUtils.getRequiredAdminId(),
+                request.getStockAdjustReason()));
     }
 
     @GetMapping("/page")
@@ -38,7 +41,7 @@ public class AdminProductController {
 
     @PostMapping("/create")
     public CommonResult<Boolean> create(@RequestBody ProductSpuDO spu) {
-        productSpuService.createSpu(spu);
+        productSpuService.createSpu(spu, SecurityUtils.getRequiredAdminId());
         return CommonResult.success(true);
     }
 

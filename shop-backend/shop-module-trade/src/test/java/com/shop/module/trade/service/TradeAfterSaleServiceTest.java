@@ -1,5 +1,6 @@
 package com.shop.module.trade.service;
 
+import com.shop.common.exception.ServerException;
 import com.shop.module.trade.dal.dataobject.PayOrderDO;
 import com.shop.module.trade.dal.dataobject.TradeAfterSaleDO;
 import com.shop.module.trade.dal.dataobject.TradeAfterSaleItemDO;
@@ -19,10 +20,13 @@ import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Map;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -56,12 +60,13 @@ class TradeAfterSaleServiceTest {
     private TradeProductService tradeProductService;
     @Mock
     private TradeRefundProviderService tradeRefundProviderService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
     @InjectMocks
     private TradeAfterSaleService tradeAfterSaleService;
 
     @Test
-    void shouldRefundPayOrderOnlyOnceForRepeatedApproval() {
-        stubSuccessfulRefund();
+    void shouldSubmitRefundTaskOnlyOnceForRepeatedApproval() {
         TradeOrderDO order = new TradeOrderDO();
         order.setId(10L);
         order.setUserId(1L);
@@ -87,20 +92,16 @@ class TradeAfterSaleServiceTest {
         when(tradeAfterSaleMapper.selectOne(any())).thenReturn(afterSale);
         when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
         when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
-        when(payOrderMapper.update(isNull(), any())).thenReturn(1);
-        when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
-
         tradeAfterSaleService.mockApprove(1L, 10L);
         tradeAfterSaleService.mockApprove(1L, 10L);
 
-        verify(payOrderMapper, times(1)).update(isNull(), any());
-        verify(tradeOrderMapper, times(1)).update(isNull(), any());
-        verify(tradeOrderLogService, times(1)).recordPayChanged(any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(eventPublisher, times(1)).publishEvent(any(TradeRefundRequestedEvent.class));
+        verify(tradeRefundProviderService, never()).refund(any());
+        verify(payOrderMapper, never()).update(isNull(), any());
     }
 
     @Test
     void shouldRecoverSkuStockForRefundBeforeShipment() {
-        stubSuccessfulRefund();
         TradeOrderDO order = new TradeOrderDO();
         order.setId(10L);
         order.setUserId(1L);
@@ -112,7 +113,8 @@ class TradeAfterSaleServiceTest {
         afterSale.setOrderId(10L);
         afterSale.setUserId(1L);
         afterSale.setType(1);
-        afterSale.setStatus(0);
+        afterSale.setStatus(4);
+        afterSale.setRefundProvider("mock");
         afterSale.setRefundAmount(2990);
         afterSale.setBeforeOrderStatus(1);
         PayOrderDO payOrder = new PayOrderDO();
@@ -124,14 +126,17 @@ class TradeAfterSaleServiceTest {
         TradeAfterSaleItemDO afterSaleItem = createAfterSaleItem();
 
         when(tradeOrderMapper.selectOne(any())).thenReturn(order);
-        when(tradeAfterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(tradeAfterSaleMapper.selectById(30L)).thenReturn(afterSale);
         when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
         when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
         when(payOrderMapper.update(isNull(), any())).thenReturn(1);
         when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
         when(tradeAfterSaleItemMapper.selectList(any())).thenReturn(java.util.List.of(afterSaleItem));
 
-        tradeAfterSaleService.mockApprove(1L, 10L);
+        tradeAfterSaleService.applyRefundResult(30L,
+                new TradeRefundProvider.RefundResult(
+                        "MOCK-R202608060001", TradeRefundProvider.RefundStatus.SUCCESS, "Mock 退款成功"),
+                TradeOrderLogService.OPERATOR_USER, 1L, 1);
 
         verify(tradeProductService).recoverStock(
                 eq(200L), eq(2), eq("AFTER_SALE"), isNull(),
@@ -140,7 +145,7 @@ class TradeAfterSaleServiceTest {
     }
 
     @Test
-    void shouldKeepPaymentPaidWhileRefundProviderIsProcessing() {
+    void shouldKeepPaymentPaidWhenRefundTaskIsSubmitted() {
         TradeOrderDO order = new TradeOrderDO();
         order.setId(10L);
         order.setOrderSn("202608060001");
@@ -165,19 +170,12 @@ class TradeAfterSaleServiceTest {
         when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
         when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
         when(tradeRefundProviderService.currentType()).thenReturn("wechat");
-        when(tradeRefundProviderService.refund(any())).thenReturn(
-                new TradeRefundProvider.RefundResult(
-                        "WX-R202608060001",
-                        TradeRefundProvider.RefundStatus.PROCESSING,
-                        "退款已受理"));
-
         Map<String, Object> result = tradeAfterSaleService.mockApprove(1L, 10L);
 
         assertEquals(4, result.get("status"));
-        assertEquals("WX-R202608060001", result.get("providerRefundNo"));
-        InOrder inOrder = inOrder(tradeAfterSaleMapper, tradeRefundProviderService);
-        inOrder.verify(tradeAfterSaleMapper).update(isNull(), any());
-        inOrder.verify(tradeRefundProviderService).refund(any());
+        assertEquals("退款任务已提交", result.get("refundMessage"));
+        verify(eventPublisher).publishEvent(any(TradeRefundRequestedEvent.class));
+        verify(tradeRefundProviderService, never()).refund(any());
         verify(payOrderMapper, never()).update(isNull(), any());
         verify(tradeOrderMapper, never()).update(isNull(), any());
     }
@@ -208,22 +206,18 @@ class TradeAfterSaleServiceTest {
         when(tradeAfterSaleMapper.selectById(30L)).thenReturn(afterSale);
         when(tradeOrderMapper.selectOne(any())).thenReturn(order);
         when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
-        when(tradeRefundProviderService.currentType()).thenReturn("wechat");
-        when(tradeRefundProviderService.query(any())).thenReturn(
-                new TradeRefundProvider.RefundResult(
-                        "WX-R202608070001",
-                        TradeRefundProvider.RefundStatus.SUCCESS,
-                        "退款成功"));
         when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
         when(payOrderMapper.update(isNull(), any())).thenReturn(1);
         when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
 
-        Map<String, Object> result = tradeAfterSaleService.syncProcessing(9L, 30L);
+        Map<String, Object> result = tradeAfterSaleService.applyRefundResult(30L,
+                new TradeRefundProvider.RefundResult(
+                        "WX-R202608070001", TradeRefundProvider.RefundStatus.SUCCESS, "退款成功"),
+                TradeOrderLogService.OPERATOR_ADMIN, 9L, 2);
 
         assertEquals(1, result.get("status"));
         assertEquals(TradeOrderPayStatus.REFUNDED, order.getPayStatus());
         assertEquals(PayOrderStatus.REFUNDED, payOrder.getStatus());
-        verify(tradeRefundProviderService).query(any());
         verify(tradeOrderLogService).recordPayChanged(
                 any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
@@ -240,7 +234,8 @@ class TradeAfterSaleServiceTest {
         afterSale.setId(30L);
         afterSale.setOrderId(10L);
         afterSale.setAfterSaleSn("R202608080001");
-        afterSale.setStatus(0);
+        afterSale.setStatus(4);
+        afterSale.setRefundProvider("wechat");
         afterSale.setBeforeOrderStatus(2);
         afterSale.setRefundAmount(2990);
         PayOrderDO payOrder = new PayOrderDO();
@@ -251,17 +246,15 @@ class TradeAfterSaleServiceTest {
         payOrder.setStatus(PayOrderStatus.PAID);
         payOrder.setAmount(2990);
         when(tradeOrderMapper.selectOne(any())).thenReturn(order);
-        when(tradeAfterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(tradeAfterSaleMapper.selectById(30L)).thenReturn(afterSale);
         when(payOrderMapper.selectOne(any())).thenReturn(payOrder);
-        when(tradeRefundProviderService.currentType()).thenReturn("wechat");
-        when(tradeRefundProviderService.refund(any())).thenReturn(
-                new TradeRefundProvider.RefundResult(
-                        "WX-R202608080001", TradeRefundProvider.RefundStatus.FAILED,
-                        "微信退款异常"));
         when(tradeAfterSaleMapper.update(isNull(), any())).thenReturn(1);
         when(tradeOrderMapper.update(isNull(), any())).thenReturn(1);
 
-        Map<String, Object> result = tradeAfterSaleService.mockApprove(1L, 10L);
+        Map<String, Object> result = tradeAfterSaleService.applyRefundResult(30L,
+                new TradeRefundProvider.RefundResult(
+                        "WX-R202608080001", TradeRefundProvider.RefundStatus.FAILED, "微信退款异常"),
+                TradeOrderLogService.OPERATOR_ADMIN, 9L, 1);
 
         assertEquals(5, result.get("status"));
         assertEquals(2, order.getStatus());
@@ -299,6 +292,24 @@ class TradeAfterSaleServiceTest {
 
         assertEquals(0, result.get("status"));
         verify(tradeAfterSaleMapper).insert(any(TradeAfterSaleDO.class));
+    }
+
+    @Test
+    void shouldUseImmutableFinishTimeForAfterSaleWindow() {
+        TradeOrderDO order = new TradeOrderDO();
+        order.setId(10L);
+        order.setUserId(1L);
+        order.setStatus(3);
+        order.setPayStatus(TradeOrderPayStatus.PAID);
+        order.setActualPrice(2990);
+        order.setFinishTime(LocalDateTime.now().minusDays(8));
+        when(tradeOrderMapper.selectOne(any())).thenReturn(order);
+
+        ServerException exception = assertThrows(ServerException.class,
+                () -> tradeAfterSaleService.apply(1L, 10L, Map.of("reason", "超过期限申请")));
+
+        assertEquals(400, exception.getCode());
+        verify(tradeAfterSaleMapper, never()).insert(any(TradeAfterSaleDO.class));
     }
 
     private void stubSuccessfulRefund() {

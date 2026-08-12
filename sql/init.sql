@@ -278,6 +278,7 @@ CREATE TABLE `trade_order` (
     `expire_time` datetime DEFAULT NULL COMMENT '待付款超时关闭时间',
     `close_time` datetime DEFAULT NULL COMMENT '订单关闭时间',
     `close_reason` varchar(128) DEFAULT '' COMMENT '订单关闭原因',
+    `finish_time` datetime DEFAULT NULL COMMENT '订单完成时间',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',
@@ -402,6 +403,11 @@ CREATE TABLE `trade_after_sale` (
     `refund_provider` varchar(32) DEFAULT '' COMMENT '退款提供方',
     `provider_refund_no` varchar(64) DEFAULT '' COMMENT '渠道退款单号',
     `refund_message` varchar(255) DEFAULT '' COMMENT '退款渠道说明',
+    `refund_attempt_count` int NOT NULL DEFAULT 0 COMMENT '退款渠道调用次数',
+    `refund_last_attempt_time` datetime DEFAULT NULL COMMENT '退款最近调用时间',
+    `refund_next_attempt_time` datetime DEFAULT NULL COMMENT '退款下次调用时间',
+    `refund_claim_until` datetime DEFAULT NULL COMMENT '退款任务占用截止时间',
+    `refund_last_error` varchar(255) NOT NULL DEFAULT '' COMMENT '退款最近调用错误',
     `apply_time` datetime DEFAULT NULL COMMENT '申请时间',
     `audit_time` datetime DEFAULT NULL COMMENT '审核时间',
     `refund_time` datetime DEFAULT NULL COMMENT '退款完成时间',
@@ -415,5 +421,6 @@ CREATE TABLE `trade_after_sale` (
     KEY `idx_order_id` (`order_id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`),
-    KEY `idx_status_create_time_id` (`status`, `create_time`, `id`)
+    KEY `idx_status_create_time_id` (`status`, `create_time`, `id`),
+    KEY `idx_refund_retry` (`status`, `refund_next_attempt_time`, `refund_claim_until`, `refund_attempt_count`, `id`)
 ) ENGINE=InnoDB COMMENT='交易售后表';

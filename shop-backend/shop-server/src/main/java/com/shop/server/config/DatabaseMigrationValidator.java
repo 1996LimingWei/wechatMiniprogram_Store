@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DatabaseMigrationValidator implements ApplicationRunner {
 
-    private static final String REQUIRED_VERSION = "20260811_14";
+    private static final String REQUIRED_VERSION = "20260812_01";
     private final JdbcTemplate jdbcTemplate;
 
     @Override

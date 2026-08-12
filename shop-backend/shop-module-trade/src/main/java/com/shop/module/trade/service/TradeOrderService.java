@@ -172,12 +172,14 @@ public class TradeOrderService {
             throw new ServerException(400, "当前订单不能确认收货");
         }
         Integer fromStatus = order.getStatus();
+        LocalDateTime finishTime = LocalDateTime.now();
         int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getId, orderId)
                 .eq(TradeOrderDO::getUserId, userId)
                 .eq(TradeOrderDO::getStatus, 2)
                 .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
-                .set(TradeOrderDO::getStatus, 3));
+                .set(TradeOrderDO::getStatus, 3)
+                .set(TradeOrderDO::getFinishTime, finishTime));
         if (updated != 1) {
             TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
             if (latest != null && latest.getStatus() != null && latest.getStatus() == 3) {
@@ -186,6 +188,7 @@ public class TradeOrderService {
             throw new ServerException(400, "订单状态已变更，不能确认收货");
         }
         order.setStatus(3);
+        order.setFinishTime(finishTime);
         tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_USER, userId,
                 "CONFIRM_RECEIPT", fromStatus, order.getStatus(), "用户确认收货");
         return "已确认收货";
@@ -313,6 +316,7 @@ public class TradeOrderService {
         item.put("expireTime", order.getExpireTime() == null ? "" : order.getExpireTime().format(TIME_FORMATTER));
         item.put("closeTime", order.getCloseTime() == null ? "" : order.getCloseTime().format(TIME_FORMATTER));
         item.put("closeReason", order.getCloseReason());
+        item.put("finishTime", order.getFinishTime() == null ? "" : order.getFinishTime().format(TIME_FORMATTER));
         item.put("handleOption", buildHandleOption(order));
         item.put("addTime", order.getCreateTime() == null ? "" : order.getCreateTime().format(TIME_FORMATTER));
         return item;
@@ -418,13 +422,16 @@ public class TradeOrderService {
             TradeOrderDO order = tradeOrderMapper.selectById(logistics.getOrderId());
             if (order == null || !Integer.valueOf(2).equals(order.getStatus())
                     || !Integer.valueOf(TradeOrderPayStatus.PAID).equals(order.getPayStatus())) continue;
+            LocalDateTime finishTime = LocalDateTime.now();
             int updated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
                     .eq(TradeOrderDO::getId, order.getId())
                     .eq(TradeOrderDO::getStatus, 2)
                     .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
-                    .set(TradeOrderDO::getStatus, 3));
+                    .set(TradeOrderDO::getStatus, 3)
+                    .set(TradeOrderDO::getFinishTime, finishTime));
             if (updated == 1) {
                 order.setStatus(3);
+                order.setFinishTime(finishTime);
                 tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_SYSTEM, 0L,
                         "AUTO_CONFIRM_RECEIPT", 2, 3, "发货超过 " + confirmDays + " 天自动确认收货");
                 confirmed++;

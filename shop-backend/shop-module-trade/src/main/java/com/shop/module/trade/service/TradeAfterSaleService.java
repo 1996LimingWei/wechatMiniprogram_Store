@@ -19,6 +19,7 @@ import com.shop.module.trade.service.provider.TradeRefundProviderService;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import com.shop.module.trade.util.TradeRequestUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +58,7 @@ public class TradeAfterSaleService {
     private final TradeProductService tradeProductService;
     private final TradeOrderLogService tradeOrderLogService;
     private final TradeRefundProviderService tradeRefundProviderService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> apply(Long userId, Long orderId, Map<String, Object> request) {
@@ -70,8 +72,8 @@ public class TradeAfterSaleService {
         if (order.getPayStatus() == TradeOrderPayStatus.REFUNDED) {
             throw new ServerException(400, "订单已退款");
         }
-        if (Integer.valueOf(3).equals(order.getStatus()) && order.getUpdateTime() != null
-                && order.getUpdateTime().plusDays(AFTER_SALE_DAYS).isBefore(LocalDateTime.now())) {
+        if (Integer.valueOf(3).equals(order.getStatus()) && order.getFinishTime() != null
+                && order.getFinishTime().plusDays(AFTER_SALE_DAYS).isBefore(LocalDateTime.now())) {
             throw new ServerException(400, "订单已超过七天售后申请期限");
         }
         TradeAfterSaleDO existed = getAfterSale(orderId);
@@ -359,7 +361,7 @@ public class TradeAfterSaleService {
             return toResp(afterSale);
         }
         if (afterSale.getStatus() == 4) {
-            return syncProcessingInternal(afterSale, operatorType, operatorId);
+            return toResp(afterSale);
         }
         if (afterSale.getStatus() != 0) {
             throw new ServerException(400, "当前售后单不能退款");
@@ -412,107 +414,80 @@ public class TradeAfterSaleService {
                 .set(TradeAfterSaleDO::getStatus, 4)
                 .set(TradeAfterSaleDO::getAuditTime, auditTime)
                 .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
-                .set(TradeAfterSaleDO::getRefundMessage, "退款请求提交中"));
+                .set(TradeAfterSaleDO::getRefundMessage, "退款任务已提交")
+                .set(TradeAfterSaleDO::getRefundAttemptCount, 0)
+                .set(TradeAfterSaleDO::getRefundNextAttemptTime, null)
+                .set(TradeAfterSaleDO::getRefundClaimUntil, null)
+                .set(TradeAfterSaleDO::getRefundLastError, ""));
         if (locked != 1) {
             return toResp(getAfterSaleById(afterSale.getId()));
         }
         afterSale.setStatus(4);
         afterSale.setAuditTime(auditTime);
         afterSale.setRefundProvider(refundProvider);
-        afterSale.setRefundMessage("退款请求提交中");
-
-        TradeRefundProvider.RefundResult refundResult = tradeRefundProviderService.refund(
-                new TradeRefundProvider.RefundRequest(
-                        afterSale.getAfterSaleSn(),
-                        order.getOrderSn(),
-                        payOrder.getPaySn(),
-                        afterSale.getRefundAmount(),
-                        payOrder.getAmount(),
-                        afterSale.getReason()));
-        if (refundResult.status() == TradeRefundProvider.RefundStatus.FAILED) {
-            return failRefund(afterSale, order, refundProvider, refundResult,
-                    4, operatorType, operatorId);
-        }
-        if (refundResult.status() == TradeRefundProvider.RefundStatus.PROCESSING) {
-            int afterSaleUpdated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
-                    .eq(TradeAfterSaleDO::getId, afterSale.getId())
-                    .eq(TradeAfterSaleDO::getStatus, 4)
-                    .set(TradeAfterSaleDO::getStatus, 4)
-                    .set(TradeAfterSaleDO::getAuditTime, auditTime)
-                    .set(TradeAfterSaleDO::getRefundProvider, refundProvider)
-                    .set(TradeAfterSaleDO::getProviderRefundNo, refundResult.providerRefundNo())
-                    .set(TradeAfterSaleDO::getRefundMessage, refundResult.message()));
-            if (afterSaleUpdated != 1) {
-                return toResp(getAfterSaleById(afterSale.getId()));
-            }
-            afterSale.setStatus(4);
-            afterSale.setAuditTime(auditTime);
-            afterSale.setRefundProvider(refundProvider);
-            afterSale.setProviderRefundNo(refundResult.providerRefundNo());
-            afterSale.setRefundMessage(refundResult.message());
-            tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
-                    "REFUND_PROCESSING", order.getStatus(), order.getStatus(), refundResult.message());
-            return toResp(afterSale);
-        }
-        return completeRefund(afterSale, order, payOrder, refundProvider, refundResult,
-                4, operatorType, operatorId);
+        afterSale.setRefundMessage("退款任务已提交");
+        afterSale.setRefundAttemptCount(0);
+        afterSale.setRefundNextAttemptTime(null);
+        tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
+                "REFUND_REQUESTED", order.getStatus(), order.getStatus(), "退款任务已可靠提交");
+        eventPublisher.publishEvent(new TradeRefundRequestedEvent(afterSale.getId(), operatorType, operatorId));
+        return toResp(afterSale);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> syncProcessing(Long adminId, Long afterSaleId) {
-        return syncProcessingInternal(getAfterSaleById(afterSaleId),
-                TradeOrderLogService.OPERATOR_ADMIN, adminId);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> syncProcessingBySystem(Long afterSaleId) {
-        return syncProcessingInternal(getAfterSaleById(afterSaleId),
-                TradeOrderLogService.OPERATOR_SYSTEM, 0L);
-    }
-
-    public List<Long> listProcessingIds(int limit) {
-        return tradeAfterSaleMapper.selectList(new LambdaQueryWrapper<TradeAfterSaleDO>()
-                        .eq(TradeAfterSaleDO::getStatus, 4)
-                        .orderByAsc(TradeAfterSaleDO::getUpdateTime)
-                        .last("LIMIT " + Math.min(Math.max(limit, 1), 100)))
-                .stream()
-                .map(TradeAfterSaleDO::getId)
-                .toList();
-    }
-
-    private Map<String, Object> syncProcessingInternal(TradeAfterSaleDO afterSale,
-                                                        String operatorType, Long operatorId) {
-        if (afterSale.getStatus() == null || afterSale.getStatus() != 4) {
-            return toResp(afterSale);
-        }
-        if (!tradeRefundProviderService.currentType().equals(afterSale.getRefundProvider())) {
-            throw new ServerException(503, "退款渠道配置与售后单不一致");
-        }
+    public Map<String, Object> applyRefundResult(
+            Long afterSaleId, TradeRefundProvider.RefundResult result,
+            String operatorType, Long operatorId, int attemptCount) {
+        TradeAfterSaleDO afterSale = getAfterSaleById(afterSaleId);
+        if (!Integer.valueOf(STATUS_REFUNDING).equals(afterSale.getStatus())) return toResp(afterSale);
         TradeOrderDO order = getUserOrder(null, afterSale.getOrderId());
         PayOrderDO payOrder = getPaidPayOrder(order);
-        if (payOrder == null || payOrder.getStatus() == null || payOrder.getStatus() != PayOrderStatus.PAID) {
-            throw new ServerException(400, "支付单当前不能同步退款");
+        if (payOrder == null || !Integer.valueOf(PayOrderStatus.PAID).equals(payOrder.getStatus())) {
+            throw new ServerException(409, "支付单当前不能落退款结果");
         }
-        TradeRefundProvider.RefundResult result = tradeRefundProviderService.query(
-                new TradeRefundProvider.RefundQuery(
-                        afterSale.getAfterSaleSn(),
-                        afterSale.getProviderRefundNo(),
-                        payOrder.getPaySn(),
-                        afterSale.getRefundAmount()));
         if (result.status() == TradeRefundProvider.RefundStatus.PROCESSING) {
-            tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
-                    .eq(TradeAfterSaleDO::getId, afterSale.getId())
-                    .eq(TradeAfterSaleDO::getStatus, 4)
-                    .set(TradeAfterSaleDO::getRefundMessage, result.message()));
-            afterSale.setRefundMessage(result.message());
-            return toResp(afterSale);
+            LocalDateTime nextAttempt = LocalDateTime.now().plusMinutes(1);
+            int updated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                    .eq(TradeAfterSaleDO::getId, afterSaleId)
+                    .eq(TradeAfterSaleDO::getStatus, STATUS_REFUNDING)
+                    .eq(TradeAfterSaleDO::getRefundAttemptCount, attemptCount)
+                    .set(TradeAfterSaleDO::getProviderRefundNo, result.providerRefundNo())
+                    .set(TradeAfterSaleDO::getRefundMessage, result.message())
+                    .set(TradeAfterSaleDO::getRefundNextAttemptTime, nextAttempt)
+                    .set(TradeAfterSaleDO::getRefundClaimUntil, null)
+                    .set(TradeAfterSaleDO::getRefundLastError, ""));
+            if (updated == 1) {
+                afterSale.setProviderRefundNo(result.providerRefundNo());
+                afterSale.setRefundMessage(result.message());
+                afterSale.setRefundNextAttemptTime(nextAttempt);
+                tradeOrderLogService.recordStatusChanged(order, operatorType, operatorId,
+                        "REFUND_PROCESSING", order.getStatus(), order.getStatus(), result.message());
+            }
+            return toResp(updated == 1 ? afterSale : getAfterSaleById(afterSaleId));
         }
         if (result.status() == TradeRefundProvider.RefundStatus.FAILED) {
             return failRefund(afterSale, order, afterSale.getRefundProvider(), result,
-                    4, operatorType, operatorId);
+                    STATUS_REFUNDING, operatorType, operatorId);
         }
         return completeRefund(afterSale, order, payOrder, afterSale.getRefundProvider(), result,
-                4, operatorType, operatorId);
+                STATUS_REFUNDING, operatorType, operatorId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void recordRefundExecutionFailure(Long afterSaleId, int attemptCount, String message) {
+        long delaySeconds = Math.min(1800L, 30L * (1L << Math.min(Math.max(attemptCount - 1, 0), 6)));
+        tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
+                .eq(TradeAfterSaleDO::getId, afterSaleId)
+                .eq(TradeAfterSaleDO::getStatus, STATUS_REFUNDING)
+                .eq(TradeAfterSaleDO::getRefundAttemptCount, attemptCount)
+                .set(TradeAfterSaleDO::getRefundMessage, "退款渠道暂时不可用，等待自动重试")
+                .set(TradeAfterSaleDO::getRefundLastError, message)
+                .set(TradeAfterSaleDO::getRefundNextAttemptTime, LocalDateTime.now().plusSeconds(delaySeconds))
+                .set(TradeAfterSaleDO::getRefundClaimUntil, null));
+    }
+
+    public Map<String, Object> getAdminAfterSale(Long afterSaleId) {
+        return toResp(getAfterSaleById(afterSaleId));
     }
 
     private Map<String, Object> failRefund(
@@ -714,6 +689,12 @@ public class TradeAfterSaleService {
         result.put("refundProvider", afterSale.getRefundProvider());
         result.put("providerRefundNo", afterSale.getProviderRefundNo());
         result.put("refundMessage", afterSale.getRefundMessage());
+        result.put("refundAttemptCount", afterSale.getRefundAttemptCount() == null
+                ? 0 : afterSale.getRefundAttemptCount());
+        result.put("refundLastAttemptTime", formatTime(afterSale.getRefundLastAttemptTime()));
+        result.put("refundNextAttemptTime", formatTime(afterSale.getRefundNextAttemptTime()));
+        result.put("refundLastError", afterSale.getRefundLastError() == null
+                ? "" : afterSale.getRefundLastError());
         result.put("applyTime", formatTime(afterSale.getApplyTime()));
         result.put("auditTime", formatTime(afterSale.getAuditTime()));
         result.put("refundTime", formatTime(afterSale.getRefundTime()));
@@ -758,44 +739,6 @@ public class TradeAfterSaleService {
             case 7 -> "待商家收货";
             default -> "未知";
         };
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public int expireOverdueReturns(int limit) {
-        LocalDateTime now = LocalDateTime.now();
-        List<TradeAfterSaleDO> overdueList = tradeAfterSaleMapper.selectList(
-                new LambdaQueryWrapper<TradeAfterSaleDO>()
-                        .eq(TradeAfterSaleDO::getStatus, STATUS_WAIT_RETURN)
-                        .isNotNull(TradeAfterSaleDO::getReturnDeadline)
-                        .lt(TradeAfterSaleDO::getReturnDeadline, now)
-                        .orderByAsc(TradeAfterSaleDO::getReturnDeadline)
-                        .last("LIMIT " + Math.min(Math.max(limit, 1), 200)));
-        int expired = 0;
-        for (TradeAfterSaleDO afterSale : overdueList) {
-            int updated = tradeAfterSaleMapper.update(null, new LambdaUpdateWrapper<TradeAfterSaleDO>()
-                    .eq(TradeAfterSaleDO::getId, afterSale.getId())
-                    .eq(TradeAfterSaleDO::getStatus, STATUS_WAIT_RETURN)
-                    .lt(TradeAfterSaleDO::getReturnDeadline, now)
-                    .set(TradeAfterSaleDO::getStatus, STATUS_CANCELLED)
-                    .set(TradeAfterSaleDO::getCancelTime, now)
-                    .set(TradeAfterSaleDO::getRejectReason, "超过退货寄回期限，售后自动关闭"));
-            if (updated != 1) continue;
-            TradeOrderDO order = getUserOrder(null, afterSale.getOrderId());
-            int restoreStatus = getRestoreOrderStatus(afterSale);
-            int orderUpdated = tradeOrderMapper.update(null, new LambdaUpdateWrapper<TradeOrderDO>()
-                    .eq(TradeOrderDO::getId, order.getId())
-                    .eq(TradeOrderDO::getStatus, 5)
-                    .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
-                    .set(TradeOrderDO::getStatus, restoreStatus));
-            if (orderUpdated != 1) {
-                throw new ServerException(409, "退货超期关闭时订单状态已变化");
-            }
-            order.setStatus(restoreStatus);
-            tradeOrderLogService.recordStatusChanged(order, TradeOrderLogService.OPERATOR_SYSTEM, 0L,
-                    "RETURN_DEADLINE_EXPIRED", 5, restoreStatus, "买家未在期限内寄回商品");
-            expired++;
-        }
-        return expired;
     }
 
     private List<TradeAfterSaleItemDO> buildAfterSaleItems(

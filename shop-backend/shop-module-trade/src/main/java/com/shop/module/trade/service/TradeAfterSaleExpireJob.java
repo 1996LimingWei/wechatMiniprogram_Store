@@ -13,7 +13,7 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class TradeAfterSaleExpireJob {
 
-    private final TradeAfterSaleService tradeAfterSaleService;
+    private final TradeAfterSaleExpireService tradeAfterSaleExpireService;
     private final DistributedJobLockService jobLockService;
 
     @Value("${trade.refund.return-expire-batch-size:100}")
@@ -23,7 +23,15 @@ public class TradeAfterSaleExpireJob {
     public void expireOverdueReturns() {
         if (!jobLockService.tryLock("trade-return-expire", Duration.ofMinutes(10))) return;
         try {
-            int expired = tradeAfterSaleService.expireOverdueReturns(batchSize);
+            int expired = 0;
+            for (Long afterSaleId : tradeAfterSaleExpireService.listOverdueIds(batchSize)) {
+                try {
+                    if (tradeAfterSaleExpireService.expireOne(afterSaleId)) expired++;
+                } catch (Exception exception) {
+                    log.warn("超期售后单处理失败, afterSaleId={}, message={}",
+                            afterSaleId, exception.getMessage());
+                }
+            }
             if (expired > 0) log.info("超期未寄回售后关闭完成，本次处理 {} 单", expired);
         } finally {
             jobLockService.release("trade-return-expire");

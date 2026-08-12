@@ -4,6 +4,7 @@ import com.shop.common.pojo.CommonResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -30,6 +31,13 @@ public class GlobalExceptionHandler {
             NoResourceFoundException e, HttpServletResponse response) {
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         return CommonResult.error(HttpServletResponse.SC_NOT_FOUND, "接口不存在");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public CommonResult<?> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException e, HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+        return CommonResult.error(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "请求方法不支持");
     }
 
     private int toHttpStatus(Integer code) {

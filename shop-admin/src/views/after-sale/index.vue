@@ -216,6 +216,9 @@ function refundDescription(row: AfterSale) {
   return [
     row.refundMessage,
     row.providerRefundNo ? `渠道退款单号：${row.providerRefundNo}` : "",
+    row.refundAttemptCount ? `自动处理次数：${row.refundAttemptCount}` : "",
+    row.refundNextAttemptTime ? `下次重试：${row.refundNextAttemptTime}` : "",
+    row.refundLastError ? `最近错误：${row.refundLastError}` : "",
     row.refundTime ? `退款时间：${row.refundTime}` : ""
   ]
     .filter(Boolean)

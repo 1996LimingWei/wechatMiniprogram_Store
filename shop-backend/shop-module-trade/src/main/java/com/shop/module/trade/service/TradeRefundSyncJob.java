@@ -14,7 +14,7 @@ import java.time.Duration;
 @ConditionalOnProperty(prefix = "trade.refund", name = "sync-job-enabled", havingValue = "true")
 public class TradeRefundSyncJob {
 
-    private final TradeAfterSaleService tradeAfterSaleService;
+    private final TradeRefundExecutionService tradeRefundExecutionService;
     private final DistributedJobLockService jobLockService;
 
     @Value("${trade.refund.sync-batch-size:50}")
@@ -24,9 +24,10 @@ public class TradeRefundSyncJob {
     public void syncProcessingRefunds() {
         if (!jobLockService.tryLock("trade-refund-sync", Duration.ofMinutes(10))) return;
         try {
-            for (Long afterSaleId : tradeAfterSaleService.listProcessingIds(batchSize)) {
+            for (Long afterSaleId : tradeRefundExecutionService.listExecutableIds(batchSize)) {
                 try {
-                    tradeAfterSaleService.syncProcessingBySystem(afterSaleId);
+                    tradeRefundExecutionService.execute(
+                            afterSaleId, TradeOrderLogService.OPERATOR_SYSTEM, 0L, false);
                 } catch (Exception exception) {
                     log.warn("[TradeRefundSyncJob] 退款状态同步失败, afterSaleId={}, message={}",
                             afterSaleId, exception.getMessage());

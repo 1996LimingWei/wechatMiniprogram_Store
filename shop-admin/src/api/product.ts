@@ -31,10 +31,14 @@ export const createProduct = (data: ProductSpu) => {
 };
 
 /** 原子保存商品基础信息与 SKU，避免出现半成品商品。 */
-export const saveProduct = (spu: ProductSpu, skus: ProductSku[]) => {
-    return http.post<number, { spu: ProductSpu; skus: ProductSku[] }>(
+export const saveProduct = (
+    spu: ProductSpu,
+    skus: ProductSku[],
+    stockAdjustReason = ""
+) => {
+    return http.post<number, { spu: ProductSpu; skus: ProductSku[]; stockAdjustReason: string }>(
         "/admin-api/product/spu/save",
-        { data: { spu, skus } }
+        { data: { spu, skus, stockAdjustReason } }
     );
 };
 

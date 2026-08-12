@@ -2,6 +2,8 @@ package com.shop.module.trade.controller.admin;
 
 import com.shop.common.pojo.CommonResult;
 import com.shop.module.trade.service.TradeAfterSaleService;
+import com.shop.module.trade.service.TradeRefundExecutionService;
+import com.shop.module.trade.service.TradeOrderLogService;
 import com.shop.module.trade.util.TradeRequestUtils;
 import com.shop.module.trade.util.TradeSecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -15,14 +17,14 @@ import java.util.Map;
 public class AdminTradeAfterSaleController {
 
     private final TradeAfterSaleService tradeAfterSaleService;
+    private final TradeRefundExecutionService tradeRefundExecutionService;
 
-    @RequestMapping("/list")
-    public CommonResult<Map<String, Object>> list(@RequestBody(required = false) String rawBody,
-                                                  @RequestParam Map<String, Object> params,
+    @GetMapping("/list")
+    public CommonResult<Map<String, Object>> list(@RequestParam Map<String, Object> params,
                                                   @RequestParam(value = "page", required = false) Integer page,
                                                   @RequestParam(value = "size", required = false) Integer size,
                                                   @RequestParam(value = "status", required = false) Integer status) {
-        Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
+        Map<String, Object> request = TradeRequestUtils.parse(null, params);
         int finalPage = page != null ? page : TradeRequestUtils.getInt(request, "page", 1);
         int finalSize = size != null ? size : TradeRequestUtils.getInt(request, "size", 10);
         Integer finalStatus = status != null ? status : getInteger(request, "status");
@@ -35,7 +37,7 @@ public class AdminTradeAfterSaleController {
         ));
     }
 
-    @RequestMapping("/approve")
+    @PostMapping("/approve")
     public CommonResult<Map<String, Object>> approve(@RequestBody(required = false) String rawBody,
                                                      @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
@@ -43,7 +45,7 @@ public class AdminTradeAfterSaleController {
                 TradeSecurityUtils.getRequiredUserId(), TradeRequestUtils.getLong(request, "afterSaleId", 0L)));
     }
 
-    @RequestMapping("/reject")
+    @PostMapping("/reject")
     public CommonResult<Map<String, Object>> reject(@RequestBody(required = false) String rawBody,
                                                     @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
@@ -54,13 +56,15 @@ public class AdminTradeAfterSaleController {
         ));
     }
 
-    @RequestMapping("/sync")
+    @PostMapping("/sync")
     public CommonResult<Map<String, Object>> sync(@RequestBody(required = false) String rawBody,
                                                   @RequestParam Map<String, Object> params) {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
-        return CommonResult.success(tradeAfterSaleService.syncProcessing(
-                TradeSecurityUtils.getRequiredUserId(),
-                TradeRequestUtils.getLong(request, "afterSaleId", 0L)));
+        Long adminId = TradeSecurityUtils.getRequiredUserId();
+        Long afterSaleId = TradeRequestUtils.getLong(request, "afterSaleId", 0L);
+        tradeRefundExecutionService.execute(
+                afterSaleId, TradeOrderLogService.OPERATOR_ADMIN, adminId, true);
+        return CommonResult.success(tradeAfterSaleService.getAdminAfterSale(afterSaleId));
     }
 
     @PostMapping("/receive")

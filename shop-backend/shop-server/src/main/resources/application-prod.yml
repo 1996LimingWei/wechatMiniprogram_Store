@@ -53,6 +53,8 @@ trade:
     sync-job-enabled: true
     sync-job-fixed-delay: ${TRADE_REFUND_SYNC_FIXED_DELAY:60000}
     sync-batch-size: ${TRADE_REFUND_SYNC_BATCH_SIZE:50}
+    max-auto-attempts: ${TRADE_REFUND_MAX_AUTO_ATTEMPTS:12}
+    claim-seconds: ${TRADE_REFUND_CLAIM_SECONDS:120}
     return-expire-batch-size: ${TRADE_RETURN_EXPIRE_BATCH_SIZE:100}
     return-expire-job-fixed-delay: ${TRADE_RETURN_EXPIRE_FIXED_DELAY:3600000}
   logistics:
