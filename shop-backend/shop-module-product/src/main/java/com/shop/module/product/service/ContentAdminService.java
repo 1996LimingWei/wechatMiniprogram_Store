@@ -1,6 +1,7 @@
 package com.shop.module.product.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.shop.module.product.dal.dataobject.*;
 import com.shop.module.product.dal.mysql.*;
 import com.shop.common.exception.ServerException;
@@ -49,6 +50,10 @@ public class ContentAdminService {
         bannerMapper.deleteById(id);
     }
 
+    public void updateBannerStatus(Long id, Integer status) {
+        updateContentStatus(id, status, bannerMapper, "Banner");
+    }
+
     // ==================== 频道 ====================
 
     public List<ContentChannelDO> channelList() {
@@ -73,6 +78,10 @@ public class ContentAdminService {
         channelMapper.deleteById(id);
     }
 
+    public void updateChannelStatus(Long id, Integer status) {
+        updateContentStatus(id, status, channelMapper, "频道");
+    }
+
     // ==================== 品牌 ====================
 
     public List<ContentBrandDO> brandList() {
@@ -95,6 +104,10 @@ public class ContentAdminService {
     public void deleteBrand(Long id) {
         requireId(id, id == null ? null : brandMapper.selectById(id));
         brandMapper.deleteById(id);
+    }
+
+    public void updateBrandStatus(Long id, Integer status) {
+        updateContentStatus(id, status, brandMapper, "品牌");
     }
 
     // ==================== 专题 ====================
@@ -122,6 +135,10 @@ public class ContentAdminService {
         // 同时删除关联商品关系
         topicProductMapper.delete(new LambdaQueryWrapper<ContentTopicProductDO>()
                 .eq(ContentTopicProductDO::getTopicId, id));
+    }
+
+    public void updateTopicStatus(Long id, Integer status) {
+        updateContentStatus(id, status, topicMapper, "专题");
     }
 
     // ==================== 专题关联商品 ====================
@@ -246,5 +263,15 @@ public class ContentAdminService {
 
     private void ensureUpdated(int updated) {
         if (updated != 1) throw new ServerException(409, "运营内容已变化，请刷新后重试");
+    }
+
+    /** 通用状态切换：跳过全量字段校验，仅更新 status 字段 */
+    private <T> void updateContentStatus(Long id, Integer status, BaseMapper<T> mapper, String label) {
+        if (id == null || mapper.selectById(id) == null) throw new ServerException(404, label + "不存在");
+        if (status == null || (status != 0 && status != 1)) throw new ServerException(400, label + "状态不正确");
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<T> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", id).set("status", status);
+        if (mapper.update(null, wrapper) != 1) throw new ServerException(409, label + "已变化，请刷新重试");
     }
 }

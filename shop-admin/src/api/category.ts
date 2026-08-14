@@ -20,6 +20,13 @@ export const updateCategory = (data: Category) => {
     });
 };
 
+/** 仅切换分类启用/禁用状态 */
+export const updateCategoryStatus = (id: number, status: number) => {
+    return http.request<boolean>("put", "/admin-api/product/category/update-status", {
+        params: { id, status }
+    });
+};
+
 /** 删除分类 */
 export const deleteCategory = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/product/category/delete", {

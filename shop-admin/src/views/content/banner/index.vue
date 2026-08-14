@@ -6,6 +6,7 @@ import {
     getBannerList,
     createBanner,
     updateBanner,
+    updateBannerStatus,
     deleteBanner
 } from "@/api/content";
 import LinkSelector from "@/components/LinkSelector/index.vue";
@@ -116,9 +117,13 @@ async function handleDelete(row: ContentBanner) {
 
 /* ---------- 状态切换 ---------- */
 async function handleStatusChange(row: ContentBanner) {
-    const payload: any = { id: row.id, status: row.status };
-    await updateBanner(payload);
-    ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    const prevStatus = row.status === 1 ? 0 : 1;
+    try {
+        await updateBannerStatus(row.id!, row.status);
+        ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    } catch {
+        row.status = prevStatus;
+    }
 }
 
 onMounted(fetchData);

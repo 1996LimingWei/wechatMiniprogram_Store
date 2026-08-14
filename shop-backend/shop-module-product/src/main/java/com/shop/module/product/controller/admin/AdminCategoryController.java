@@ -32,6 +32,12 @@ public class AdminCategoryController {
         return CommonResult.success(true);
     }
 
+    @PutMapping("/update-status")
+    public CommonResult<Boolean> updateStatus(@RequestParam Long id, @RequestParam Integer status) {
+        categoryService.updateStatus(id, status);
+        return CommonResult.success(true);
+    }
+
     @DeleteMapping("/delete")
     public CommonResult<Boolean> delete(@RequestParam Long id) {
         categoryService.delete(id);

@@ -6,6 +6,7 @@ import {
     getBrandList,
     createBrand,
     updateBrand,
+    updateBrandStatus,
     deleteBrand
 } from "@/api/content";
 import type { ContentBrand } from "@/api/types";
@@ -114,9 +115,13 @@ async function handleDelete(row: ContentBrand) {
 
 /* ---------- 状态切换 ---------- */
 async function handleStatusChange(row: ContentBrand) {
-    const payload: any = { id: row.id, status: row.status };
-    await updateBrand(payload);
-    ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    const prevStatus = row.status === 1 ? 0 : 1;
+    try {
+        await updateBrandStatus(row.id!, row.status);
+        ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    } catch {
+        row.status = prevStatus;
+    }
 }
 
 onMounted(fetchData);

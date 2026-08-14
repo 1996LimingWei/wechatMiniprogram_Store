@@ -6,6 +6,7 @@ import {
     getCategoryList,
     createCategory,
     updateCategory,
+    updateCategoryStatus,
     deleteCategory
 } from "@/api/category";
 import type { Category } from "@/api/types";
@@ -147,9 +148,13 @@ async function handleDelete(row: Category) {
 
 /* ---------- 状态切换 ---------- */
 async function handleStatusChange(row: Category) {
-    const payload: any = { id: row.id, status: row.status };
-    await updateCategory(payload);
-    ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    const prevStatus = row.status === 1 ? 0 : 1;
+    try {
+        await updateCategoryStatus(row.id!, row.status);
+        ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    } catch {
+        row.status = prevStatus;
+    }
 }
 
 onMounted(fetchData);
