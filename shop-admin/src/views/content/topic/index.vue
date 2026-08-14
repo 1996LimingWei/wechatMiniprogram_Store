@@ -6,6 +6,7 @@ import {
     getTopicList,
     createTopic,
     updateTopic,
+    updateTopicStatus,
     deleteTopic,
     getTopicProducts,
     setTopicProducts
@@ -115,9 +116,13 @@ async function handleDelete(row: ContentTopic) {
 
 /* ---------- 状态切换 ---------- */
 async function handleStatusChange(row: ContentTopic) {
-    const payload: any = { id: row.id, status: row.status };
-    await updateTopic(payload);
-    ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    const prevStatus = row.status === 1 ? 0 : 1;
+    try {
+        await updateTopicStatus(row.id!, row.status);
+        ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    } catch {
+        row.status = prevStatus;
+    }
 }
 
 /* ---------- 关联商品 ---------- */

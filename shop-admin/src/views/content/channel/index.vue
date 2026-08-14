@@ -6,6 +6,7 @@ import {
     getChannelList,
     createChannel,
     updateChannel,
+    updateChannelStatus,
     deleteChannel
 } from "@/api/content";
 import LinkSelector from "@/components/LinkSelector/index.vue";
@@ -112,9 +113,13 @@ async function handleDelete(row: ContentChannel) {
 
 /* ---------- 状态切换 ---------- */
 async function handleStatusChange(row: ContentChannel) {
-    const payload: any = { id: row.id, status: row.status };
-    await updateChannel(payload);
-    ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    const prevStatus = row.status === 1 ? 0 : 1;
+    try {
+        await updateChannelStatus(row.id!, row.status);
+        ElMessage.success(row.status === 1 ? "已启用" : "已禁用");
+    } catch {
+        row.status = prevStatus;
+    }
 }
 
 onMounted(fetchData);

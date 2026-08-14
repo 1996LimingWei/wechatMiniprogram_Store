@@ -49,6 +49,25 @@ public class CategoryService {
         }
     }
 
+    /** 仅切换分类启用/禁用状态（跳过全量字段校验） */
+    public void updateStatus(Long id, Integer status) {
+        if (id == null || categoryMapper.selectById(id) == null) {
+            throw new ServerException(404, "商品分类不存在");
+        }
+        if (status == null || (status != 0 && status != 1)) {
+            throw new ServerException(400, "分类状态不正确");
+        }
+        if (Integer.valueOf(0).equals(status) && hasOnSaleProduct(id)) {
+            throw new ServerException(400, "分类或其子分类下仍有上架商品，不能停用");
+        }
+        CategoryDO update = new CategoryDO();
+        update.setId(id);
+        update.setStatus(status);
+        if (categoryMapper.updateById(update) != 1) {
+            throw new ServerException(409, "分类信息已变化，请刷新后重试");
+        }
+    }
+
     public void delete(Long id) {
         CategoryDO category = id == null ? null : categoryMapper.selectById(id);
         if (category == null) {

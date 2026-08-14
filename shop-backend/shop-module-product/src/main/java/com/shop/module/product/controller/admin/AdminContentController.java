@@ -44,6 +44,12 @@ public class AdminContentController {
         return CommonResult.success(true);
     }
 
+    @PutMapping("/banner/update-status")
+    public CommonResult<Boolean> updateBannerStatus(@RequestParam Long id, @RequestParam Integer status) {
+        contentAdminService.updateBannerStatus(id, status);
+        return CommonResult.success(true);
+    }
+
     // ==================== 频道 ====================
 
     @GetMapping("/channel/list")
@@ -66,6 +72,12 @@ public class AdminContentController {
     @DeleteMapping("/channel/delete")
     public CommonResult<Boolean> deleteChannel(@RequestParam Long id) {
         contentAdminService.deleteChannel(id);
+        return CommonResult.success(true);
+    }
+
+    @PutMapping("/channel/update-status")
+    public CommonResult<Boolean> updateChannelStatus(@RequestParam Long id, @RequestParam Integer status) {
+        contentAdminService.updateChannelStatus(id, status);
         return CommonResult.success(true);
     }
 
@@ -94,6 +106,12 @@ public class AdminContentController {
         return CommonResult.success(true);
     }
 
+    @PutMapping("/brand/update-status")
+    public CommonResult<Boolean> updateBrandStatus(@RequestParam Long id, @RequestParam Integer status) {
+        contentAdminService.updateBrandStatus(id, status);
+        return CommonResult.success(true);
+    }
+
     // ==================== 专题 ====================
 
     @GetMapping("/topic/list")
@@ -116,6 +134,12 @@ public class AdminContentController {
     @DeleteMapping("/topic/delete")
     public CommonResult<Boolean> deleteTopic(@RequestParam Long id) {
         contentAdminService.deleteTopic(id);
+        return CommonResult.success(true);
+    }
+
+    @PutMapping("/topic/update-status")
+    public CommonResult<Boolean> updateTopicStatus(@RequestParam Long id, @RequestParam Integer status) {
+        contentAdminService.updateTopicStatus(id, status);
         return CommonResult.success(true);
     }
 

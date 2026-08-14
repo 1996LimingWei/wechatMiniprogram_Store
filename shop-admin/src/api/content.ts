@@ -14,6 +14,9 @@ export const updateBanner = (data: ContentBanner) => {
 export const deleteBanner = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/content/banner/delete", { params: { id } });
 };
+export const updateBannerStatus = (id: number, status: number) => {
+    return http.request<boolean>("put", "/admin-api/content/banner/update-status", { params: { id, status } });
+};
 
 // ==================== 频道 ====================
 export const getChannelList = () => {
@@ -27,6 +30,9 @@ export const updateChannel = (data: ContentChannel) => {
 };
 export const deleteChannel = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/content/channel/delete", { params: { id } });
+};
+export const updateChannelStatus = (id: number, status: number) => {
+    return http.request<boolean>("put", "/admin-api/content/channel/update-status", { params: { id, status } });
 };
 
 // ==================== 品牌 ====================
@@ -42,6 +48,9 @@ export const updateBrand = (data: ContentBrand) => {
 export const deleteBrand = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/content/brand/delete", { params: { id } });
 };
+export const updateBrandStatus = (id: number, status: number) => {
+    return http.request<boolean>("put", "/admin-api/content/brand/update-status", { params: { id, status } });
+};
 
 // ==================== 专题 ====================
 export const getTopicList = () => {
@@ -55,6 +64,9 @@ export const updateTopic = (data: ContentTopic) => {
 };
 export const deleteTopic = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/content/topic/delete", { params: { id } });
+};
+export const updateTopicStatus = (id: number, status: number) => {
+    return http.request<boolean>("put", "/admin-api/content/topic/update-status", { params: { id, status } });
 };
 
 // ==================== 专题关联商品 ====================
