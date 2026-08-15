@@ -78,7 +78,7 @@ module.exports = {
 	SmsCode: 'user/smscode', //发送短信
 	BindMobile: 'user/bindMobile', //绑定手机
 	Login: 'auth/login', //账号登录
-	Code:  'auth/', //静默登录
+	Code: 'auth/', //静默登录
 	Register: 'auth/register', //注册
 	OrderQuery: 'pay/query', //微信查询订单状态
 
@@ -89,4 +89,10 @@ module.exports = {
 	MemberGoldCard: 'member/gold-card', //黄金卡详情
 	MemberGoldSubscribe: 'member/gold-card/subscribe', //开通黄金会员
 	MemberProfile: 'member/profile', //个人资料更新
+
+	CouponList: 'coupon/list', //用户优惠券列表
+	CouponAvailable: 'coupon/available', //结算可用优惠券
+	CouponClaim: 'coupon/claim', //领取优惠券
+	CouponClaimable: 'coupon/claimable', //可领取的优惠券
+	PromotionCurrent: 'promotion/current', //当前满减活动
 };

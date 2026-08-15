@@ -60,6 +60,8 @@ class TradeOrderServiceTest {
     private PayOrderMapper payOrderMapper;
     @Mock
     private WechatPayService wechatPayService;
+    @Mock
+    private MarketingCouponService marketingCouponService;
     @InjectMocks
     private TradeOrderService tradeOrderService;
 
@@ -78,6 +80,7 @@ class TradeOrderServiceTest {
         verify(payOrderMapper).update(isNull(), any());
         verify(tradeOrderLogService).recordStatusChanged(eq(closedOrder), eq(TradeOrderLogService.OPERATOR_USER),
                 eq(1L), eq("USER_CANCEL"), eq(0), eq(4), any());
+        verify(marketingCouponService).releaseCoupon(10L);
     }
 
     @Test
@@ -108,6 +111,8 @@ class TradeOrderServiceTest {
         when(memberAddressService.getAddress(1L, 8L)).thenReturn(address);
         when(tradeProductService.getSnapshot(100L, 200L)).thenReturn(snapshot);
         when(tradeCheckoutService.calculateFreight(2598)).thenReturn(1000);
+        when(tradeCheckoutService.calculateDiscount(1L, null, 2598))
+                .thenReturn(new TradeCheckoutService.CheckoutDiscount(0, null, null));
         when(tradeOrderMapper.insert(any())).thenAnswer(invocation -> {
             TradeOrderDO order = invocation.getArgument(0);
             order.setId(99L);
@@ -161,6 +166,7 @@ class TradeOrderServiceTest {
         verify(payOrderMapper).update(isNull(), any());
         verify(tradeOrderLogService).recordStatusChanged(eq(closedOrder), eq(TradeOrderLogService.OPERATOR_SYSTEM),
                 eq(0L), eq("SYSTEM_CLOSE"), eq(0), eq(4), any());
+        verify(marketingCouponService).releaseCoupon(10L);
     }
 
     @Test
@@ -193,6 +199,55 @@ class TradeOrderServiceTest {
         tradeOrderService.markPaid(1L, 10L);
 
         verify(tradeProductService).adjustSales(100L, 3);
+    }
+
+    @Test
+    void shouldLockCouponWhenSubmittingWithCoupon() {
+        TradeCartDO cart = new TradeCartDO();
+        cart.setId(5L);
+        cart.setSpuId(100L);
+        cart.setSkuId(200L);
+        cart.setCount(1);
+        cart.setPrice(100);
+        MemberAddressDO address = new MemberAddressDO();
+        address.setId(8L);
+        address.setUserName("收货人");
+        address.setTelNumber("13800000000");
+        address.setFullRegion("浙江省杭州市");
+        address.setDetailInfo("测试地址");
+        TradeProductSnapshot snapshot = new TradeProductSnapshot();
+        snapshot.setSpuId(100L);
+        snapshot.setSkuId(200L);
+        snapshot.setName("测试商品");
+        snapshot.setPicUrl("https://example.com/goods.png");
+        snapshot.setSpecName("标准规格");
+        snapshot.setPrice(10000);
+        snapshot.setStock(10);
+
+        when(tradeOrderMapper.selectOne(any())).thenReturn(null);
+        when(tradeCartService.getCheckedCartList(1L)).thenReturn(List.of(cart));
+        when(memberAddressService.getAddress(1L, 8L)).thenReturn(address);
+        when(tradeProductService.getSnapshot(100L, 200L)).thenReturn(snapshot);
+        when(tradeCheckoutService.calculateFreight(10000)).thenReturn(1000);
+        when(tradeCheckoutService.calculateDiscount(1L, 50L, 10000))
+                .thenReturn(new TradeCheckoutService.CheckoutDiscount(2000, 50L, "coupon"));
+        when(tradeOrderMapper.insert(any())).thenAnswer(invocation -> {
+            TradeOrderDO order = invocation.getArgument(0);
+            order.setId(99L);
+            return 1;
+        });
+
+        Map<String, Object> result = tradeOrderService.submitOrder(1L, 8L, "MP202608150001", 50L);
+
+        ArgumentCaptor<TradeOrderDO> orderCaptor = ArgumentCaptor.forClass(TradeOrderDO.class);
+        verify(tradeOrderMapper).insert(orderCaptor.capture());
+        TradeOrderDO savedOrder = orderCaptor.getValue();
+        assertEquals(10000, savedOrder.getGoodsPrice());
+        assertEquals(2000, savedOrder.getCouponPrice());
+        assertEquals(9000, savedOrder.getActualPrice()); // 10000 + 1000 - 2000
+        assertEquals(50L, savedOrder.getCouponId());
+        assertEquals("coupon", savedOrder.getDiscountSource());
+        verify(marketingCouponService).lockCoupon(1L, 50L, 99L);
     }
 
     private TradeOrderDO createOrder(int status) {

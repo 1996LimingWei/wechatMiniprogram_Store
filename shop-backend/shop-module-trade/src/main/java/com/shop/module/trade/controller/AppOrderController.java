@@ -24,7 +24,8 @@ public class AppOrderController {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         return CommonResult.success(tradeOrderService.submitOrder(userId,
                 TradeRequestUtils.getLong(request, "addressId", 0L),
-                TradeRequestUtils.getString(request, "requestId", "")));
+                TradeRequestUtils.getString(request, "requestId", ""),
+                TradeRequestUtils.getLong(request, "couponId", null)));
     }
 
     @RequestMapping("/app-api/order/list")

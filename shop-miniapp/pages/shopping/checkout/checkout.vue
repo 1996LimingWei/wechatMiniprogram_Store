@@ -32,6 +32,23 @@
 			</view>
 		</view>
 
+		<!-- 优惠券选择入口 -->
+		<view class="option-card" @tap="openCouponPopup">
+			<text class="option-label">优惠券</text>
+			<view class="option-right">
+				<text class="option-value" :class="{ 'has-coupon': selectedCouponId }">
+					{{selectedCouponId ? '-¥' + couponPrice : (couponList.length > 0 ? couponList.length + '张可用' : '暂无可用')}}
+				</text>
+				<text class="option-arrow">›</text>
+			</view>
+		</view>
+
+		<!-- 满减提示条 -->
+		<view v-if="promotion && !selectedCouponId" class="promo-bar">
+			<text v-if="promotionGap" class="promo-text">再买 ¥{{promotionGap}} 可享「{{promotion.name}}」</text>
+			<text v-else class="promo-text">已享「{{promotion.name}}」优惠</text>
+		</view>
+
 		<!-- 金额明细 -->
 		<view class="amount-card">
 			<view class="amount-row">
@@ -41,6 +58,34 @@
 			<view class="amount-row">
 				<text class="amount-label">运费</text>
 				<text class="amount-value">¥{{freightPrice}}</text>
+			</view>
+			<view class="amount-row" v-if="couponPrice > 0">
+				<text class="amount-label">优惠{{discountSource === 'promotion' ? '(满减)' : '(优惠券)'}}</text>
+				<text class="amount-value discount">-¥{{couponPrice}}</text>
+			</view>
+		</view>
+
+		<!-- 优惠券选择弹窗 -->
+		<view v-if="showCouponPopup" class="coupon-popup-mask" @tap="showCouponPopup = false">
+			<view class="coupon-popup" @tap.stop>
+				<view class="popup-header">
+					<text class="popup-title">选择优惠券</text>
+					<text class="popup-close" @tap="showCouponPopup = false">×</text>
+				</view>
+				<scroll-view scroll-y class="popup-body">
+					<view class="popup-option" :class="{ selected: !selectedCouponId }" @tap="clearCoupon">
+						<text class="popup-option-name">不使用优惠券</text>
+						<text v-if="!selectedCouponId" class="popup-check">✓</text>
+					</view>
+					<view v-for="c in couponList" :key="c.id" class="popup-option" :class="{ selected: selectedCouponId === c.id }" @tap="selectCoupon(c)">
+						<view class="popup-option-info">
+							<text class="popup-option-name">{{c.name}} -¥{{c.discountAmount}}</text>
+							<text class="popup-option-expire">有效期至 {{c.expireTime}}</text>
+						</view>
+						<text v-if="selectedCouponId === c.id" class="popup-check">✓</text>
+					</view>
+					<view v-if="couponList.length === 0" class="popup-empty">暂无可用优惠券</view>
+				</scroll-view>
 			</view>
 		</view>
 
@@ -71,20 +116,31 @@ export default {
 			freightPrice: 0.00,
 			orderTotalPrice: 0.00,
 			actualPrice: 0.00,
+			couponPrice: 0.00,
+			discountSource: '',
 			addressId: 0,
 			isBuy: false,
 			buyType: '',
 			submitting: false,
-			requestId: ''
+			requestId: '',
+			couponList: [],
+			selectedCouponId: null,
+			showCouponPopup: false,
+			promotion: null,
+			promotionGap: ''
 		}
 	},
 	methods: {
 		getCheckoutInfo() {
 			let buyType = this.isBuy ? 'buy' : 'cart';
-			util.request(api.CartCheckout, {
+			let params = {
 				addressId: this.addressId,
 				type: buyType
-			}).then(res => {
+			};
+			if (this.selectedCouponId) {
+				params.couponId = this.selectedCouponId;
+			}
+			util.request(api.CartCheckout, params).then(res => {
 				if (res.code === 0) {
 					this.checkedGoodsList = res.data.checkedGoodsList;
 					this.checkedAddress = res.data.checkedAddress;
@@ -92,6 +148,12 @@ export default {
 					this.freightPrice = res.data.freightPrice;
 					this.goodsTotalPrice = res.data.goodsTotalPrice;
 					this.orderTotalPrice = res.data.orderTotalPrice;
+					this.couponPrice = res.data.couponPrice || 0.00;
+					this.discountSource = res.data.discountSource || '';
+					this.couponList = res.data.couponList || [];
+					this.selectedCouponId = res.data.selectedCouponId || null;
+					this.promotion = res.data.promotion || null;
+					this.promotionGap = res.data.promotionGap || '';
 					if (this.checkedAddress.id) {
 						this.addressId = this.checkedAddress.id;
 					} else {
@@ -122,11 +184,15 @@ export default {
 				return;
 			}
 			this.submitting = true;
-			util.request(api.OrderSubmit, {
+			let params = {
 				addressId: this.addressId,
 				type: this.buyType,
 				requestId: this.requestId
-			}, 'POST', 'application/json').then(res => {
+			};
+			if (this.selectedCouponId) {
+				params.couponId = this.selectedCouponId;
+			}
+			util.request(api.OrderSubmit, params, 'POST', 'application/json').then(res => {
 				if (res.code === 0) {
 					const orderId = res.data.orderInfo.id;
 					util.payOrder(parseInt(orderId)).then(() => {
@@ -142,6 +208,19 @@ export default {
 			}).catch(() => {
 				this.submitting = false;
 			});
+		},
+		openCouponPopup() {
+			this.showCouponPopup = true;
+		},
+		selectCoupon(coupon) {
+			this.selectedCouponId = coupon.id;
+			this.showCouponPopup = false;
+			this.getCheckoutInfo();
+		},
+		clearCoupon() {
+			this.selectedCouponId = null;
+			this.showCouponPopup = false;
+			this.getCheckoutInfo();
 		}
 	},
 	onShow() {
@@ -440,5 +519,109 @@ page {
 	&.disabled {
 		opacity: 0.55;
 	}
+}
+
+/* 满减提示条 */
+.promo-bar {
+	background: $green-light;
+	border-radius: 12rpx;
+	padding: 16rpx 24rpx;
+	margin-bottom: 16rpx;
+}
+
+.promo-text {
+	font-size: 24rpx;
+	color: $green;
+}
+
+/* 优惠券弹窗 */
+.coupon-popup-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.45);
+	z-index: 200;
+	display: flex;
+	align-items: flex-end;
+}
+
+.coupon-popup {
+	width: 100%;
+	background: #FEFEFC;
+	border-radius: 24rpx 24rpx 0 0;
+	max-height: 70vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 28rpx 32rpx;
+	border-bottom: 1rpx solid #E8ECE8;
+}
+
+.popup-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: $text-primary;
+}
+
+.popup-close {
+	font-size: 40rpx;
+	color: $text-hint;
+	padding: 0 8rpx;
+}
+
+.popup-body {
+	max-height: 60vh;
+	padding: 16rpx 32rpx;
+}
+
+.popup-option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 24rpx 16rpx;
+	border-bottom: 1rpx solid $green-bg;
+
+	&.selected {
+		background: $green-light;
+		border-radius: 12rpx;
+	}
+}
+
+.popup-option-info {
+	flex: 1;
+	overflow: hidden;
+}
+
+.popup-option-name {
+	font-size: 28rpx;
+	color: $text-primary;
+}
+
+.popup-option-expire {
+	font-size: 22rpx;
+	color: $text-hint;
+	display: block;
+	margin-top: 4rpx;
+}
+
+.popup-check {
+	font-size: 32rpx;
+	color: $green;
+	font-weight: 700;
+	margin-left: 16rpx;
+}
+
+.popup-empty {
+	text-align: center;
+	color: $text-hint;
+	padding: 80rpx 0;
+	font-size: 28rpx;
 }
 </style>

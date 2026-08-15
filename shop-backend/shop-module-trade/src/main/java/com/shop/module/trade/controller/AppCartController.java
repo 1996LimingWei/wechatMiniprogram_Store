@@ -94,6 +94,7 @@ public class AppCartController {
         Long userId = TradeSecurityUtils.getRequiredUserId();
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long addressId = TradeRequestUtils.getLong(request, "addressId", 0L);
-        return CommonResult.success(tradeCheckoutService.checkout(userId, addressId));
+        Long couponId = TradeRequestUtils.getLong(request, "couponId", 0L);
+        return CommonResult.success(tradeCheckoutService.checkout(userId, addressId, couponId > 0 ? couponId : null));
     }
 }

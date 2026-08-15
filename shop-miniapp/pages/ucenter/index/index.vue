@@ -96,6 +96,12 @@
 						</view>
 						<text class="service-label">我的收藏</text>
 					</navigator>
+<navigator url="/pages/ucenter/coupon/coupon" class="service-item">
+						<view class="service-icon" style="background: linear-gradient(135deg, #FFE8D6 0%, #FFF3EB 100%);">
+							<image class="service-icon-img" src="/static/images/service/service_coupon.svg"></image>
+						</view>
+						<text class="service-label">优惠券</text>
+					</navigator>
 					<button class="service-item service-btn" open-type="contact">
 						<view class="service-icon" style="background: linear-gradient(135deg, #E4ECE4 0%, #F2F7F2 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_kefu.svg"></image>
