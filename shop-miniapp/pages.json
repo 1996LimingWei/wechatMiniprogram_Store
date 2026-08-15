@@ -90,6 +90,14 @@
 			}
 		},
 		{
+			"path": "pages/ucenter/coupon/coupon",
+			"style": {
+				"navigationBarTitleText": "优惠券",
+				"navigationBarBackgroundColor": "#FEFEFC",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
 			"path": "pages/ucenter/orderDetail/orderDetail",
 			"style": {
 				"navigationBarTitleText": "订单详情",

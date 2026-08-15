@@ -47,7 +47,8 @@ public class SecurityAutoConfiguration {
                         "/app-api/comment/list",
                         "/app-api/comment/count",
                         "/app-api/region/list",
-                        "/app-api/mock/**"
+                        "/app-api/mock/**",
+                        "/app-api/promotion/current"
                 ).permitAll()
                 .requestMatchers("/app-api/**").authenticated()
                 .requestMatchers("/admin-api/auth/login").permitAll()

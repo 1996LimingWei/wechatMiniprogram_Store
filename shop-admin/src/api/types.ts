@@ -339,28 +339,83 @@ export interface OrderTrend {
 
 /** 数据看板 - 订单状态分布 */
 export interface OrderStatusItem {
-    name: string;
-    value: number;
+  name: string;
+  value: number;
 }
 
 /** 数据看板 - 热销商品 */
 export interface TopProduct {
-    name: string;
-    sales_count: number;
-    sales_amount: number;
-    pic_url: string;
+  name: string;
+  sales_count: number;
+  sales_amount: number;
+  pic_url: string;
 }
 
 /** 数据看板 - 最近订单 */
 export interface DashboardRecentOrder {
-    id: number;
-    order_sn: string;
-    status: number;
-    pay_status: number;
-    actual_price: number;
-    refunded_amount: number;
-    net_amount: number;
-    consignee: string;
-    create_time: string;
-    item_count: number;
+  id: number;
+  order_sn: string;
+  status: number;
+  pay_status: number;
+  actual_price: number;
+  refunded_amount: number;
+  net_amount: number;
+  consignee: string;
+  create_time: string;
+  item_count: number;
+}
+
+/** 优惠券模板 */
+export interface CouponTemplate {
+  id?: number;
+  name: string;
+  type: number;
+  thresholdAmount: string;
+  discountAmount: string;
+  totalCount: number;
+  claimedCount?: number;
+  perUserLimit: number;
+  validityType: number;
+  validStartTime?: string;
+  validEndTime?: string;
+  validDays?: number;
+  status: number;
+  createTime?: string;
+}
+
+/** 满减规则 */
+export interface PromotionRule {
+  id?: number;
+  name: string;
+  type: number;
+  thresholdAmount: string;
+  discountAmount: string;
+  priority: number;
+  startTime?: string;
+  endTime?: string;
+  status: number;
+  createTime?: string;
+}
+
+/** 包邮规则 */
+export interface ShippingRule {
+  id?: number;
+  name: string;
+  freeThreshold: string;
+  baseFee: string;
+  status: number;
+  createTime?: string;
+}
+
+/** 优惠券实例 */
+export interface CouponInstance {
+  id: number;
+  userId: number;
+  templateId: number;
+  status: number;
+  orderId?: number;
+  expireTime: string;
+  usedTime?: string;
+  name?: string;
+  discountAmount?: string;
 }

@@ -37,4 +37,6 @@ public class TradeOrderDO extends BaseDO {
     private LocalDateTime closeTime;
     private String closeReason;
     private LocalDateTime finishTime;
+    private Long couponId;
+    private String discountSource;
 }

@@ -7,13 +7,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-/** 尚未启用的通用只读支持接口，不返回会误导交易的演示权益。 */
+/** 通用只读支持接口（帮助/FAQ 等）。优惠券接口已迁移至 AppCouponController。 */
 @RestController
 public class AppSupportController {
-    @RequestMapping("/app-api/coupon/list")
-    public CommonResult<List<Map<String, Object>>> couponList() {
-        return CommonResult.success(List.of());
-    }
 
     @RequestMapping("/app-api/helpissue/typeList")
     public CommonResult<Map<String, Object>> helpTypeList() {

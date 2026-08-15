@@ -48,9 +48,15 @@ public class TradeOrderService {
     private final TradeOrderLogisticsMapper tradeOrderLogisticsMapper;
     private final PayOrderMapper payOrderMapper;
     private final WechatPayService wechatPayService;
+    private final MarketingCouponService marketingCouponService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> submitOrder(Long userId, Long addressId, String requestId) {
+        return submitOrder(userId, addressId, requestId, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> submitOrder(Long userId, Long addressId, String requestId, Long couponId) {
         validateRequestId(requestId);
         TradeOrderDO existingOrder = findByRequestId(userId, requestId);
         if (existingOrder != null) {
@@ -81,8 +87,9 @@ public class TradeOrderService {
             orderLines.add(new OrderLine(cart, snapshot));
         }
         int freightPrice = tradeCheckoutService.calculateFreight(goodsTotalPrice);
-        int couponPrice = 0;
-        int actualPrice = Math.addExact(goodsTotalPrice, freightPrice);
+        TradeCheckoutService.CheckoutDiscount discount = tradeCheckoutService.calculateDiscount(userId, couponId, goodsTotalPrice);
+        int couponPrice = discount.discountAmount();
+        int actualPrice = Math.max(0, Math.subtractExact(Math.addExact(goodsTotalPrice, freightPrice), couponPrice));
 
         TradeOrderDO order = new TradeOrderDO();
         order.setOrderSn(generateOrderSn());
@@ -101,6 +108,8 @@ public class TradeOrderService {
         order.setFullRegion(address.getFullRegion());
         order.setAddress(address.getDetailInfo());
         order.setExpireTime(LocalDateTime.now().plusMinutes(tradeOrderProperties.getUnpaidTimeoutMinutes()));
+        order.setCouponId(discount.couponId());
+        order.setDiscountSource(discount.discountSource());
         try {
             tradeOrderMapper.insert(order);
         } catch (DuplicateKeyException exception) {
@@ -131,6 +140,10 @@ public class TradeOrderService {
             tradeOrderItemMapper.insert(item);
         }
         tradeCartService.clearCheckedCart(userId);
+
+        if (discount.couponId() != null) {
+            marketingCouponService.lockCoupon(userId, discount.couponId(), order.getId());
+        }
 
         return buildSubmitResult(order);
     }
@@ -392,6 +405,7 @@ public class TradeOrderService {
                 .eq(PayOrderDO::getUserId, userId)
                 .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
                 .set(PayOrderDO::getStatus, PayOrderStatus.CLOSED));
+        marketingCouponService.releaseCoupon(orderId);
         return true;
     }
 
