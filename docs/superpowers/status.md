@@ -1028,6 +1028,7 @@
 - 新增 `scripts/verify-dependency-audit.ps1`，提供 `-RunOnlineAudit` 在线依赖漏洞扫描入口；`verify-ci.ps1` 增加 `-RunTradeFlow`、`-RunCommerceConsistency`、`-RunAdminLint` 和 `-RunDependencyAudit` 重门禁开关。
 - 生产部署、回滚、备份恢复文档已补充备份权限控制、恢复到测试库演练步骤、对象存储误删保护和重门禁执行说明；最终验收报告同步补充新增门禁和在线依赖审计记录项。
 - 验证通过：`scripts/verify-admin-production-readiness.ps1`、`scripts/verify-admin-permission-matrix.ps1`、`scripts/verify-miniapp-production-readiness.ps1`、`scripts/verify-production-config.ps1`、`scripts/verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、管理后台 `corepack pnpm typecheck`、管理后台 `corepack pnpm build` 和 `git diff --check`。
+- `v1.0 客户交付版.md` 已同步勾选支付/退款/对账异常后台处理、售后角色越权校验、production 配置校验和按订单号定位日志等本地已验证验收项。
 - 未完成复验：`scripts/verify-dependency-audit.ps1 -RunOnlineAudit` 本机执行 15 分钟超时，已结束残留 Maven 审计进程；Docker Engine 仍需恢复后补跑数据库迁移空库执行和重放。
 
 ## 决策记录
