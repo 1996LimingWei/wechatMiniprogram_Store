@@ -30,6 +30,15 @@ export default {
             }
         },
         {
+            path: "/product/material",
+            name: "ProductMaterial",
+            component: () => import("@/views/product/material/index.vue"),
+            meta: {
+                title: "素材库",
+                permissions: ["material:manage"]
+            }
+        },
+        {
             path: "/product/comment",
             name: "ProductComment",
             component: () => import("@/views/member/comment/index.vue"),

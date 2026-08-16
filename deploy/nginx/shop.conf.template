@@ -55,6 +55,13 @@ server {
         proxy_read_timeout 60s;
     }
 
+    location /uploads/material/ {
+        alias /usr/share/nginx/material/;
+        access_log off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable" always;
+    }
+
     location / {
         proxy_pass http://admin:80;
         proxy_http_version 1.1;
@@ -64,4 +71,3 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
-

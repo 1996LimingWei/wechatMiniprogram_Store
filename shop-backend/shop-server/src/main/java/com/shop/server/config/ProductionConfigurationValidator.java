@@ -71,6 +71,16 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         }
         requireHttpsUrl("app.external-base-url", missing);
         requireHttpsUrl("wechat.pay.notify-url", missing);
+        String materialProvider = environment.getProperty("material.storage.provider");
+        if (!"mounted".equals(materialProvider)) {
+            missing.add("material.storage.provider 生产/预发布必须配置为 mounted");
+        }
+        requireText("material.storage.root", missing);
+        requireHttpsUrl("material.storage.public-base-url", missing);
+        Long materialMaxSize = environment.getProperty("material.storage.max-size", Long.class);
+        if (materialMaxSize == null || materialMaxSize <= 0 || materialMaxSize > 20 * 1024 * 1024L) {
+            missing.add("material.storage.max-size 必须在 1 到 20MB 之间");
+        }
         String logisticsProvider = environment.getProperty("trade.logistics.provider");
         if (!"kuaidi100".equals(logisticsProvider)) {
             missing.add("trade.logistics.provider 必须配置为 kuaidi100");

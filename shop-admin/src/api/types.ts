@@ -58,6 +58,23 @@ export interface ProductSku {
   createTime?: string;
 }
 
+/** 素材库图片 */
+export interface MaterialAsset {
+  id: number;
+  url: string;
+  objectKey: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  width?: number;
+  height?: number;
+  bizType: string;
+  referenceCount: number;
+  createdBy?: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
 /** 交易订单 */
 export interface TradeOrder {
   id: number;

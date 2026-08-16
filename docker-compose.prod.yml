@@ -62,11 +62,16 @@ services:
       TRADE_LOGISTICS_PROVIDER: ${TRADE_LOGISTICS_PROVIDER}
       KUAIDI100_CUSTOMER: ${KUAIDI100_CUSTOMER}
       KUAIDI100_KEY: ${KUAIDI100_KEY}
+      MATERIAL_STORAGE_PROVIDER: ${MATERIAL_STORAGE_PROVIDER}
+      MATERIAL_STORAGE_ROOT: ${MATERIAL_STORAGE_ROOT}
+      MATERIAL_PUBLIC_BASE_URL: ${MATERIAL_PUBLIC_BASE_URL}
+      MATERIAL_MAX_SIZE: ${MATERIAL_MAX_SIZE}
       TRADE_FREE_FREIGHT_THRESHOLD: ${TRADE_FREE_FREIGHT_THRESHOLD}
       TRADE_BASE_FREIGHT_FEE: ${TRADE_BASE_FREIGHT_FEE}
       TZ: Asia/Shanghai
     volumes:
       - ./deploy/logs/backend:/app/logs
+      - ./deploy/data/material:/app/material
       - ./deploy/secrets/wechat-pay:/run/secrets/wechat-pay:ro
     depends_on:
       mysql:
@@ -97,6 +102,7 @@ services:
       - ./deploy/nginx/shop.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./deploy/secrets/tls:/etc/nginx/tls:ro
       - ./deploy/logs/nginx:/var/log/nginx
+      - ./deploy/data/material:/usr/share/nginx/material:ro
     depends_on:
       admin:
         condition: service_started

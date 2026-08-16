@@ -47,6 +47,13 @@ product:
   provider: database
   mock-endpoints-enabled: false
 
+material:
+  storage:
+    provider: ${MATERIAL_STORAGE_PROVIDER:mounted}
+    root: ${MATERIAL_STORAGE_ROOT:/app/material}
+    public-base-url: ${MATERIAL_PUBLIC_BASE_URL:}
+    max-size: ${MATERIAL_MAX_SIZE:5242880}
+
 trade:
   mock-actions-enabled: false
   refund:

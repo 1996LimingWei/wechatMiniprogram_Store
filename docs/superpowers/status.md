@@ -828,6 +828,17 @@
 - 验证通过：`verify-secret-scan.ps1`、`verify-production-config.ps1`、`verify-backend-api-contract.ps1`、`verify-miniapp-api-contract.ps1`、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、生产 compose 配置解析、后端 `mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`、管理后台 `corepack pnpm typecheck` 和 `corepack pnpm build`。
 - 未完成验收：本机 Docker Desktop 当前未启动，`verify-db-migration.ps1` 无法连接 `shop-mysql`，数据库空库迁移与重放需在 Docker 启动后复验；真实微信支付、退款、物流仍需客户正式资料。
 
+## 2026-08-16 v1.0 P0-02 对象存储与素材库
+
+- 新增后台素材库后端能力：`material_asset` 表、素材上传/分页/引用查询/删除接口、`MaterialFileStorageService` 存储抽象、本地开发存储和生产服务器挂载文件服务。
+- 图片上传已校验扩展名、MIME、大小和文件头；服务端按日期和 UUID 重写对象键，不信任客户端文件名；图片宽高、大小、业务类型、上传管理员和引用数会记录入库。
+- 删除素材前实时检查商品分类、商品 SPU 主图/轮播图、SKU 图、Banner、频道、品牌、专题引用；已引用素材拒绝删除并返回引用关系，未引用素材软删除并清理文件。
+- 生产/预发布新增素材存储环境变量和启动门禁，要求 `MATERIAL_STORAGE_PROVIDER=mounted`、公开地址使用 HTTPS；生产 Docker 编排将后端写入目录挂载给 Nginx 只读发布 `/uploads/material/`。
+- 管理后台新增“商品管理 / 素材库”页面，支持上传 JPG/PNG/WebP、图片预览、按业务类型/上传人/上传时间/关键词筛选、复制 URL、查看引用和删除未引用素材；权限码为 `material:manage`，已授权超级管理员和商品运营。
+- 新增素材库单元测试，覆盖合法图片落盘入库、伪造图片拒绝、扩展名/MIME/文件头不一致拒绝、被引用素材拒删；数据库必需迁移版本推进到 `20260816_01`。
+- 验证通过：Secret 扫描、生产配置静态校验、后端 API 契约基线校验、小程序 API 契约校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、生产 compose 配置解析、后端 `mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`、商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`、管理后台 `corepack pnpm typecheck` 和 `corepack pnpm build`。
+- 未完成验收：`verify-db-migration.ps1` 仍因本机 `shop-mysql` 容器 60 秒内未就绪而失败，新增迁移 `V20260816_01__material_asset_schema.sql` 的空库迁移与重放需在 Docker/MySQL 就绪后复验；商品表单内嵌上传/素材选择属于下一项 P0-03。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -867,8 +878,8 @@
 ## 下一步行动
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
-1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略、退款回调域名配置和对象存储配置占位。
-2. 执行客户运营能力：对象存储、素材库、商品图片上传、商品导入导出、批量运营、库存工作台、运费配置。
+1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
+2. 执行客户运营能力：商品图片上传与素材选择、商品导入导出、批量运营、库存工作台、运费配置。
 3. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
 4. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
 5. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。

@@ -39,6 +39,8 @@ foreach ($file in @($prod, $staging)) {
     Assert-Contains $file 'mock-actions-enabled:\s*false' "$file 必须关闭交易 Mock 操作"
     Assert-Contains $file 'provider:\s*\$\{TRADE_REFUND_PROVIDER:wechat\}' "$file 退款 Provider 默认必须为 wechat"
     Assert-Contains $file 'provider:\s*\$\{TRADE_LOGISTICS_PROVIDER:kuaidi100\}' "$file 物流 Provider 默认必须为 kuaidi100"
+    Assert-Contains $file 'provider:\s*\$\{MATERIAL_STORAGE_PROVIDER:mounted\}' "$file 素材存储生产默认必须为 mounted"
+    Assert-Contains $file 'public-base-url:\s*\$\{MATERIAL_PUBLIC_BASE_URL:\}' "$file 素材公开访问地址必须由环境变量注入"
     Assert-Contains $file 'allowed-origin-patterns:\s*\$\{WEB_CORS_ALLOWED_ORIGIN_PATTERNS:\}' "$file CORS 必须由环境变量注入"
     Assert-Contains $file 'external-base-url:\s*\$\{APP_EXTERNAL_BASE_URL:\}' "$file 必须配置外部访问地址"
     Assert-NotContains $file 'localhost|127\.0\.0\.1|admin123|password:\s*root' "$file 不得包含本地地址、默认密码或 root 密码"
@@ -50,4 +52,3 @@ Assert-Contains $miniappEnv '正式环境 API 地址必须使用 HTTPS' "小程�
 Assert-Contains $miniappEnv '正式环境未配置 VUE_APP_API_BASE_URL' "小程序正式环境必须要求注入 API 地址"
 
 Write-Host "生产/预发布配置静态校验通过。"
-

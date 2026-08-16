@@ -32,6 +32,13 @@ product:
   provider: database
   mock-endpoints-enabled: true
 
+material:
+  storage:
+    provider: local
+    root: ${MATERIAL_STORAGE_ROOT:./.runtime-uploads/material}
+    public-base-url: ${MATERIAL_PUBLIC_BASE_URL:http://127.0.0.1:8085/uploads/material/}
+    max-size: ${MATERIAL_MAX_SIZE:5242880}
+
 trade:
   mock-actions-enabled: true
   refund:
