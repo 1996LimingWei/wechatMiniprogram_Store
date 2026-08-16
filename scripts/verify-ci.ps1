@@ -12,6 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 & (Join-Path $PSScriptRoot "verify-miniapp-api-contract.ps1")
 & (Join-Path $PSScriptRoot "verify-miniapp-review-readiness.ps1")
 & (Join-Path $PSScriptRoot "verify-logistics-readiness.ps1")
+& (Join-Path $PSScriptRoot "verify-delivery-docs.ps1")
 & (Join-Path $PSScriptRoot "verify-backend-api-contract.ps1")
 
 if (-not $SkipBackendTests) {
