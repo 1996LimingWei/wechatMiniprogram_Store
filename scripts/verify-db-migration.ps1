@@ -43,7 +43,8 @@ function Initialize-TestDatabase([string]$Database) {
     $previousNativePreference = $PSNativeCommandUseErrorActionPreference
     $PSNativeCommandUseErrorActionPreference = $false
     try {
-        Get-Content (Join-Path $PSScriptRoot "..\sql\init.sql") -Encoding utf8 |
+        $sqlRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "sql"
+        Get-Content (Join-Path $sqlRoot "init.sql") -Encoding utf8 |
             Select-Object -Skip 7 |
             Set-Content $temporaryFile -Encoding utf8
         & docker cp $temporaryFile.FullName "${MysqlContainer}:$containerFile" | Out-Null

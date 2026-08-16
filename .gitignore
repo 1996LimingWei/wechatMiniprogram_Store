@@ -27,9 +27,12 @@ unpackage/
 # Environment
 .env.local
 .env.*.local
+.env.prod
+.env.staging
 application-local.yml
 sql/backups/
 .docker-data/
+deploy/secrets/
 **/.mvn/repository/
 
 # IDE

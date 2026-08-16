@@ -18,7 +18,11 @@ foreach ($match in [regex]::Matches((Get-Content $apiFile -Raw -Encoding utf8), 
 $pageConfig = Get-Content $pagesFile -Raw -Encoding utf8 | ConvertFrom-Json
 $usedApiNames = [System.Collections.Generic.HashSet[string]]::new()
 foreach ($page in $pageConfig.pages) {
-    $pageFile = Join-Path $miniappRoot ($page.path.Replace("/", "\") + ".vue")
+    $pageFile = $miniappRoot
+    foreach ($segment in $page.path.Split("/")) {
+        $pageFile = Join-Path $pageFile $segment
+    }
+    $pageFile = $pageFile + ".vue"
     if (-not (Test-Path $pageFile)) {
         throw "已注册页面不存在：$($page.path)"
     }

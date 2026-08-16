@@ -7,7 +7,7 @@
 )
 
 $ErrorActionPreference = "Stop"
-$MigrationDirectory = Join-Path $PSScriptRoot "..\sql\migrations"
+$MigrationDirectory = Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "sql") "migrations"
 
 function Invoke-MysqlQuery {
     param(

@@ -1,7 +1,8 @@
 # ============================================
-# 生产环境配置
-# 敏感信息通过环境变量注入，不会硬编码在文件中
-# 使用方式：--spring.profiles.active=prod
+# 预发布环境配置
+# 用途：客户验收、真实渠道小额联调、生产发布前回归。
+# 敏感信息必须通过环境变量注入，不允许写入仓库。
+# 使用方式：--spring.profiles.active=staging
 # ============================================
 
 spring:
@@ -17,7 +18,6 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
 
-# 微信小程序 - 通过容器/平台环境变量注入
 wx:
   ma:
     appid: ${WX_MA_APPID:}
@@ -109,3 +109,4 @@ management:
       probes:
         enabled: true
       show-details: never
+

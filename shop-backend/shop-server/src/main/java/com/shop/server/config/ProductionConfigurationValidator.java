@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-@Profile("prod")
+@Profile({"prod", "staging"})
 @RequiredArgsConstructor
 public class ProductionConfigurationValidator implements ApplicationRunner {
 
@@ -69,6 +69,8 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         if (isBlank(corsOrigins) || corsOrigins.contains("*")) {
             missing.add("web.cors.allowed-origin-patterns 必须配置明确来源且不能包含通配符");
         }
+        requireHttpsUrl("app.external-base-url", missing);
+        requireHttpsUrl("wechat.pay.notify-url", missing);
         String logisticsProvider = environment.getProperty("trade.logistics.provider");
         if (!"kuaidi100".equals(logisticsProvider)) {
             missing.add("trade.logistics.provider 必须配置为 kuaidi100");
@@ -89,7 +91,7 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
             missing.add("后台管理员不能使用默认密码 admin123");
         }
         if (!missing.isEmpty()) {
-            throw new IllegalStateException("生产配置不完整: " + String.join(", ", missing));
+            throw new IllegalStateException("生产/预发布配置不完整: " + String.join(", ", missing));
         }
         wechatPayService.validateCredentialFiles();
     }
@@ -97,6 +99,15 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
     private void requireText(String key, List<String> missing) {
         if (isBlank(environment.getProperty(key))) {
             missing.add(key);
+        }
+    }
+
+    private void requireHttpsUrl(String key, List<String> missing) {
+        String value = environment.getProperty(key);
+        if (isBlank(value)) {
+            missing.add(key);
+        } else if (!value.startsWith("https://")) {
+            missing.add(key + " 必须使用 https://");
         }
     }
 

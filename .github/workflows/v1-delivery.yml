@@ -1,0 +1,78 @@
+name: v1.0 客户交付门禁
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  delivery-gate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: shop
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -uroot -proot --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: shop-admin/pnpm-lock.yaml
+
+      - name: 启用 pnpm
+        run: corepack enable
+
+      - name: Secret 与配置门禁
+        shell: pwsh
+        run: |
+          ./scripts/verify-secret-scan.ps1
+          ./scripts/verify-production-config.ps1
+
+      - name: API 契约门禁
+        shell: pwsh
+        run: |
+          ./scripts/verify-miniapp-api-contract.ps1
+          ./scripts/verify-backend-api-contract.ps1
+
+      - name: 后端测试
+        working-directory: shop-backend
+        run: mvn -B test
+
+      - name: 管理后台类型检查与构建
+        working-directory: shop-admin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm build
+
+      - name: 数据库迁移门禁
+        shell: pwsh
+        run: |
+          $mysqlContainer = docker ps --filter "ancestor=mysql:8.0" --format "{{.Names}}" | Select-Object -First 1
+          if (-not $mysqlContainer) {
+            throw "未找到 MySQL 服务容器"
+          }
+          ./scripts/verify-db-migration.ps1 -MysqlContainer $mysqlContainer

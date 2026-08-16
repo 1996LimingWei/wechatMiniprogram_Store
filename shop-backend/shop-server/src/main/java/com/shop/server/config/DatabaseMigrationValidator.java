@@ -8,11 +8,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("prod")
+@Profile({"prod", "staging"})
 @RequiredArgsConstructor
 public class DatabaseMigrationValidator implements ApplicationRunner {
 
-    private static final String REQUIRED_VERSION = "20260813_07";
+    private static final String REQUIRED_VERSION = "20260815_01";
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -22,13 +22,13 @@ public class DatabaseMigrationValidator implements ApplicationRunner {
                  WHERE table_schema = DATABASE() AND table_name = 'schema_migration_history'
                 """, Integer.class);
         if (historyTable == null || historyTable != 1) {
-            throw new IllegalStateException("数据库迁移历史不存在，禁止启动生产服务");
+            throw new IllegalStateException("数据库迁移历史不存在，禁止启动生产/预发布服务");
         }
         Integer applied = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM schema_migration_history WHERE version = ?",
                 Integer.class, REQUIRED_VERSION);
         if (applied == null || applied != 1) {
-            throw new IllegalStateException("数据库未执行必需迁移 " + REQUIRED_VERSION + "，禁止启动生产服务");
+            throw new IllegalStateException("数据库未执行必需迁移 " + REQUIRED_VERSION + "，禁止启动生产/预发布服务");
         }
     }
 }

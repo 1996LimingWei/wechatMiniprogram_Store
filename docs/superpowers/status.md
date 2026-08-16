@@ -7,7 +7,8 @@
 ## 当前阶段
 
 **阶段**: 企业级交付完善
-**当前计划**: [enterprise-delivery-completion.md](plans/2026-08-13-enterprise-delivery-completion.md)（阶段 A、B 已完成，下一阶段为 C）
+**当前计划**: [v1.0 客户交付版.md](plans/v1.0%20客户交付版.md)（最终客户交付总计划，基于企业交付阶段 A、B 已完成基线继续推进）
+**原完善计划**: [enterprise-delivery-completion.md](plans/2026-08-13-enterprise-delivery-completion.md)（阶段 A、B 已完成，后续 C/D/E/F 已并入 v1.0 客户交付版）
 **完善报告**: [enterprise-delivery-completion-report.md](specs/2026-08-13-enterprise-delivery-completion-report.md)
 **当前 Issue**: [member-center.md](plans/2026-08-03-member-center.md)（Issue #7 已完成，会员权益继续暂缓并将在阶段 A 收口入口）
 **内容管理**: [content-management.md](plans/2026-08-03-content-management.md)（Issue #6 已完成）
@@ -811,6 +812,22 @@
 - 已按 GitHub Issue #34 原始验收项复核售后管理：申请列表、详情、同意/拒绝、退款状态与后续退货收货/同步能力均已实现，并关闭 Issue #34。
 - 验证通过：管理后台 `corepack pnpm typecheck`；交易模块相关 20 个订单、物流、售后测试在本机 JDK 24 兼容参数下通过。
 
+## 2026-08-16 v1.0 客户交付版计划建立
+
+- 新增最终交付总计划 [v1.0 客户交付版.md](plans/v1.0%20客户交付版.md)，将客户可运营、真实资金物流、生产部署、CI 门禁、权限审计、监控告警、微信提审和交付文档统一收口到一个版本目标。
+- 明确 v1.0 不再扩展会员、分销、积分、拼团、多商户、多仓、多包裹、WMS/ERP、发票、CRM 和报表大屏，避免交付范围无限扩张。
+- v1.0 后续实施拆为 20 个 P0 交付项：生产配置、对象存储、商品图片、商品导入导出、批量运营、库存工作台、运费配置、订单运营、支付异常、退款异常、日终对账、权限矩阵、审计补齐、CI 契约、生产部署、可观测性、小程序提审、真实支付退款、真实物流和客户交付文档。
+
+## 2026-08-16 v1.0 第一阶段交付基座首批实施
+
+- 新增 `application-staging.yml`，并将生产配置校验和数据库迁移门禁扩展到 `prod` 与 `staging` 双 profile；生产/预发布启动会校验数据库、Redis、微信小程序、微信支付、快递 100、CORS、外部访问地址、Mock 开关和默认管理员密码。
+- 生产配置新增 `app.external-base-url`，微信支付回调和外部服务地址要求使用 HTTPS；数据库必需迁移版本推进到营销模块 `20260815_01`。
+- 新增基础门禁脚本：Secret 扫描、生产配置静态检查、后端 API 契约基线检查和 v1.0 聚合 CI 脚本；小程序 API 契约脚本和数据库迁移脚本路径改为跨平台写法。
+- 新增 GitHub Actions `v1-delivery.yml`，覆盖 Secret/配置、前后端 API 契约、后端测试、管理后台类型检查与构建、数据库迁移门禁。
+- 新增生产交付模板：`.env.prod.example`、`docker-compose.prod.yml`、`deploy/nginx/shop.conf.template`、生产部署与回滚手册、运维手册、客户验收清单和 MySQL 备份脚本；真实 `.env.prod`、密钥、证书目录已加入 `.gitignore`。
+- 验证通过：`verify-secret-scan.ps1`、`verify-production-config.ps1`、`verify-backend-api-contract.ps1`、`verify-miniapp-api-contract.ps1`、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、生产 compose 配置解析、后端 `mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`、管理后台 `corepack pnpm typecheck` 和 `corepack pnpm build`。
+- 未完成验收：本机 Docker Desktop 当前未启动，`verify-db-migration.ps1` 无法连接 `shop-mysql`，数据库空库迁移与重放需在 Docker 启动后复验；真实微信支付、退款、物流仍需客户正式资料。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -849,11 +866,12 @@
 
 ## 下一步行动
 
-后续整改以 `2026-08-13-enterprise-delivery-completion.md` 为唯一任务来源：
-1. 执行阶段 C，补齐对象存储、商品批量运营、库存工作台和运费配置。
-2. 阶段 E02 补齐 CI、OpenAPI、HTTP 方法和参数漂移门禁。
-3. 按阶段 D 至阶段 E 补齐资金异常工作台、CI、生产部署、监控和备份恢复。
-4. 最后由客户提供正式资料，执行阶段 F 的微信支付、退款、物流和生产联合验收。
+后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
+1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略、退款回调域名配置和对象存储配置占位。
+2. 执行客户运营能力：对象存储、素材库、商品图片上传、商品导入导出、批量运营、库存工作台、运费配置。
+3. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
+4. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
+5. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 
 ---
 
