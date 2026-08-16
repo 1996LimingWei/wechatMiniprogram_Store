@@ -11,8 +11,10 @@ import {
 } from "@/api/category";
 import MaterialImagePicker from "@/components/MaterialImagePicker/index.vue";
 import type { Category } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "ProductCategory" });
+const canManageProduct = hasAnyPerms(["product:manage"]);
 
 /* ---------- 数据 ---------- */
 const loading = ref(false);
@@ -165,7 +167,7 @@ onMounted(fetchData);
     <div class="app-container">
         <!-- 顶部操作栏 -->
         <el-card shadow="never" class="mb-4">
-            <el-button type="primary" @click="openAddRoot">
+            <el-button v-if="canManageProduct" type="primary" @click="openAddRoot">
                 <el-icon class="mr-1"><i class="ep-icon-plus" /></el-icon>
                 新增顶级分类
             </el-button>
@@ -199,6 +201,7 @@ onMounted(fetchData);
                     <template #default="{ row }">
                         <el-switch
                             v-model="row.status"
+                            :disabled="!canManageProduct"
                             :active-value="1"
                             :inactive-value="0"
                             @change="handleStatusChange(row)"
@@ -208,7 +211,7 @@ onMounted(fetchData);
                 <el-table-column label="操作" width="240" align="center">
                     <template #default="{ row }">
                         <el-button
-                            v-if="row.parentId === 0"
+                            v-if="canManageProduct && row.parentId === 0"
                             type="primary"
                             link
                             size="small"
@@ -217,6 +220,7 @@ onMounted(fetchData);
                             新增子分类
                         </el-button>
                         <el-button
+                            v-if="canManageProduct"
                             type="primary"
                             link
                             size="small"
@@ -225,6 +229,7 @@ onMounted(fetchData);
                             编辑
                         </el-button>
                         <el-button
+                            v-if="canManageProduct"
                             type="danger"
                             link
                             size="small"

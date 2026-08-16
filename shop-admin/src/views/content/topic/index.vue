@@ -13,8 +13,10 @@ import {
 } from "@/api/content";
 import { getProductPage } from "@/api/product";
 import type { ContentTopic, ProductSpu } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "ContentTopic" });
+const canManageContent = hasAnyPerms(["content:manage"]);
 
 /* ---------- 数据 ---------- */
 const loading = ref(false);
@@ -194,7 +196,7 @@ onMounted(fetchData);
     <div class="app-container">
         <!-- 顶部操作栏 -->
         <el-card shadow="never" class="mb-4">
-            <el-button type="primary" @click="openAdd">
+            <el-button v-if="canManageContent" type="primary" @click="openAdd">
                 <el-icon class="mr-1"><i class="ep-icon-plus" /></el-icon>
                 新增专题
             </el-button>
@@ -232,6 +234,7 @@ onMounted(fetchData);
                     <template #default="{ row }">
                         <el-switch
                             v-model="row.status"
+                            :disabled="!canManageContent"
                             :active-value="1"
                             :inactive-value="0"
                             @change="handleStatusChange(row)"
@@ -241,13 +244,13 @@ onMounted(fetchData);
                 <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
                 <el-table-column label="操作" width="230" align="center" fixed="right">
                     <template #default="{ row }">
-                        <el-button type="success" link size="small" @click="openProductDialog(row)">
+                        <el-button v-if="canManageContent" type="success" link size="small" @click="openProductDialog(row)">
                             关联商品
                         </el-button>
-                        <el-button type="primary" link size="small" @click="openEdit(row)">
+                        <el-button v-if="canManageContent" type="primary" link size="small" @click="openEdit(row)">
                             编辑
                         </el-button>
-                        <el-button type="danger" link size="small" @click="handleDelete(row)">
+                        <el-button v-if="canManageContent" type="danger" link size="small" @click="handleDelete(row)">
                             删除
                         </el-button>
                     </template>

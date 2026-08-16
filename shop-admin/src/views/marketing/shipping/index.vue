@@ -11,8 +11,10 @@ import {
   updateShippingStatus
 } from "@/api/marketing";
 import type { MarketingShippingAuditLog, ShippingRule } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "MarketingShipping" });
+const canManageMarketing = hasAnyPerms(["marketing:manage"]);
 
 const loading = ref(false);
 const list = ref<ShippingRule[]>([]);
@@ -172,7 +174,7 @@ onMounted(fetchData);
       <div class="actions">
         <el-button :icon="Refresh" @click="fetchData">刷新</el-button>
         <el-button :icon="Document" @click="openAudit()">变更记录</el-button>
-        <el-button type="primary" :icon="Plus" @click="openAdd">新增运费规则</el-button>
+        <el-button v-if="canManageMarketing" type="primary" :icon="Plus" @click="openAdd">新增运费规则</el-button>
       </div>
     </section>
 
@@ -201,6 +203,7 @@ onMounted(fetchData);
         <template #default="{ row }">
           <el-switch
             v-model="row.status"
+            :disabled="!canManageMarketing"
             :active-value="1"
             :inactive-value="0"
             @change="handleStatusChange(row)"
@@ -210,7 +213,7 @@ onMounted(fetchData);
       <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
       <el-table-column label="操作" width="160" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="canManageMarketing" type="primary" link size="small" @click="openEdit(row)">编辑</el-button>
           <el-button type="primary" link size="small" :icon="View" @click="openAudit(row)">记录</el-button>
         </template>
       </el-table-column>

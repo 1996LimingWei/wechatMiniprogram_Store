@@ -10,8 +10,10 @@ import {
   uploadMaterial
 } from "@/api/material";
 import type { MaterialAsset } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "ProductMaterial" });
+const canManageMaterial = hasAnyPerms(["material:manage"]);
 
 type UploadError = Parameters<NonNullable<UploadRequestOptions["onError"]>>[0];
 
@@ -199,7 +201,7 @@ onMounted(fetchData);
           </el-form-item>
         </el-form>
 
-        <div class="upload-box">
+        <div v-if="canManageMaterial" class="upload-box">
           <el-select v-model="uploadBizType" style="width: 120px">
             <el-option
               v-for="item in bizTypeOptions"
@@ -257,7 +259,7 @@ onMounted(fetchData);
             <el-button type="primary" link size="small" :icon="View" @click="showReferences(row)">
               引用
             </el-button>
-            <el-button type="danger" link size="small" :icon="Delete" @click="handleDelete(row)">
+            <el-button v-if="canManageMaterial" type="danger" link size="small" :icon="Delete" @click="handleDelete(row)">
               删除
             </el-button>
           </template>

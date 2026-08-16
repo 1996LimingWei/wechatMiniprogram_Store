@@ -216,6 +216,11 @@ const logisticsCompanies = [
 ];
 const canShip = hasAnyPerms(["trade:manage", "trade:order-ship"]);
 const canReadLogistics = hasAnyPerms(["trade:manage", "trade:logistics-read"]);
+const canExportOrder = hasAnyPerms(["trade:manage", "trade:order-export"]);
+const canBatchShip = hasAnyPerms(["trade:manage", "trade:order-batch-ship"]);
+const canRemark = hasAnyPerms(["trade:manage", "trade:order-remark"]);
+const canPrintDelivery = hasAnyPerms(["trade:manage", "trade:order-delivery-note"]);
+const canPrintPicking = hasAnyPerms(["trade:manage", "trade:order-picking-list"]);
 
 function handleLogisticsCompanyChange(code: string) {
   const company = logisticsCompanies.find(item => item.code === code);
@@ -466,8 +471,8 @@ onMounted(fetchData);
             >搜索</el-button
           >
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-          <el-button :icon="Download" @click="handleExport">导出</el-button>
-          <el-button v-if="canShip" :icon="Upload" @click="openBatchShip"
+          <el-button v-if="canExportOrder" :icon="Download" @click="handleExport">导出</el-button>
+          <el-button v-if="canBatchShip" :icon="Upload" @click="openBatchShip"
             >批量发货</el-button
           >
         </el-form-item>
@@ -487,6 +492,7 @@ onMounted(fetchData);
       <div class="table-toolbar">
         <span>共 {{ total }} 笔订单</span>
         <el-button
+          v-if="canPrintPicking"
           :icon="Printer"
           :disabled="!selectedRows.length"
           @click="printPicking"
@@ -563,6 +569,7 @@ onMounted(fetchData);
               >物流</el-button
             >
             <el-button
+              v-if="canPrintDelivery"
               type="primary"
               link
               :icon="Printer"
@@ -607,7 +614,7 @@ onMounted(fetchData);
               @click="openLogistics(detailOrder)"
               >查看物流</el-button
             >
-            <el-button :icon="Printer" @click="printDelivery(detailOrder)"
+            <el-button v-if="canPrintDelivery" :icon="Printer" @click="printDelivery(detailOrder)"
               >打印发货单</el-button
             >
           </div>
@@ -736,7 +743,7 @@ onMounted(fetchData);
             <el-empty v-else description="暂无支付单" :image-size="64" />
           </section>
 
-          <section class="detail-section">
+          <section v-if="canRemark" class="detail-section">
             <h4>内部备注</h4>
             <el-input
               v-model="adminRemark"

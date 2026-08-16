@@ -27,10 +27,12 @@ import type {
     ProductBatchOperationResult,
     ProductBatchItemResult
 } from "@/api/product";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "ProductList" });
 
 const router = useRouter();
+const canManageProduct = hasAnyPerms(["product:manage"]);
 
 /* ---------- 分类字典 ---------- */
 const categoryList = ref<Category[]>([]);
@@ -540,39 +542,41 @@ onMounted(async () => {
         <el-card shadow="never">
             <div class="toolbar">
                 <div class="toolbar-actions">
-                    <el-button type="primary" @click="goCreate">
+                    <el-button v-if="canManageProduct" type="primary" @click="goCreate">
                         新增商品
                     </el-button>
                     <el-button :icon="Download" @click="handleDownloadTemplate">
                         下载模板
                     </el-button>
-                    <el-button :icon="Upload" @click="handleOpenImport">
+                    <el-button v-if="canManageProduct" :icon="Upload" @click="handleOpenImport">
                         导入商品
                     </el-button>
                     <el-button :icon="Download" :loading="exportLoading" @click="handleExport">
                         导出商品
                     </el-button>
-                    <el-divider direction="vertical" />
-                    <el-button :disabled="selectedIds.length === 0" :loading="batchLoading" @click="handleBatchStatus(1)">
+                    <el-divider v-if="canManageProduct" direction="vertical" />
+                    <el-button v-if="canManageProduct" :disabled="selectedIds.length === 0" :loading="batchLoading" @click="handleBatchStatus(1)">
                         批量上架
                     </el-button>
-                    <el-button :disabled="selectedIds.length === 0" :loading="batchLoading" @click="handleBatchStatus(0)">
+                    <el-button v-if="canManageProduct" :disabled="selectedIds.length === 0" :loading="batchLoading" @click="handleBatchStatus(0)">
                         批量下架
                     </el-button>
-                    <el-button :disabled="selectedIds.length === 0" @click="openCategoryBatch">
+                    <el-button v-if="canManageProduct" :disabled="selectedIds.length === 0" @click="openCategoryBatch">
                         批量分类
                     </el-button>
-                    <el-button :disabled="selectedIds.length === 0" @click="openSortBatch">
+                    <el-button v-if="canManageProduct" :disabled="selectedIds.length === 0" @click="openSortBatch">
                         批量排序
                     </el-button>
-                    <el-button :disabled="selectedIds.length === 0" @click="openPriceBatch">
+                    <el-button v-if="canManageProduct" :disabled="selectedIds.length === 0" @click="openPriceBatch">
                         批量调价
                     </el-button>
-                    <el-button :disabled="selectedIds.length === 0" @click="openStockBatch">
+                    <el-button v-if="canManageProduct" :disabled="selectedIds.length === 0" @click="openStockBatch">
                         批量调库存
                     </el-button>
                 </div>
-                <span class="total-label">共 {{ total }} 件商品，已选 {{ selectedIds.length }} 件</span>
+                <span class="total-label">
+                    共 {{ total }} 件商品<span v-if="canManageProduct">，已选 {{ selectedIds.length }} 件</span>
+                </span>
             </div>
 
             <el-table
@@ -582,7 +586,7 @@ onMounted(async () => {
                 style="width: 100%; margin-top: 12px"
                 @selection-change="handleSelectionChange"
             >
-                <el-table-column type="selection" width="46" align="center" />
+                <el-table-column v-if="canManageProduct" type="selection" width="46" align="center" />
                 <el-table-column label="主图" width="80" align="center">
                     <template #default="{ row }">
                         <el-image
@@ -622,6 +626,7 @@ onMounted(async () => {
                 <el-table-column label="操作" width="180" align="center" fixed="right">
                     <template #default="{ row }">
                         <el-button
+                            v-if="canManageProduct"
                             :type="row.status === 1 ? 'warning' : 'success'"
                             link
                             size="small"
@@ -630,6 +635,7 @@ onMounted(async () => {
                             {{ row.status === 1 ? "下架" : "上架" }}
                         </el-button>
                         <el-button
+                            v-if="canManageProduct"
                             type="primary"
                             link
                             size="small"
@@ -638,6 +644,7 @@ onMounted(async () => {
                             编辑
                         </el-button>
                         <el-button
+                            v-if="canManageProduct"
                             type="danger"
                             link
                             size="small"

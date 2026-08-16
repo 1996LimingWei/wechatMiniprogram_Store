@@ -15,8 +15,10 @@ import type {
   InventoryStockLog
 } from "@/api/inventory";
 import type { PageResult } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "ProductInventory" });
+const canManageProduct = hasAnyPerms(["product:manage"]);
 
 const loading = ref(false);
 const rows = ref<InventorySku[]>([]);
@@ -228,7 +230,7 @@ onMounted(fetchData);
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-          <el-button :loading="reconcileLoading" @click="handleReconcile">库存对账</el-button>
+          <el-button v-if="canManageProduct" :loading="reconcileLoading" @click="handleReconcile">库存对账</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -266,8 +268,8 @@ onMounted(fetchData);
         </el-table-column>
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="openAdjust(row)">调库存</el-button>
-            <el-button type="primary" link size="small" @click="openWarning(row)">预警</el-button>
+            <el-button v-if="canManageProduct" type="primary" link size="small" @click="openAdjust(row)">调库存</el-button>
+            <el-button v-if="canManageProduct" type="primary" link size="small" @click="openWarning(row)">预警</el-button>
             <el-button type="primary" link size="small" :icon="View" @click="openLogs(row)">流水</el-button>
           </template>
         </el-table-column>

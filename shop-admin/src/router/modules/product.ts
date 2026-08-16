@@ -17,7 +17,7 @@ export default {
             component: () => import("@/views/product/spu/index.vue"),
             meta: {
                 title: "商品列表",
-                permissions: ["product:manage"]
+                permissions: ["product:manage", "product:read"]
             }
         },
         {
@@ -26,7 +26,7 @@ export default {
             component: () => import("@/views/product/category/index.vue"),
             meta: {
                 title: "分类管理",
-                permissions: ["product:manage"]
+                permissions: ["product:manage", "product:read"]
             }
         },
         {
@@ -35,7 +35,7 @@ export default {
             component: () => import("@/views/product/inventory/index.vue"),
             meta: {
                 title: "库存工作台",
-                permissions: ["product:manage"]
+                permissions: ["product:manage", "product:read"]
             }
         },
         {
@@ -44,7 +44,7 @@ export default {
             component: () => import("@/views/product/material/index.vue"),
             meta: {
                 title: "素材库",
-                permissions: ["material:manage"]
+                permissions: ["material:manage", "material:read"]
             }
         },
         {
@@ -53,7 +53,7 @@ export default {
             component: () => import("@/views/member/comment/index.vue"),
             meta: {
                 title: "评论管理",
-                permissions: ["product:manage"]
+                permissions: ["product:manage", "product:read"]
             }
         },
         {

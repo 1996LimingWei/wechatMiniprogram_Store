@@ -3,8 +3,10 @@ import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { getFeedbackDetail, getFeedbackPage, handleFeedback } from "@/api/feedback";
 import type { UserFeedback } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "ContentFeedback" });
+const canManageFeedback = hasAnyPerms(["feedback:manage"]);
 const loading = ref(false);
 const tableData = ref<UserFeedback[]>([]);
 const total = ref(0);
@@ -54,7 +56,7 @@ onMounted(fetchData);
                 <el-table-column prop="typeName" label="类型" width="110" /><el-table-column prop="content" label="反馈内容" min-width="260" show-overflow-tooltip /><el-table-column prop="userNickname" label="提交用户" width="130" show-overflow-tooltip /><el-table-column prop="mobile" label="联系电话" width="130" />
                 <el-table-column label="状态" width="100" align="center"><template #default="{ row }"><el-tag :type="statusType(row.status)">{{ row.statusName }}</el-tag></template></el-table-column>
                 <el-table-column prop="handleRemark" label="处理备注" min-width="180" show-overflow-tooltip /><el-table-column prop="createTime" label="提交时间" width="170" />
-                <el-table-column label="操作" width="170" fixed="right" align="center"><template #default="{ row }"><el-button type="primary" link @click="viewFeedback(row)">详情</el-button><el-button v-if="row.status === 0" type="warning" link @click="processFeedback(row, 1)">处理中</el-button><el-button v-if="row.status !== 2" type="success" link @click="processFeedback(row, 2)">完成</el-button></template></el-table-column>
+                <el-table-column label="操作" width="170" fixed="right" align="center"><template #default="{ row }"><el-button type="primary" link @click="viewFeedback(row)">详情</el-button><el-button v-if="canManageFeedback && row.status === 0" type="warning" link @click="processFeedback(row, 1)">处理中</el-button><el-button v-if="canManageFeedback && row.status !== 2" type="success" link @click="processFeedback(row, 2)">完成</el-button></template></el-table-column>
             </el-table>
             <div class="pagination"><el-pagination v-model:current-page="query.pageNo" :page-size="query.pageSize" :total="total" layout="total, prev, pager, next" @current-change="fetchData" /></div>
         </el-card>

@@ -943,6 +943,18 @@
 - 验证通过：交易模块 `mvn -pl shop-module-trade -am test "-Dmaven.compiler.release=24"`，交易 93 个测试零失败且依赖商品 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
 - 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_08__daily_reconciliation_workbench.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-12 角色权限矩阵复核
+
+- 新增 v1.0 标准只读角色 `READONLY`，授予经营看板、商品、内容、素材、营销、反馈、订单、售后、支付、退款和对账的只读权限，明确剥离所有业务写权限、订单敏感导出和对账导出权限。
+- 收紧订单运营权限：`trade:order-export` 改为仅匹配 `/admin-api/trade/order/export`，批量发货权限覆盖模板下载和导入接口，发货单、拣货单打印拆成独立权限码。
+- 补齐营销只读/管理权限、商品只读、内容只读、素材只读和反馈只读权限；商品运营仅具备商品、素材、营销、内容和反馈运营权限，不再获得财务对账权限。
+- 订单客服保留订单查看、详情、发货、物流、备注、导出、批量发货、发货单和拣货单权限，但不具备商品管理权限；财务保留支付、退款和对账权限，明确剥离发货与商品/内容/素材/营销管理权限。
+- 管理后台路由权限已按读写分离复核，商品、分类、库存、素材、内容、营销、反馈和订单页面的新增、编辑、删除、状态变更、批量操作、发货、备注、导出和打印按钮按权限显示。
+- 后端管理接口继续由 `AdminSecurityFilter` 基于数据库角色权限逐请求校验；禁用账号、修改用户角色、修改角色权限、禁用角色、强制退出和重置密码均会删除 Redis Token，旧 Token 失效。
+- 数据库必需迁移版本推进到 `20260816_09`，新增迁移 `V20260816_09__rbac_v1_permission_matrix.sql`，数据库门禁新增只读角色、岗位越权和敏感导出断言。
+- 验证通过：`mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`，商品 50 个、会员 4 个、交易 93 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
+- 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_09__rbac_v1_permission_matrix.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -983,7 +995,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
+2. 下一步进入 P0-13 高风险操作审计补齐：按资金、库存、价格、订单状态和生产配置影响面逐项补齐审计字段与查询验收。
 3. 继续完善交付门禁：依赖漏洞扫描、后台 Lint 策略、生产部署回滚和数据库迁移复验。
 4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 
