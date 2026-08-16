@@ -15,6 +15,7 @@ import java.util.HexFormat;
 public class PaymentNotifyAuditService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PayExceptionWorkbenchService payExceptionWorkbenchService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(
@@ -29,6 +30,10 @@ public class PaymentNotifyAuditService {
                 notification == null ? "" : safe(notification.notificationId(), 64),
                 notification == null ? "" : safe(notification.paySn(), 32),
                 safe(serial, 128), safe(timestamp, 32), sha256(body), safe(message, 255));
+        payExceptionWorkbenchService.recordNotifyVerifyFailure(
+                notification == null ? "" : notification.paySn(),
+                notification == null ? "" : notification.notificationId(),
+                message);
     }
 
     private String sha256(String value) {

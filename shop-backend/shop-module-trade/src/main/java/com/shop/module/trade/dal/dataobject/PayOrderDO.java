@@ -26,4 +26,7 @@ public class PayOrderDO extends BaseDO {
     private Integer status;
     private LocalDateTime payTime;
     private LocalDateTime lastQueryTime;
+    private String wechatTradeState;
+    private Integer wechatAmount;
+    private String syncMessage;
 }

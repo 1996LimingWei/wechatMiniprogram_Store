@@ -28,6 +28,15 @@ export default {
                 title: "售后管理",
                 permissions: ["trade:manage", "trade:after-sale-read"]
             }
+        },
+        {
+            path: "/trade/payment",
+            name: "PaymentExceptionWorkbench",
+            component: () => import("@/views/payment/index.vue"),
+            meta: {
+                title: "支付异常",
+                permissions: ["trade:manage", "trade:payment-read"]
+            }
         }
     ]
 } satisfies RouteConfigsTable;

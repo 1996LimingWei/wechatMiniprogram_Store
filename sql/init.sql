@@ -392,6 +392,9 @@ CREATE TABLE `pay_order` (
     `status` tinyint NOT NULL DEFAULT 0 COMMENT '支付状态 0=待支付 1=已支付 2=已关闭 3=已退款',
     `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
     `last_query_time` datetime DEFAULT NULL COMMENT '最近主动查单时间',
+    `wechat_trade_state` varchar(32) NOT NULL DEFAULT '' COMMENT '最近微信查单状态',
+    `wechat_amount` int DEFAULT NULL COMMENT '最近微信查单金额(分)',
+    `sync_message` varchar(255) NOT NULL DEFAULT '' COMMENT '最近查单同步说明',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',
@@ -399,7 +402,8 @@ CREATE TABLE `pay_order` (
     UNIQUE KEY `uk_pay_sn` (`pay_sn`),
     UNIQUE KEY `uk_order_id` (`order_id`),
     UNIQUE KEY `uk_channel_trade_no` (`channel_trade_no`),
-    KEY `idx_status_channel_query` (`status`, `channel`, `last_query_time`, `id`)
+    KEY `idx_status_channel_query` (`status`, `channel`, `last_query_time`, `id`),
+    KEY `idx_pay_order_pay_sn_status_time` (`pay_sn`, `status`, `create_time`, `id`)
 ) ENGINE=InnoDB COMMENT='支付单表';
 
 CREATE TABLE `pay_notify_log` (
@@ -420,6 +424,36 @@ CREATE TABLE `pay_notify_log` (
     KEY `idx_pay_order_id` (`pay_order_id`),
     KEY `idx_pay_sn` (`pay_sn`)
 ) ENGINE=InnoDB COMMENT='支付通知流水表';
+
+CREATE TABLE `pay_exception` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `pay_order_id` bigint DEFAULT NULL COMMENT '支付单ID',
+    `pay_sn` varchar(32) NOT NULL DEFAULT '' COMMENT '商户支付单号',
+    `order_id` bigint DEFAULT NULL COMMENT '订单ID',
+    `order_sn` varchar(32) NOT NULL DEFAULT '' COMMENT '订单号',
+    `user_id` bigint DEFAULT NULL COMMENT '会员用户ID',
+    `reason_code` varchar(64) NOT NULL COMMENT '异常编码',
+    `reason` varchar(255) NOT NULL COMMENT '异常原因',
+    `wechat_trade_state` varchar(32) NOT NULL DEFAULT '' COMMENT '微信交易状态',
+    `wechat_amount` int DEFAULT NULL COMMENT '微信返回金额(分)',
+    `channel_trade_no` varchar(64) NOT NULL DEFAULT '' COMMENT '微信支付交易号',
+    `local_status` tinyint DEFAULT NULL COMMENT '本地支付单状态',
+    `order_pay_status` tinyint DEFAULT NULL COMMENT '本地订单支付状态',
+    `handled` tinyint NOT NULL DEFAULT 0 COMMENT '处理状态 0=待处理 1=已处理',
+    `handle_result` varchar(32) NOT NULL DEFAULT '' COMMENT '处理结果 AUTO_FIXED/MANUAL_CONFIRMED',
+    `handle_remark` varchar(255) NOT NULL DEFAULT '' COMMENT '处理备注',
+    `handle_admin_id` bigint DEFAULT NULL COMMENT '处理管理员ID',
+    `handle_time` datetime DEFAULT NULL COMMENT '处理时间',
+    `last_detect_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近发现时间',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    KEY `idx_pay_exception_status_time` (`handled`, `create_time`, `id`),
+    KEY `idx_pay_exception_pay_order` (`pay_order_id`, `handled`),
+    KEY `idx_pay_exception_reason` (`reason_code`, `handled`, `last_detect_time`),
+    KEY `idx_pay_exception_order` (`order_sn`, `pay_sn`)
+) ENGINE=InnoDB COMMENT='支付异常与处理记录表';
 
 CREATE TABLE `trade_order_logistics` (
     `id` bigint NOT NULL AUTO_INCREMENT,

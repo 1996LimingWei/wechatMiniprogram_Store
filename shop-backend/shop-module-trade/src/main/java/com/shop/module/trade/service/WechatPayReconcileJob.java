@@ -14,7 +14,7 @@ import java.time.Duration;
 @ConditionalOnProperty(prefix = "wechat.pay", name = "reconcile-job-enabled", havingValue = "true")
 public class WechatPayReconcileJob {
 
-    private final PayOrderService payOrderService;
+    private final PayExceptionWorkbenchService payExceptionWorkbenchService;
     private final DistributedJobLockService jobLockService;
 
     @Value("${wechat.pay.reconcile-batch-size:50}")
@@ -24,14 +24,8 @@ public class WechatPayReconcileJob {
     public void reconcilePendingPayments() {
         if (!jobLockService.tryLock("wechat-pay-reconcile", Duration.ofMinutes(10))) return;
         try {
-            for (Long payOrderId : payOrderService.listPendingWechatPayOrderIds(batchSize)) {
-                try {
-                    payOrderService.syncPendingWechatPayment(payOrderId);
-                } catch (Exception exception) {
-                    log.warn("[WechatPayReconcileJob] 支付状态同步失败, payOrderId={}, message={}",
-                            payOrderId, exception.getMessage());
-                }
-            }
+            int processed = payExceptionWorkbenchService.scanPendingWechatPayments(batchSize);
+            log.debug("[WechatPayReconcileJob] 已扫描微信支付单 {} 个", processed);
         } finally {
             jobLockService.release("wechat-pay-reconcile");
         }
