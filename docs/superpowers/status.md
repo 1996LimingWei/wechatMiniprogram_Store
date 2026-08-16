@@ -858,6 +858,17 @@
 - 验证通过：商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`，共 43 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
 - 未完成复验：本机 Docker Desktop 未启动，Docker Engine 管道不可用，`verify-db-migration.ps1` 无法连接 `shop-mysql`，新增迁移 `V20260816_02__product_import_export_sku_code.sql` 的空库迁移与重放需在 Docker 启动后复验。
 
+## 2026-08-16 v1.0 P0-05 商品批量运营
+
+- 后端新增商品批量运营服务和管理端接口，支持批量上架、下架、调整分类、调整排序、固定金额或百分比批量调价、批量调库存。
+- 批量操作按商品逐项返回成功、失败和失败原因；写操作要求 `confirmCount` 与选择商品数一致，避免误操作范围漂移。
+- 批量调价必须先走预览接口，预览展示调整前后价格；正式调价更新 SKU 价格，订单后续结算读取新 SKU 价格。
+- 批量调库存按选中商品下所有 SKU 调整，复用 `ProductAdminService.saveSkus` 写入 `product_stock_log`，并强制填写 4 至 200 字库存调整原因。
+- 管理后台商品列表支持多选，新增批量上下架、分类、排序、调价、调库存入口；操作完成后展示逐项结果，商品管理权限不足时页面和接口均受现有 `product:manage` 权限保护。
+- 新增批量运营单元测试，覆盖确认数量校验、调价预览不落库、调库存调用 SKU 保存路径和缺失商品逐项失败。
+- 验证通过：商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`，共 47 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
+- 未完成复验：Docker Desktop 仍未启动，数据库迁移门禁仍需在 Docker Engine 可用后补跑；P0-05 本身未新增迁移。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -898,7 +909,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 执行客户运营能力：商品批量运营、库存工作台、运费配置。
+2. 执行客户运营能力：库存工作台、运费配置。
 3. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
 4. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
 5. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。

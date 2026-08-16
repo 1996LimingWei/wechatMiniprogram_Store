@@ -27,6 +27,37 @@ export interface ProductImportPreview {
     rows: ProductImportRow[];
 }
 
+export interface ProductBatchItemResult {
+    id: number;
+    name?: string;
+    success: boolean;
+    message: string;
+    beforePrice?: number;
+    afterPrice?: number;
+    beforeStock?: number;
+    afterStock?: number;
+}
+
+export interface ProductBatchOperationResult {
+    totalCount: number;
+    successCount: number;
+    failureCount: number;
+    dryRun: boolean;
+    rows: ProductBatchItemResult[];
+}
+
+export interface ProductBatchOperationRequest {
+    ids: number[];
+    confirmCount?: number;
+    status?: number;
+    categoryId?: number;
+    sort?: number;
+    priceAdjustType?: "FIXED_AMOUNT" | "PERCENT";
+    priceAdjustValue?: number;
+    stockDelta?: number;
+    reason?: string;
+}
+
 /** 商品分页列表（支持筛选） */
 export const getProductPage = (
     params: PageParam & {
@@ -121,6 +152,42 @@ export const exportProducts = (params: {
         responseType: "blob"
     });
 };
+
+export const batchUpdateProductStatus = (data: ProductBatchOperationRequest) =>
+    http.post<ProductBatchOperationResult, ProductBatchOperationRequest>(
+        "/admin-api/product/spu/batch/status",
+        { data }
+    );
+
+export const batchUpdateProductCategory = (data: ProductBatchOperationRequest) =>
+    http.post<ProductBatchOperationResult, ProductBatchOperationRequest>(
+        "/admin-api/product/spu/batch/category",
+        { data }
+    );
+
+export const batchUpdateProductSort = (data: ProductBatchOperationRequest) =>
+    http.post<ProductBatchOperationResult, ProductBatchOperationRequest>(
+        "/admin-api/product/spu/batch/sort",
+        { data }
+    );
+
+export const previewProductPriceBatch = (data: ProductBatchOperationRequest) =>
+    http.post<ProductBatchOperationResult, ProductBatchOperationRequest>(
+        "/admin-api/product/spu/batch/price-preview",
+        { data }
+    );
+
+export const batchUpdateProductPrice = (data: ProductBatchOperationRequest) =>
+    http.post<ProductBatchOperationResult, ProductBatchOperationRequest>(
+        "/admin-api/product/spu/batch/price",
+        { data }
+    );
+
+export const batchUpdateProductStock = (data: ProductBatchOperationRequest) =>
+    http.post<ProductBatchOperationResult, ProductBatchOperationRequest>(
+        "/admin-api/product/spu/batch/stock",
+        { data }
+    );
 
 export const getCommentPage = (params: {
     pageNo?: number;

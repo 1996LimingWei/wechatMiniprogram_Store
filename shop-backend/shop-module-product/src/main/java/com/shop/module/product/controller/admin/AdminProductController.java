@@ -4,9 +4,12 @@ import com.shop.common.pojo.CommonResult;
 import com.shop.common.pojo.PageParam;
 import com.shop.common.pojo.PageResult;
 import com.shop.module.product.dal.dataobject.ProductSpuDO;
+import com.shop.module.product.service.ProductBatchOperationService;
 import com.shop.module.product.service.ProductImportExportService;
 import com.shop.module.product.service.ProductSpuService;
 import com.shop.module.product.service.ProductAdminService;
+import com.shop.module.product.vo.ProductBatchOperationReqVO;
+import com.shop.module.product.vo.ProductBatchOperationRespVO;
 import com.shop.module.product.vo.ProductImportPreviewRespVO;
 import com.shop.module.product.vo.ProductSaveReqVO;
 import com.shop.framework.security.SecurityUtils;
@@ -29,6 +32,7 @@ public class AdminProductController {
     private final ProductSpuService productSpuService;
     private final ProductAdminService productAdminService;
     private final ProductImportExportService productImportExportService;
+    private final ProductBatchOperationService productBatchOperationService;
 
     @PostMapping("/save")
     public CommonResult<Long> save(@RequestBody ProductSaveReqVO request) {
@@ -72,6 +76,38 @@ public class AdminProductController {
                        @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) throws IOException {
         writeCsv(response, "商品导出.csv",
                 productImportExportService.exportCsv(name, categoryId, status, startTime, endTime));
+    }
+
+    @PostMapping("/batch/status")
+    public CommonResult<ProductBatchOperationRespVO> batchStatus(@RequestBody ProductBatchOperationReqVO request) {
+        return CommonResult.success(productBatchOperationService.updateStatus(request));
+    }
+
+    @PostMapping("/batch/category")
+    public CommonResult<ProductBatchOperationRespVO> batchCategory(@RequestBody ProductBatchOperationReqVO request) {
+        return CommonResult.success(productBatchOperationService.updateCategory(request));
+    }
+
+    @PostMapping("/batch/sort")
+    public CommonResult<ProductBatchOperationRespVO> batchSort(@RequestBody ProductBatchOperationReqVO request) {
+        return CommonResult.success(productBatchOperationService.updateSort(request));
+    }
+
+    @PostMapping("/batch/price-preview")
+    public CommonResult<ProductBatchOperationRespVO> batchPricePreview(@RequestBody ProductBatchOperationReqVO request) {
+        return CommonResult.success(productBatchOperationService.previewPrice(request));
+    }
+
+    @PostMapping("/batch/price")
+    public CommonResult<ProductBatchOperationRespVO> batchPrice(@RequestBody ProductBatchOperationReqVO request) {
+        return CommonResult.success(productBatchOperationService.updatePrice(
+                request, SecurityUtils.getRequiredAdminId()));
+    }
+
+    @PostMapping("/batch/stock")
+    public CommonResult<ProductBatchOperationRespVO> batchStock(@RequestBody ProductBatchOperationReqVO request) {
+        return CommonResult.success(productBatchOperationService.updateStock(
+                request, SecurityUtils.getRequiredAdminId()));
     }
 
     @GetMapping("/detail")
