@@ -14,6 +14,7 @@ public class ProductSkuDO extends BaseDO {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long spuId;
+    private String skuCode;
     private String properties;
     private Integer price;
     private Integer marketPrice;

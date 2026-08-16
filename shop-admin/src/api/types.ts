@@ -48,6 +48,7 @@ export interface Category {
 export interface ProductSku {
   id?: number;
   spuId: number;
+  skuCode?: string;
   properties?: string;
   price?: number;
   marketPrice?: number;

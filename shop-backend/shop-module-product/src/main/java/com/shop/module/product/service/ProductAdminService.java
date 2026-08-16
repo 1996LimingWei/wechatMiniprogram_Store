@@ -183,6 +183,7 @@ public class ProductAdminService {
                     .eq(ProductSkuDO::getId, existing.getId())
                     .eq(ProductSkuDO::getSpuId, spuId)
                     .eq(ProductSkuDO::getStock, existing.getStock())
+                    .set(ProductSkuDO::getSkuCode, requested.getSkuCode())
                     .set(ProductSkuDO::getProperties, requested.getProperties())
                     .set(ProductSkuDO::getPrice, requested.getPrice())
                     .set(ProductSkuDO::getMarketPrice, requested.getMarketPrice())
@@ -225,8 +226,13 @@ public class ProductAdminService {
             throw new ServerException(400, "商品至少需要一个有效规格");
         }
         Set<String> propertyKeys = new HashSet<>();
+        Set<String> skuCodes = new HashSet<>();
         for (ProductSkuDO sku : skus) {
             validateSku(sku);
+            validateSkuCodeUnique(sku);
+            if (sku.getSkuCode() != null && !skuCodes.add(sku.getSkuCode())) {
+                throw new ServerException(400, "SKU编码不能重复");
+            }
             String key = normalizeProperties(sku.getProperties());
             if (!propertyKeys.add(key)) {
                 throw new ServerException(400, "商品规格不能重复");
@@ -293,8 +299,26 @@ public class ProductAdminService {
         if (sku.getVolume() != null && sku.getVolume() < 0) {
             throw new ServerException(400, "规格体积不能为负数");
         }
+        String skuCode = sku.getSkuCode() == null ? "" : sku.getSkuCode().trim();
+        if (skuCode.length() > 64 || (!skuCode.isEmpty() && !skuCode.matches("[A-Za-z0-9_-]+"))) {
+            throw new ServerException(400, "SKU编码仅支持 1 至 64 位字母、数字、下划线或连字符");
+        }
+        sku.setSkuCode(skuCode.isEmpty() ? null : skuCode);
         sku.setPicUrl(normalizeResourceUrl(sku.getPicUrl(), "规格图片", false));
         materialAssetService.validateBusinessImageUrl(sku.getPicUrl(), "规格图片", false);
+    }
+
+    private void validateSkuCodeUnique(ProductSkuDO sku) {
+        if (sku.getSkuCode() == null) {
+            return;
+        }
+        ProductSkuDO existing = productSkuMapper.selectOne(new LambdaQueryWrapper<ProductSkuDO>()
+                .eq(ProductSkuDO::getSkuCode, sku.getSkuCode())
+                .ne(sku.getId() != null, ProductSkuDO::getId, sku.getId())
+                .last("LIMIT 1"));
+        if (existing != null) {
+            throw new ServerException(400, "SKU编码已存在");
+        }
     }
 
     private String normalizeSliderPicUrls(String rawValue, String mainPicUrl, boolean required) {

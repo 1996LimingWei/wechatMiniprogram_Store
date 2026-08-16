@@ -101,6 +101,7 @@ CREATE TABLE `product_spu` (
 CREATE TABLE `product_sku` (
     `id` bigint NOT NULL AUTO_INCREMENT,
     `spu_id` bigint NOT NULL COMMENT '商品SPU ID',
+    `sku_code` varchar(64) DEFAULT NULL COMMENT 'SKU编码',
     `properties` varchar(512) DEFAULT '[]' COMMENT '属性JSON [{id,name,valueId,valueName}]',
     `price` int NOT NULL COMMENT '价格(分)',
     `market_price` int DEFAULT NULL COMMENT '划线价(分)',
@@ -112,7 +113,8 @@ CREATE TABLE `product_sku` (
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',
     PRIMARY KEY (`id`),
-    KEY `idx_spu_id` (`spu_id`)
+    KEY `idx_spu_id` (`spu_id`),
+    UNIQUE KEY `uk_product_sku_code_deleted` (`sku_code`, `deleted`)
 ) ENGINE=InnoDB COMMENT='商品SKU表';
 
 CREATE TABLE IF NOT EXISTS `material_asset` (
@@ -173,11 +175,11 @@ INSERT INTO `product_spu` (`category_id`, `name`, `keyword`, `introduction`, `de
 (7, '维生素C咀嚼片', '维生素 营养', '每日营养补充', '<p>清新橙味，便携易食。</p>', 'https://picsum.photos/seed/vitamin/600/600', '["https://picsum.photos/seed/vitamin/600/600"]', 5980, 7980, 200, 180, 80, 1),
 (8, '黄芪片 200g', '黄芪 药膳', '优选黄芪切片', '<p>汤饮皆宜，片型完整。</p>', 'https://picsum.photos/seed/huangqi/600/600', '["https://picsum.photos/seed/huangqi/600/600"]', 4580, 6800, 80, 96, 70, 1);
 
-INSERT INTO `product_sku` (`spu_id`, `properties`, `price`, `market_price`, `stock`, `pic_url`) VALUES
-(1, '[{"id":1,"name":"规格","valueId":1,"valueName":"250g"}]', 9980, 12800, 120, 'https://picsum.photos/seed/ejiao/600/600'),
-(2, '[{"id":1,"name":"规格","valueId":2,"valueName":"120g"}]', 3980, 5980, 160, 'https://picsum.photos/seed/tea/600/600'),
-(3, '[{"id":1,"name":"规格","valueId":3,"valueName":"60片"}]', 5980, 7980, 200, 'https://picsum.photos/seed/vitamin/600/600'),
-(4, '[{"id":1,"name":"规格","valueId":4,"valueName":"200g"}]', 4580, 6800, 80, 'https://picsum.photos/seed/huangqi/600/600');
+INSERT INTO `product_sku` (`spu_id`, `sku_code`, `properties`, `price`, `market_price`, `stock`, `pic_url`) VALUES
+(1, 'DEMO-EJIAO-250G', '[{"id":1,"name":"规格","valueId":1,"valueName":"250g"}]', 9980, 12800, 120, 'https://picsum.photos/seed/ejiao/600/600'),
+(2, 'DEMO-TEA-120G', '[{"id":1,"name":"规格","valueId":2,"valueName":"120g"}]', 3980, 5980, 160, 'https://picsum.photos/seed/tea/600/600'),
+(3, 'DEMO-VC-60', '[{"id":1,"name":"规格","valueId":3,"valueName":"60片"}]', 5980, 7980, 200, 'https://picsum.photos/seed/vitamin/600/600'),
+(4, 'DEMO-HUANGQI-200G', '[{"id":1,"name":"规格","valueId":4,"valueName":"200g"}]', 4580, 6800, 80, 'https://picsum.photos/seed/huangqi/600/600');
 
 -- ============ 内容相关 ============
 

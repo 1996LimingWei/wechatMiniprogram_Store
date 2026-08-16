@@ -3,6 +3,30 @@ import type { PageParam, PageResult, ProductSpu } from "./types";
 import type { ProductSku } from "./types";
 import type { ProductComment } from "./types";
 
+export interface ProductImportRow {
+    rowNo: number;
+    valid: boolean;
+    productName?: string;
+    categoryName?: string;
+    skuCode?: string;
+    specName?: string;
+    specValue?: string;
+    price?: string;
+    stock?: number;
+    errorColumns?: string[];
+    errors?: string[];
+}
+
+export interface ProductImportPreview {
+    totalRows: number;
+    validRows: number;
+    errorRows: number;
+    createdProductCount: number;
+    createdSkuCount: number;
+    dryRun: boolean;
+    rows: ProductImportRow[];
+}
+
 /** 商品分页列表（支持筛选） */
 export const getProductPage = (
     params: PageParam & {
@@ -54,6 +78,47 @@ export const updateProduct = (data: ProductSpu) => {
 export const deleteProduct = (id: number) => {
     return http.request<boolean>("delete", "/admin-api/product/spu/delete", {
         params: { id }
+    });
+};
+
+/** 下载商品导入模板 */
+export const downloadProductImportTemplate = () => {
+    return http.request<Blob>("get", "/admin-api/product/spu/import-template", {
+        responseType: "blob"
+    });
+};
+
+/** 商品导入预校验，不写入数据库 */
+export const previewProductImport = (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return http.request<ProductImportPreview>("post", "/admin-api/product/spu/import-preview", {
+        data: formData,
+        headers: { "Content-Type": "multipart/form-data" }
+    });
+};
+
+/** 确认导入商品，成功后写入商品、SKU 和库存流水 */
+export const confirmProductImport = (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return http.request<ProductImportPreview>("post", "/admin-api/product/spu/import-confirm", {
+        data: formData,
+        headers: { "Content-Type": "multipart/form-data" }
+    });
+};
+
+/** 按当前筛选导出商品 CSV */
+export const exportProducts = (params: {
+    name?: string;
+    categoryId?: number;
+    status?: number;
+    startTime?: string;
+    endTime?: string;
+}) => {
+    return http.request<Blob>("get", "/admin-api/product/spu/export", {
+        params,
+        responseType: "blob"
     });
 };
 

@@ -2,13 +2,20 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
+import type { UploadFile, UploadInstance } from "element-plus";
+import { Download, Upload, UploadFilled } from "@element-plus/icons-vue";
 import {
     getProductPage,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    downloadProductImportTemplate,
+    previewProductImport,
+    confirmProductImport,
+    exportProducts
 } from "@/api/product";
 import { getCategoryList } from "@/api/category";
 import type { ProductSpu, Category } from "@/api/types";
+import type { ProductImportPreview, ProductImportRow } from "@/api/product";
 
 defineOptions({ name: "ProductList" });
 
@@ -31,7 +38,8 @@ const query = reactive({
     pageSize: 10,
     name: "",
     categoryId: undefined as number | undefined,
-    status: undefined as number | undefined
+    status: undefined as number | undefined,
+    createTimeRange: [] as string[]
 });
 
 async function fetchData() {
@@ -62,6 +70,7 @@ function handleReset() {
     query.name = "";
     query.categoryId = undefined;
     query.status = undefined;
+    query.createTimeRange = [];
     query.pageNo = 1;
     fetchData();
 }
@@ -99,6 +108,130 @@ function goCreate() {
 
 function goEdit(row: ProductSpu) {
     router.push(`/product/spu-form/${row.id}`);
+}
+
+/* ---------- 导入/导出 ---------- */
+const importDialogVisible = ref(false);
+const importLoading = ref(false);
+const exportLoading = ref(false);
+const importUploadRef = ref<UploadInstance>();
+const importFile = ref<File | null>(null);
+const importPreview = ref<ProductImportPreview | null>(null);
+
+function saveBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+async function handleDownloadTemplate() {
+    const blob = await downloadProductImportTemplate();
+    saveBlob(blob, "商品导入模板.csv");
+}
+
+function handleOpenImport() {
+    importDialogVisible.value = true;
+    importPreview.value = null;
+    importFile.value = null;
+    importUploadRef.value?.clearFiles();
+}
+
+function handleImportFileChange(file: UploadFile) {
+    importFile.value = file.raw ?? null;
+    importPreview.value = null;
+}
+
+function handleImportFileRemove() {
+    importFile.value = null;
+    importPreview.value = null;
+}
+
+async function handlePreviewImport() {
+    if (!importFile.value) {
+        ElMessage.warning("请先选择 CSV 文件");
+        return;
+    }
+    importLoading.value = true;
+    try {
+        importPreview.value = await previewProductImport(importFile.value);
+        if (importPreview.value.errorRows > 0) {
+            ElMessage.warning("预校验发现错误，请修正后重新上传");
+        } else {
+            ElMessage.success("预校验通过，可以确认导入");
+        }
+    } finally {
+        importLoading.value = false;
+    }
+}
+
+async function handleConfirmImport() {
+    if (!importFile.value) {
+        ElMessage.warning("请先选择 CSV 文件");
+        return;
+    }
+    if (!importPreview.value) {
+        ElMessage.warning("请先执行预校验");
+        return;
+    }
+    if (importPreview.value.errorRows > 0) {
+        ElMessage.warning("存在错误行，不能确认导入");
+        return;
+    }
+    await ElMessageBox.confirm(
+        `确定导入 ${importPreview.value.validRows} 行商品 SKU 吗？`,
+        "确认导入",
+        { type: "warning" }
+    );
+    importLoading.value = true;
+    try {
+        importPreview.value = await confirmProductImport(importFile.value);
+        ElMessage.success(
+            `导入完成：新增 ${importPreview.value.createdProductCount} 个商品、${importPreview.value.createdSkuCount} 个 SKU`
+        );
+        importDialogVisible.value = false;
+        fetchData();
+    } finally {
+        importLoading.value = false;
+    }
+}
+
+async function handleExport() {
+    exportLoading.value = true;
+    ElMessage.info("正在导出商品文件，请稍候");
+    try {
+        const params: any = {};
+        if (query.name.trim()) params.name = query.name.trim();
+        if (query.categoryId != null) params.categoryId = query.categoryId;
+        if (query.status != null) params.status = query.status;
+        if (query.createTimeRange.length === 2) {
+            params.startTime = query.createTimeRange[0];
+            params.endTime = query.createTimeRange[1];
+        }
+        const blob = await exportProducts(params);
+        saveBlob(blob, "商品导出.csv");
+        ElMessage.success("商品导出完成");
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
+function importRowStatus(row: ProductImportRow) {
+    return row.valid ? "success" : "danger";
+}
+
+function formatImportErrors(row: ProductImportRow) {
+    if (!row.errors?.length) return "—";
+    return row.errors.join("；");
+}
+
+function formatImportColumns(row: ProductImportRow) {
+    if (!row.errorColumns?.length) return "—";
+    return row.errorColumns.join("、");
 }
 
 /* ---------- 分页 ---------- */
@@ -172,6 +305,17 @@ onMounted(async () => {
                         <el-option label="下架" :value="0" />
                     </el-select>
                 </el-form-item>
+                <el-form-item label="创建时间">
+                    <el-date-picker
+                        v-model="query.createTimeRange"
+                        type="datetimerange"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        range-separator="至"
+                        start-placeholder="开始时间"
+                        end-placeholder="结束时间"
+                        style="width: 360px"
+                    />
+                </el-form-item>
                 <el-form-item>
                     <el-button type="primary" @click="handleSearch">搜索</el-button>
                     <el-button @click="handleReset">重置</el-button>
@@ -182,9 +326,20 @@ onMounted(async () => {
         <!-- 操作栏 + 表格 -->
         <el-card shadow="never">
             <div class="toolbar">
-                <el-button type="primary" @click="goCreate">
-                    新增商品
-                </el-button>
+                <div class="toolbar-actions">
+                    <el-button type="primary" @click="goCreate">
+                        新增商品
+                    </el-button>
+                    <el-button :icon="Download" @click="handleDownloadTemplate">
+                        下载模板
+                    </el-button>
+                    <el-button :icon="Upload" @click="handleOpenImport">
+                        导入商品
+                    </el-button>
+                    <el-button :icon="Download" :loading="exportLoading" @click="handleExport">
+                        导出商品
+                    </el-button>
+                </div>
                 <span class="total-label">共 {{ total }} 件商品</span>
             </div>
 
@@ -271,6 +426,81 @@ onMounted(async () => {
                 />
             </div>
         </el-card>
+
+        <el-dialog
+            v-model="importDialogVisible"
+            title="导入商品"
+            width="920px"
+            destroy-on-close
+        >
+            <el-upload
+                ref="importUploadRef"
+                drag
+                accept=".csv"
+                :auto-upload="false"
+                :limit="1"
+                :on-change="handleImportFileChange"
+                :on-remove="handleImportFileRemove"
+            >
+                <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+                <div class="el-upload__text">拖拽 CSV 文件到此处，或点击选择文件</div>
+            </el-upload>
+
+            <div v-if="importPreview" class="import-summary">
+                <el-tag type="info">总行数 {{ importPreview.totalRows }}</el-tag>
+                <el-tag type="success">有效 {{ importPreview.validRows }}</el-tag>
+                <el-tag :type="importPreview.errorRows > 0 ? 'danger' : 'success'">
+                    错误 {{ importPreview.errorRows }}
+                </el-tag>
+                <el-tag v-if="!importPreview.dryRun" type="success">
+                    已创建商品 {{ importPreview.createdProductCount }} 个，SKU {{ importPreview.createdSkuCount }} 个
+                </el-tag>
+            </div>
+
+            <el-table
+                v-if="importPreview"
+                :data="importPreview.rows"
+                border
+                max-height="360"
+                style="width: 100%; margin-top: 12px"
+            >
+                <el-table-column prop="rowNo" label="行号" width="70" align="center" />
+                <el-table-column label="状态" width="80" align="center">
+                    <template #default="{ row }">
+                        <el-tag :type="importRowStatus(row)" size="small">
+                            {{ row.valid ? "通过" : "错误" }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="productName" label="商品名称" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="categoryName" label="分类" width="130" show-overflow-tooltip />
+                <el-table-column prop="skuCode" label="SKU编码" width="140" show-overflow-tooltip />
+                <el-table-column prop="price" label="售价" width="90" align="right" />
+                <el-table-column prop="stock" label="库存" width="80" align="center" />
+                <el-table-column label="错误列" min-width="150" show-overflow-tooltip>
+                    <template #default="{ row }">{{ formatImportColumns(row) }}</template>
+                </el-table-column>
+                <el-table-column label="错误原因" min-width="220" show-overflow-tooltip>
+                    <template #default="{ row }">{{ formatImportErrors(row) }}</template>
+                </el-table-column>
+            </el-table>
+
+            <template #footer>
+                <el-button @click="importDialogVisible = false">关闭</el-button>
+                <el-button @click="handleDownloadTemplate">下载模板</el-button>
+                <el-button type="primary" :loading="importLoading" @click="handlePreviewImport">
+                    预校验
+                </el-button>
+                <el-button
+                    type="success"
+                    :disabled="!importPreview || importPreview.errorRows > 0"
+                    :loading="importLoading"
+                    @click="handleConfirmImport"
+                >
+                    确认导入
+                </el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -286,6 +516,11 @@ onMounted(async () => {
     align-items: center;
     justify-content: space-between;
 }
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .total-label {
     font-size: 13px;
     color: #6b7280;
@@ -300,6 +535,12 @@ onMounted(async () => {
 .pagination-wrap {
     display: flex;
     justify-content: flex-end;
+    margin-top: 16px;
+}
+.import-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-top: 16px;
 }
 </style>

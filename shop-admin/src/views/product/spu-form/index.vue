@@ -236,6 +236,7 @@ function generateMatrix() {
             ...(old || {}),
             spuId: spuId.value ?? 0,
             properties: JSON.stringify(props),
+            skuCode: old?.skuCode || "",
             price: old?.price,
             marketPrice: old?.marketPrice,
             stock: old?.stock ?? 0,
@@ -568,6 +569,16 @@ onMounted(async () => {
                             @update:model-value="skuPriceSet(row, $event)"
                             size="small"
                             placeholder="0.00"
+                        />
+                    </template>
+                </el-table-column>
+                <el-table-column label="SKU编码" width="150" align="center">
+                    <template #default="{ row }">
+                        <el-input
+                            v-model="row.skuCode"
+                            size="small"
+                            maxlength="64"
+                            placeholder="如 SKU-001"
                         />
                     </template>
                 </el-table-column>
