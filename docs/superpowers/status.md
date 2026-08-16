@@ -1029,7 +1029,10 @@
 - 生产部署、回滚、备份恢复文档已补充备份权限控制、恢复到测试库演练步骤、对象存储误删保护和重门禁执行说明；最终验收报告同步补充新增门禁和在线依赖审计记录项。
 - 验证通过：`scripts/verify-admin-production-readiness.ps1`、`scripts/verify-admin-permission-matrix.ps1`、`scripts/verify-miniapp-production-readiness.ps1`、`scripts/verify-production-config.ps1`、`scripts/verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、管理后台 `corepack pnpm typecheck`、管理后台 `corepack pnpm build` 和 `git diff --check`。
 - `v1.0 客户交付版.md` 已同步勾选支付/退款/对账异常后台处理、售后角色越权校验、production 配置校验和按订单号定位日志等本地已验证验收项。
-- 未完成复验：`scripts/verify-dependency-audit.ps1 -RunOnlineAudit` 本机执行 15 分钟超时，已结束残留 Maven 审计进程；Docker Engine 仍需恢复后补跑数据库迁移空库执行和重放。
+- Docker Desktop 已后台启动，`shop-mysql` 与 `shop-redis` 已启动；本地 `shop` 开发库已执行最新增量迁移，`scripts/verify-db-migration.ps1` 已通过空库执行与迁移重放复验。
+- 后端当前 jar 已启动并通过健康检查；`scripts/verify-trade-flow.ps1`、`scripts/verify-commerce-consistency.ps1` 和 `scripts/verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -RunTradeFlow -RunCommerceConsistency` 已通过。
+- HBuilderX 5.07 已通过 CLI 导入 `shop-miniapp` 并执行 `launch mp-weixin --compile true`，微信小程序端编译检查通过；体验版上传和真机回归仍需客户 AppID、微信开发者权限和设备。
+- 未完成复验：`scripts/verify-dependency-audit.ps1 -RunOnlineAudit` 本机两次 15 分钟窗口均超时，已结束残留 Maven 审计进程；需在网络稳定或 CI 环境补跑并归档。
 
 ## 决策记录
 
@@ -1070,10 +1073,9 @@
 ## 下一步行动
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
-1. Docker Engine 恢复后补跑数据库迁移门禁，完成空库执行与迁移重放复验。
-2. 网络稳定或 CI 环境可用后补跑 `scripts/verify-dependency-audit.ps1 -RunOnlineAudit`，归档在线依赖漏洞扫描结果。
-3. 后端服务、MySQL、Redis 可用后执行 `scripts/verify-ci.ps1 -RunTradeFlow -RunCommerceConsistency`，归档真实接口交易闭环和商品交易一致性脚本结果。
-4. 最后由客户提供正式资料，完成小程序体验版/真机回归、真实微信支付退款实单、真实物流单号查询、生产部署地址和最终客户签收验收。
+1. 网络稳定或 CI 环境可用后补跑 `scripts/verify-dependency-audit.ps1 -RunOnlineAudit`，归档在线依赖漏洞扫描结果。
+2. 使用 HBuilderX 内置编译器完成微信小程序体验版构建、上传和真机回归。
+3. 最后由客户提供正式资料，完成小程序体验版/真机回归、真实微信支付退款实单、真实物流单号查询、生产部署地址和最终客户签收验收。
 
 ---
 
