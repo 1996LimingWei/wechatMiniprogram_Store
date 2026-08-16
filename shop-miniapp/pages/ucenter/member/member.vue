@@ -201,7 +201,7 @@ export default {
 					this.userId = userInfo.userId || '';
 				}
 			} catch (e) {
-				console.error('loadCenter error', e);
+				uni.showToast({ title: '会员信息加载失败，请稍后再试', icon: 'none' });
 			} finally {
 				this.loading = false;
 			}

@@ -40,7 +40,11 @@ $guideChecks = @(
     "已知限制",
     "v1.0 发布说明",
     "WECHAT_PAY_REFUND_NOTIFY_URL",
-    "KUAIDI100_CUSTOMER"
+    "KUAIDI100_CUSTOMER",
+    "verify-admin-production-readiness.ps1",
+    "verify-admin-permission-matrix.ps1",
+    "verify-miniapp-production-readiness.ps1",
+    "verify-dependency-audit.ps1"
 )
 
 foreach ($item in $guideChecks) {
@@ -69,5 +73,6 @@ foreach ($item in $reportChecks) {
 Assert-Contains $payRefund '退款重复通知幂等' "支付退款验收记录必须覆盖退款通知幂等"
 Assert-Contains $logistics '查询失败回退缓存' "物流验收记录必须覆盖失败缓存回退"
 Assert-Contains $miniapp '体验版' "小程序提审清单必须覆盖体验版"
+Assert-Contains $report 'verify-dependency-audit.ps1 -RunOnlineAudit' "最终验收报告必须覆盖在线依赖漏洞扫描"
 
 Write-Host "客户交付文档校验通过。"

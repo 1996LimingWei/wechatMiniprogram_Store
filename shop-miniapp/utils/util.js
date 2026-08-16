@@ -8,10 +8,17 @@ const utils = {
 	},
 	toast: function (text, duration, success) {
 		uni.showToast({
-			title: text || "出错啦~",
+			title: utils.safeMessage(text, "出错啦~"),
 			icon: success || 'none',
 			duration: duration || 2000
 		})
+	},
+	safeMessage: function (text, fallback) {
+		const value = String(text || '').trim();
+		if (!value) return fallback || '操作失败，请稍后再试';
+		const unsafePattern = /(\/admin-api|\/app-api|exception|stack|trace|sql|jdbc|token|authorization|password|secret|private[-_ ]?key|api[-_ ]?v3|openid|session|at\s+com\.shop)/i;
+		if (unsafePattern.test(value)) return fallback || '操作失败，请稍后再试';
+		return value.length > 60 ? value.substring(0, 60) : value;
 	},
 	modal: function (title, content, showCancel = false, callback, confirmColor, confirmText, cancelColor, cancelText) {
 		uni.showModal({
@@ -569,5 +576,6 @@ module.exports = {
 	isEmpty: utils.isEmpty,
 	expireTime: utils.expireTime,
 	payOrder: utils.payOrder,
-	login: utils.login
+	login: utils.login,
+	safeMessage: utils.safeMessage
 }

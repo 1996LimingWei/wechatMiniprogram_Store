@@ -1019,6 +1019,17 @@
 - 新增 `scripts/verify-delivery-docs.ps1` 并纳入 `scripts/verify-ci.ps1`，自动校验客户交付手册、最终验收报告和小程序/支付退款/物流专项验收模板是否齐全。
 - 文档侧已收口；最终验收报告中的生产服务地址、管理后台地址、小程序体验版二维码、初始超级管理员账号交付方式、真实支付退款物流证据和客户签字，仍需客户资料、生产环境和人工验收后填写。
 
+## 2026-08-16 v1.0 P0-01/P0-14/P0-15 交付基座补强
+
+- 管理后台新增 `VITE_ADMIN_API_BASE_URL`，开发环境继续走 Vite 代理，预发布/生产可通过 HTTPS 地址注入或同域 Nginx 反代；新增 `scripts/verify-admin-production-readiness.ps1` 校验生产 API 注入、正式文案、错误脱敏和只检查不改写的 lint 脚本。
+- 管理后台登录页取消默认 `admin/admin123` 预填，展示 `v1.0 客户交付版`；403/404/500 页面改为客户可接受的正式文案；HTTP 错误提示统一过滤接口路径、异常栈、SQL/JDBC、Token、密码和密钥。
+- 小程序环境配置支持 `VUE_APP_ENV=staging/production`、`VUE_APP_STAGING_API_BASE_URL` 和 `VUE_APP_PROD_API_BASE_URL`，体验版和正式版强制 HTTPS；小程序 `toast` 统一脱敏，移除会员页残留调试输出和体验模式文案。
+- 新增 `scripts/verify-miniapp-production-readiness.ps1`，校验小程序体验版/正式版 API 配置、错误脱敏和调试输出；新增 `scripts/verify-admin-permission-matrix.ps1`，校验后端管理端权限过滤器、RBAC 迁移和前端按钮/路由权限矩阵。
+- 新增 `scripts/verify-dependency-audit.ps1`，提供 `-RunOnlineAudit` 在线依赖漏洞扫描入口；`verify-ci.ps1` 增加 `-RunTradeFlow`、`-RunCommerceConsistency`、`-RunAdminLint` 和 `-RunDependencyAudit` 重门禁开关。
+- 生产部署、回滚、备份恢复文档已补充备份权限控制、恢复到测试库演练步骤、对象存储误删保护和重门禁执行说明；最终验收报告同步补充新增门禁和在线依赖审计记录项。
+- 验证通过：`scripts/verify-admin-production-readiness.ps1`、`scripts/verify-admin-permission-matrix.ps1`、`scripts/verify-miniapp-production-readiness.ps1`、`scripts/verify-production-config.ps1`、`scripts/verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、管理后台 `corepack pnpm typecheck`、管理后台 `corepack pnpm build` 和 `git diff --check`。
+- 未完成复验：`scripts/verify-dependency-audit.ps1 -RunOnlineAudit` 本机执行 15 分钟超时，已结束残留 Maven 审计进程；Docker Engine 仍需恢复后补跑数据库迁移空库执行和重放。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -1058,9 +1069,9 @@
 ## 下一步行动
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
-1. 继续收口 P0-01 生产配置剩余项：管理后台 API Base URL 环境变量注入、正式文案、小程序体验版/正式版 API 域名区分和错误提示脱敏复核。
-2. 继续收口 P0-14 API 契约与 CI 门禁：管理员权限测试、依赖漏洞扫描、后台 Lint 策略、API 类型声明检查和可自动化的交易闭环/一致性脚本。
-3. 启动 Docker 后补跑数据库迁移门禁，完成空库执行与迁移重放复验。
+1. Docker Engine 恢复后补跑数据库迁移门禁，完成空库执行与迁移重放复验。
+2. 网络稳定或 CI 环境可用后补跑 `scripts/verify-dependency-audit.ps1 -RunOnlineAudit`，归档在线依赖漏洞扫描结果。
+3. 后端服务、MySQL、Redis 可用后执行 `scripts/verify-ci.ps1 -RunTradeFlow -RunCommerceConsistency`，归档真实接口交易闭环和商品交易一致性脚本结果。
 4. 最后由客户提供正式资料，完成小程序体验版/真机回归、真实微信支付退款实单、真实物流单号查询、生产部署地址和最终客户签收验收。
 
 ---

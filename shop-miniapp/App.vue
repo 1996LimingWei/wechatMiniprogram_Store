@@ -14,7 +14,6 @@
 			try {
 				env.validate()
 			} catch (error) {
-				console.error('[Config] ' + error.message)
 				uni.showModal({
 					title: '配置错误',
 					content: '当前版本未正确配置服务地址，请联系运营人员。',

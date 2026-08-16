@@ -21,8 +21,27 @@ interface BackendResponse<T = any> {
   data: T;
 }
 
+const adminApiBaseUrl = normalizeAdminApiBaseUrl(
+  import.meta.env.VITE_ADMIN_API_BASE_URL
+);
+
+function normalizeAdminApiBaseUrl(value?: string): string {
+  const text = String(value || "").trim();
+  return text.endsWith("/") ? text.slice(0, -1) : text;
+}
+
+function safeErrorMessage(message: unknown, fallback: string): string {
+  const text = String(message || "").trim();
+  if (!text) return fallback;
+  const unsafePattern =
+    /(\/admin-api|\/app-api|exception|stack|trace|sql|jdbc|token|authorization|password|secret|private[-_ ]?key|api[-_ ]?v3|openid|session|at\s+com\.shop)/i;
+  if (unsafePattern.test(text)) return fallback;
+  return text.length > 80 ? text.slice(0, 80) : text;
+}
+
 // 相关配置请参考：www.axios-js.com/zh-cn/docs/#axios-request-config-1
 const defaultConfig: AxiosRequestConfig = {
+  baseURL: adminApiBaseUrl,
   // 请求超时时间
   timeout: 10000,
   headers: {
@@ -99,7 +118,7 @@ class PureHttp {
         if (res && typeof res.code === "number") {
           if (res.code !== 0) {
             // 业务错误：弹出提示
-            ElMessage.error(res.msg || "请求失败");
+            ElMessage.error(safeErrorMessage(res.msg, "请求失败"));
             return Promise.reject(new Error(res.msg || "请求失败"));
           }
           // 成功：直接返回 data 字段
@@ -121,13 +140,21 @@ class PureHttp {
             // 未授权：清除 token 并跳转登录页
             removeToken();
             router.push("/login");
-            ElMessage.error(backendMessage || "登录已过期，请重新登录");
+            ElMessage.error(
+              safeErrorMessage(backendMessage, "登录已过期，请重新登录")
+            );
           } else if (status === 403) {
-            ElMessage.error(backendMessage || "没有权限访问该资源");
+            ElMessage.error(
+              safeErrorMessage(backendMessage, "没有权限访问该资源")
+            );
           } else if (status === 500) {
-            ElMessage.error(backendMessage || "服务器内部错误");
+            ElMessage.error(
+              safeErrorMessage(backendMessage, "服务暂时不可用，请稍后再试")
+            );
           } else {
-            ElMessage.error(backendMessage || `请求失败 (${status})`);
+            ElMessage.error(
+              safeErrorMessage(backendMessage, `请求失败 (${status})`)
+            );
           }
         } else if (!error.isCancelRequest) {
           ElMessage.error("网络异常，请检查网络连接");

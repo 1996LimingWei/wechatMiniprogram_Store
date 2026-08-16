@@ -182,7 +182,7 @@ export default {
 					this.purchaseMessage = d.purchaseMessage || '黄金会员服务暂未开放';
 				}
 			} catch (e) {
-				console.error('loadGoldCard error', e);
+				uni.showToast({ title: '会员信息加载失败，请稍后再试', icon: 'none' });
 			} finally {
 				this.loading = false;
 			}
@@ -191,7 +191,7 @@ export default {
 			if (this.subscribing || !this.purchaseEnabled) return;
 			uni.showModal({
 				title: '开通黄金会员',
-				content: '当前为体验模式，开通后将立即生效。确认开通黄金会员？',
+				content: '确认开通黄金会员？',
 				confirmColor: '#B8860B',
 				confirmText: '确认开通',
 				success: async (res) => {

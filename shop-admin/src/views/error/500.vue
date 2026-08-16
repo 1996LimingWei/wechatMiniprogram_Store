@@ -47,7 +47,7 @@ const router = useRouter();
           }
         }"
       >
-        抱歉，服务器出错了
+        服务暂时不可用，请稍后再试
       </p>
       <el-button
         v-motion
@@ -66,7 +66,7 @@ const router = useRouter();
         }"
         @click="router.push('/')"
       >
-        返回首页
+        返回工作台
       </el-button>
     </div>
   </div>

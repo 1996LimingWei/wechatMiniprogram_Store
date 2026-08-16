@@ -37,8 +37,8 @@ dataThemeChange(overallStyle.value);
 const { getLogo } = useNav();
 
 const ruleForm = reactive({
-  username: "admin",
-  password: "admin123"
+  username: "",
+  password: ""
 });
 
 const onLogin = async (formEl: FormInstance | undefined) => {
@@ -112,6 +112,7 @@ useEventListener(document, "keydown", ({ code }) => {
           <Motion>
             <h2>药食同源 · 管理系统</h2>
           </Motion>
+          <p class="version-text">v1.0 客户交付版</p>
 
           <el-form
             ref="ruleFormRef"
@@ -177,5 +178,12 @@ useEventListener(document, "keydown", ({ code }) => {
 <style lang="scss" scoped>
 :deep(.el-input-group__append, .el-input-group__prepend) {
   padding: 0;
+}
+
+.version-text {
+  margin: -10px 0 18px;
+  color: #7a8a7a;
+  font-size: 13px;
+  text-align: center;
 }
 </style>

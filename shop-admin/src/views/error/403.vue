@@ -47,7 +47,7 @@ const router = useRouter();
           }
         }"
       >
-        抱歉，你无权访问该页面
+        当前账号无权访问该功能
       </p>
       <el-button
         v-motion
@@ -66,7 +66,7 @@ const router = useRouter();
         }"
         @click="router.push('/')"
       >
-        返回首页
+        返回工作台
       </el-button>
     </div>
   </div>

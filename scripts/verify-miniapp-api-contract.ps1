@@ -33,7 +33,9 @@ foreach ($page in $pageConfig.pages) {
 }
 
 $backendRoutes = [System.Collections.Generic.HashSet[string]]::new()
-Get-ChildItem $backendRoot -Recurse -Filter "*.java" | ForEach-Object {
+Get-ChildItem $backendRoot -Recurse -File -Filter "*.java" |
+    Where-Object { $_.FullName -notmatch '\\\.mvn\\repository\\|\\target\\|\\node_modules\\' } |
+    ForEach-Object {
     $content = Get-Content $_.FullName -Raw -Encoding utf8
     $paths = [regex]::Matches($content, '@(?:Get|Post|Put|Delete|Request)Mapping\("(?<path>[^"]+)"\)') |
         ForEach-Object { $_.Groups["path"].Value }
