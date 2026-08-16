@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shop.common.exception.ServerException;
 import com.shop.module.trade.config.WechatPayProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +38,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WechatPayService {
 
     private static final String API_BASE_URL = "https://api.mch.weixin.qq.com";
@@ -372,6 +374,7 @@ public class WechatPayService {
             String method, String canonicalUrl, Map<String, Object> payload,
             Set<String> acceptedErrorCodes) {
         validateConfiguration();
+        long startNanos = System.nanoTime();
         try {
             String body = payload == null ? "" : objectMapper.writeValueAsString(payload);
             String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
@@ -393,19 +396,38 @@ public class WechatPayService {
             Map<String, Object> responseBody = response.body() == null || response.body().isBlank()
                     ? Map.of()
                     : objectMapper.readValue(response.body(), new TypeReference<>() {});
+            long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 String errorCode = String.valueOf(responseBody.getOrDefault("code", ""));
+                log.warn("微信支付接口返回失败 method={} path={} status={} durationMs={} errorCode={}",
+                        method, sanitizePath(canonicalUrl), response.statusCode(), durationMs, errorCode);
                 if (acceptedErrorCodes.contains(errorCode)) {
                     return responseBody;
                 }
                 throw new ServerException(502, "微信支付接口请求失败");
             }
+            log.info("微信支付接口调用成功 method={} path={} status={} durationMs={}",
+                    method, sanitizePath(canonicalUrl), response.statusCode(), durationMs);
             return responseBody;
         } catch (ServerException exception) {
+            long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+            log.warn("微信支付接口调用异常 method={} path={} durationMs={} errorCode={} message={}",
+                    method, sanitizePath(canonicalUrl), durationMs, exception.getCode(), exception.getMessage());
             throw exception;
         } catch (Exception exception) {
+            long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+            log.warn("微信支付接口调用异常 method={} path={} durationMs={} errorCode={} message={}",
+                    method, sanitizePath(canonicalUrl), durationMs, "NETWORK_OR_PARSE", exception.getClass().getSimpleName());
             throw new ServerException(502, "微信支付服务暂时不可用");
         }
+    }
+
+    private String sanitizePath(String canonicalUrl) {
+        if (canonicalUrl == null || canonicalUrl.isBlank()) {
+            return "/";
+        }
+        String path = canonicalUrl.replaceAll("mchid=[^&]+", "mchid=***");
+        return path.length() <= 256 ? path : path.substring(0, 256);
     }
 
     public void validateCredentialFiles() {

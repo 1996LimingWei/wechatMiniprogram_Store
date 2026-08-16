@@ -16,6 +16,7 @@ public class TradeRefundSyncJob {
 
     private final TradeRefundExecutionService tradeRefundExecutionService;
     private final DistributedJobLockService jobLockService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Value("${trade.refund.sync-batch-size:50}")
     private int batchSize;
@@ -24,15 +25,27 @@ public class TradeRefundSyncJob {
     public void syncProcessingRefunds() {
         if (!jobLockService.tryLock("trade-refund-sync", Duration.ofMinutes(10))) return;
         try {
+            int processed = 0;
+            int failed = 0;
             for (Long afterSaleId : tradeRefundExecutionService.listExecutableIds(batchSize)) {
                 try {
-                    tradeRefundExecutionService.execute(
-                            afterSaleId, TradeOrderLogService.OPERATOR_SYSTEM, 0L, false);
+                    if (tradeRefundExecutionService.execute(
+                            afterSaleId, TradeOrderLogService.OPERATOR_SYSTEM, 0L, false)) {
+                        processed++;
+                    } else {
+                        failed++;
+                    }
                 } catch (Exception exception) {
+                    failed++;
                     log.warn("[TradeRefundSyncJob] 退款状态同步失败, afterSaleId={}, message={}",
                             afterSaleId, exception.getMessage());
                 }
             }
+            tradeObservabilityService.recordJobResult("trade-refund-sync", failed == 0, processed,
+                    failed == 0 ? "退款状态同步完成" : "部分退款状态同步失败：" + failed);
+        } catch (Exception exception) {
+            log.error("[TradeRefundSyncJob] 退款状态同步任务失败", exception);
+            tradeObservabilityService.recordJobResult("trade-refund-sync", false, 0, exception.getMessage());
         } finally {
             jobLockService.release("trade-refund-sync");
         }

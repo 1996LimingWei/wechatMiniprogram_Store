@@ -15,6 +15,7 @@ public class TradeOrderExpireJob {
     private final TradeOrderProperties tradeOrderProperties;
     private final TradeOrderService tradeOrderService;
     private final DistributedJobLockService jobLockService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Scheduled(fixedDelayString = "${trade.order.expire-job-fixed-delay:60000}")
     public void closeExpiredUnpaidOrders() {
@@ -27,6 +28,10 @@ public class TradeOrderExpireJob {
             if (closedCount > 0) {
                 log.info("自动关闭超时未支付订单完成，本次关闭 {} 单", closedCount);
             }
+            tradeObservabilityService.recordJobResult("trade-order-expire", true, closedCount, "自动关闭超时未支付订单完成");
+        } catch (Exception exception) {
+            log.error("自动关闭超时未支付订单失败", exception);
+            tradeObservabilityService.recordJobResult("trade-order-expire", false, 0, exception.getMessage());
         } finally {
             jobLockService.release("trade-order-expire");
         }

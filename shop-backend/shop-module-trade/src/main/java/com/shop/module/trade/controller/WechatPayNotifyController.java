@@ -37,9 +37,14 @@ public class WechatPayNotifyController {
             notification = wechatPayService.parseNotification(
                     timestamp, nonce, signature, serial, body);
             payOrderService.handleWechatNotification(notification, body);
+            log.info("[notifyPayment] 微信支付通知处理成功 paySn={} transactionId={} tradeState={} amount={}",
+                    notification.paySn(), notification.transactionId(), notification.tradeState(), notification.amount());
             return ResponseEntity.ok(Map.of("code", "SUCCESS", "message", "成功"));
         } catch (Exception exception) {
-            log.warn("[notifyPayment] 微信支付通知处理失败: {}", exception.getMessage());
+            log.warn("[notifyPayment] 微信支付通知处理失败 paySn={} notificationId={} message={}",
+                    notification == null ? "" : notification.paySn(),
+                    notification == null ? "" : notification.notificationId(),
+                    exception.getMessage());
             try {
                 paymentNotifyAuditService.recordFailure(
                         timestamp, serial, body, notification, exception.getMessage());

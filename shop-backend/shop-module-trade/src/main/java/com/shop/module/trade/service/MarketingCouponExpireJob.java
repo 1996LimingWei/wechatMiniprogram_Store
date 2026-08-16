@@ -13,6 +13,7 @@ public class MarketingCouponExpireJob {
     private static final int EXPIRE_BATCH_SIZE = 200;
 
     private final MarketingCouponService marketingCouponService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Scheduled(fixedDelay = 300_000, initialDelay = 60_000)
     public void expireUnusedCoupons() {
@@ -21,8 +22,10 @@ public class MarketingCouponExpireJob {
             if (expired > 0) {
                 log.info("过期优惠券清理完成，本次处理 {} 张", expired);
             }
+            tradeObservabilityService.recordJobResult("marketing-coupon-expire", true, expired, "过期优惠券清理完成");
         } catch (Exception exception) {
             log.error("过期优惠券清理失败", exception);
+            tradeObservabilityService.recordJobResult("marketing-coupon-expire", false, 0, exception.getMessage());
         }
     }
 }

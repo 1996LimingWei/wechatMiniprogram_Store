@@ -16,6 +16,7 @@ public class WechatPayReconcileJob {
 
     private final PayExceptionWorkbenchService payExceptionWorkbenchService;
     private final DistributedJobLockService jobLockService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Value("${wechat.pay.reconcile-batch-size:50}")
     private int batchSize;
@@ -26,6 +27,10 @@ public class WechatPayReconcileJob {
         try {
             int processed = payExceptionWorkbenchService.scanPendingWechatPayments(batchSize);
             log.debug("[WechatPayReconcileJob] 已扫描微信支付单 {} 个", processed);
+            tradeObservabilityService.recordJobResult("wechat-pay-reconcile", true, processed, "微信支付单扫描完成");
+        } catch (Exception exception) {
+            log.error("[WechatPayReconcileJob] 微信支付单扫描失败", exception);
+            tradeObservabilityService.recordJobResult("wechat-pay-reconcile", false, 0, exception.getMessage());
         } finally {
             jobLockService.release("wechat-pay-reconcile");
         }

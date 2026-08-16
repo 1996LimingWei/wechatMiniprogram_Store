@@ -142,6 +142,9 @@ public class ReconciliationWorkbenchService {
                 summary.wechatRefundAmount(), summary.wechatNetAmount(), summary.feeAmount(),
                 unresolvedCount, billUrls.tradeBillUrl(), billUrls.fundBillUrl(),
                 billUrls.message(), batchId);
+        log.info("日终对账完成 reconcileDate={} batchId={} triggerType={} adminId={} localPayCount={} localRefundCount={} differenceCount={}",
+                date, batchId, triggerType, adminId, summary.localPayCount(),
+                summary.localRefundCount(), unresolvedCount);
         return getBatchDetail(batchId);
     }
 

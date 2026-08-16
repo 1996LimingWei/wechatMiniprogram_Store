@@ -55,6 +55,15 @@ export default {
                 title: "日终对账",
                 permissions: ["trade:manage", "trade:reconcile-read"]
             }
+        },
+        {
+            path: "/trade/observability",
+            name: "TradeObservability",
+            component: () => import("@/views/observability/index.vue"),
+            meta: {
+                title: "运行监控",
+                permissions: ["trade:manage", "trade:observability-read"]
+            }
         }
     ]
 } satisfies RouteConfigsTable;

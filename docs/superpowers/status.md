@@ -967,6 +967,18 @@
 - 验证通过：`mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`，商品 50 个、会员 4 个、交易 93 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
 - 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_10__high_risk_operation_audit_fields.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-16 可观测性与告警
+
+- 后端统一新增 Request ID 过滤器：每个请求自动生成或透传 `X-Request-Id`，响应头返回同名标识，并通过 MDC 写入日志格式。
+- 交易关键链路补齐业务日志：下单、库存不足、订单支付成功、订单关闭、微信支付回调、微信支付外部接口调用、退款执行和日终对账均记录订单号、支付单号、售后单号、用户 ID、处理结果、耗时和错误码等排障字段。
+- 日志继续遵守脱敏边界：外部接口日志不输出 openid、sessionKey、Token、证书路径、手机号或地址；微信商户号等查询参数在接口路径日志中屏蔽。
+- 新增 `sys_observability_alert` 告警事件表和 `sys_job_execution_metric` 定时任务指标表，数据库必需迁移版本推进到 `20260816_11`，数据库门禁同步断言运行告警表、任务指标表和运行监控权限。
+- 后端新增运行监控接口 `/admin-api/trade/observability/**`，返回数据库/Redis 健康状态、核心交易指标、当前告警、任务执行结果和按订单号聚合的订单链路追踪。
+- 告警覆盖数据库不可用、Redis 不可用、支付回调失败、退款回调或同步失败、支付异常积压、退款异常积压、对账差异和任务连续失败。
+- 管理后台“交易管理 / 运行监控”新增健康状态、核心指标、当前告警、定时任务和订单链路追踪页面；财务、客服、只读账号和超级管理员可查看。
+- 验证通过：`mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`，商品 50 个、会员 4 个、交易 93 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
+- 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_11__observability_alerts.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -1007,7 +1019,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 下一步进入 P0-16 可观测性与告警：补齐 Request ID、业务日志字段、外部接口调用日志、核心业务指标和异常告警。
+2. 下一步进入第五阶段：小程序提审与真机回归、真实微信支付退款验收、真实物流验收和客户交付文档。
 3. 继续完善交付门禁：依赖漏洞扫描、后台 Lint 策略、生产部署回滚和数据库迁移复验。
 4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 

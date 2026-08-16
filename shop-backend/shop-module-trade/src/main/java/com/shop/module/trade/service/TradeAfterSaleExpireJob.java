@@ -15,6 +15,7 @@ public class TradeAfterSaleExpireJob {
 
     private final TradeAfterSaleExpireService tradeAfterSaleExpireService;
     private final DistributedJobLockService jobLockService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Value("${trade.refund.return-expire-batch-size:100}")
     private int batchSize = 100;
@@ -24,15 +25,22 @@ public class TradeAfterSaleExpireJob {
         if (!jobLockService.tryLock("trade-return-expire", Duration.ofMinutes(10))) return;
         try {
             int expired = 0;
+            int failed = 0;
             for (Long afterSaleId : tradeAfterSaleExpireService.listOverdueIds(batchSize)) {
                 try {
                     if (tradeAfterSaleExpireService.expireOne(afterSaleId)) expired++;
                 } catch (Exception exception) {
+                    failed++;
                     log.warn("超期售后单处理失败, afterSaleId={}, message={}",
                             afterSaleId, exception.getMessage());
                 }
             }
             if (expired > 0) log.info("超期未寄回售后关闭完成，本次处理 {} 单", expired);
+            tradeObservabilityService.recordJobResult("trade-return-expire", failed == 0, expired,
+                    failed == 0 ? "超期未寄回售后关闭完成" : "部分超期售后单处理失败：" + failed);
+        } catch (Exception exception) {
+            log.error("超期售后关闭任务失败", exception);
+            tradeObservabilityService.recordJobResult("trade-return-expire", false, 0, exception.getMessage());
         } finally {
             jobLockService.release("trade-return-expire");
         }

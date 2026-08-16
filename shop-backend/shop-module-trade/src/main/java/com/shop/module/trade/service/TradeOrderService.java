@@ -16,6 +16,7 @@ import com.shop.module.trade.dal.mysql.TradeOrderLogisticsMapper;
 import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TradeOrderService {
 
     private static final DateTimeFormatter ORDER_SN_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
@@ -80,6 +82,8 @@ public class TradeOrderService {
             }
             TradeProductSnapshot snapshot = tradeProductService.getSnapshot(cart.getSpuId(), cart.getSkuId());
             if (snapshot.getStock() == null || snapshot.getStock() < cart.getCount()) {
+                log.warn("下单库存不足 userId={} requestId={} spuId={} skuId={} requested={} stock={}",
+                        userId, requestId, cart.getSpuId(), cart.getSkuId(), cart.getCount(), snapshot.getStock());
                 throw new ServerException(1201, "商品库存不足");
             }
             goodsTotalPrice = Math.addExact(goodsTotalPrice,
@@ -145,6 +149,9 @@ public class TradeOrderService {
             marketingCouponService.lockCoupon(userId, discount.couponId(), order.getId());
         }
 
+        log.info("下单成功 orderSn={} orderId={} userId={} requestId={} goodsAmount={} freightAmount={} couponAmount={} actualAmount={}",
+                order.getOrderSn(), order.getId(), userId, requestId, goodsTotalPrice,
+                freightPrice, couponPrice, actualPrice);
         return buildSubmitResult(order);
     }
 
@@ -258,6 +265,8 @@ public class TradeOrderService {
             }
             tradeOrderLogService.recordPayChanged(order, operatorType, operatorId,
                     "PAY_SUCCESS", 0, 1, 0, 1, "支付成功");
+            log.info("订单支付成功 orderSn={} orderId={} userId={} operatorType={} operatorId={}",
+                    order.getOrderSn(), orderId, userId, operatorType, operatorId);
             return;
         }
         TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
@@ -413,6 +422,8 @@ public class TradeOrderService {
                 .eq(PayOrderDO::getStatus, PayOrderStatus.PENDING)
                 .set(PayOrderDO::getStatus, PayOrderStatus.CLOSED));
         marketingCouponService.releaseCoupon(orderId);
+        log.info("订单关闭完成 orderSn={} orderId={} userId={} action={} operatorType={} operatorId={}",
+                closedOrder.getOrderSn(), orderId, userId, action, operatorType, operatorId);
         return true;
     }
 

@@ -12,6 +12,7 @@ import com.shop.module.trade.dal.mysql.TradeOrderMapper;
 import com.shop.module.trade.service.provider.TradeRefundProvider;
 import com.shop.module.trade.service.provider.TradeRefundProviderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TradeRefundExecutionService {
 
     private static final int STATUS_REFUNDING = 4;
@@ -57,6 +59,7 @@ public class TradeRefundExecutionService {
         TradeAfterSaleDO afterSale = tradeAfterSaleMapper.selectById(afterSaleId);
         if (afterSale == null || !Integer.valueOf(STATUS_REFUNDING).equals(afterSale.getStatus())) return false;
 
+        long startNanos = System.nanoTime();
         int previousAttempts = afterSale.getRefundAttemptCount() == null ? 0 : afterSale.getRefundAttemptCount();
         if (!force && previousAttempts >= Math.max(maxAutoAttempts, 1)) return false;
         LocalDateTime now = LocalDateTime.now();
@@ -100,12 +103,24 @@ public class TradeRefundExecutionService {
                             afterSale.getRefundAmount(), payOrder.getAmount(), afterSale.getReason()));
             tradeAfterSaleService.applyRefundResult(
                     afterSaleId, result, operatorType, operatorId, previousAttempts + 1);
+            log.info("退款任务执行完成 afterSaleId={} afterSaleSn={} orderSn={} paySn={} userId={} refundAmount={} provider={} result={} durationMs={} attempts={}",
+                    afterSaleId, afterSale.getAfterSaleSn(), order.getOrderSn(), payOrder.getPaySn(),
+                    afterSale.getUserId(), afterSale.getRefundAmount(), afterSale.getRefundProvider(),
+                    result.status(), elapsedMs(startNanos), previousAttempts + 1);
             return true;
         } catch (Exception exception) {
             tradeAfterSaleService.recordRefundExecutionFailure(
                     afterSaleId, previousAttempts + 1, safeMessage(exception));
+            log.warn("退款任务执行失败 afterSaleId={} afterSaleSn={} orderId={} userId={} refundAmount={} provider={} durationMs={} attempts={} message={}",
+                    afterSaleId, afterSale.getAfterSaleSn(), afterSale.getOrderId(), afterSale.getUserId(),
+                    afterSale.getRefundAmount(), afterSale.getRefundProvider(), elapsedMs(startNanos),
+                    previousAttempts + 1, safeMessage(exception));
             return false;
         }
+    }
+
+    private long elapsedMs(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
     private boolean hasText(String value) {

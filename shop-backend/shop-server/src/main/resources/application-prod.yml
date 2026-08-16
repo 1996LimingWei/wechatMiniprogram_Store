@@ -101,6 +101,8 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
   level:
     com.shop: info
 

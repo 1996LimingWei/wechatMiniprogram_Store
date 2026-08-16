@@ -15,6 +15,7 @@ public class TradeAutoConfirmJob {
 
     private final TradeOrderService tradeOrderService;
     private final DistributedJobLockService jobLockService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Value("${trade.order.auto-confirm-days:10}")
     private int confirmDays;
@@ -28,6 +29,10 @@ public class TradeAutoConfirmJob {
         try {
             int confirmed = tradeOrderService.autoConfirmDeliveredOrders(confirmDays, batchSize);
             if (confirmed > 0) log.info("自动确认收货完成，本次处理 {} 单", confirmed);
+            tradeObservabilityService.recordJobResult("trade-auto-confirm", true, confirmed, "自动确认收货完成");
+        } catch (Exception exception) {
+            log.error("自动确认收货失败", exception);
+            tradeObservabilityService.recordJobResult("trade-auto-confirm", false, 0, exception.getMessage());
         } finally {
             jobLockService.release("trade-auto-confirm");
         }

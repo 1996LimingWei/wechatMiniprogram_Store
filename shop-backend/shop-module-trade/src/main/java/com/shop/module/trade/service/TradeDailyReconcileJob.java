@@ -17,6 +17,7 @@ public class TradeDailyReconcileJob {
 
     private final ReconciliationWorkbenchService reconciliationWorkbenchService;
     private final DistributedJobLockService jobLockService;
+    private final TradeObservabilityService tradeObservabilityService;
 
     @Scheduled(cron = "${trade.reconcile.job-cron:0 30 2 * * ?}")
     public void reconcileYesterday() {
@@ -27,6 +28,10 @@ public class TradeDailyReconcileJob {
             LocalDate date = LocalDate.now().minusDays(1);
             reconciliationWorkbenchService.run(0L, date.toString(), "JOB");
             log.info("[TradeDailyReconcileJob] 日终对账完成 date={}", date);
+            tradeObservabilityService.recordJobResult("trade-daily-reconcile", true, 1, "日终对账完成：" + date);
+        } catch (Exception exception) {
+            log.error("[TradeDailyReconcileJob] 日终对账失败", exception);
+            tradeObservabilityService.recordJobResult("trade-daily-reconcile", false, 0, exception.getMessage());
         } finally {
             jobLockService.release("trade-daily-reconcile");
         }
