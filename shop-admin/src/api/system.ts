@@ -53,13 +53,19 @@ export interface OperationAuditLog {
   adminUserId: number;
   username: string;
   nickname: string;
+  adminRoleCodes?: string;
   method: string;
   requestUri: string;
+  operationType?: string;
+  highRisk?: number;
   businessRef?: string;
   success: number;
   ip?: string;
+  userAgent?: string;
   durationMs: number;
   message?: string;
+  beforeSnapshot?: string;
+  afterSnapshot?: string;
   createTime?: string;
 }
 

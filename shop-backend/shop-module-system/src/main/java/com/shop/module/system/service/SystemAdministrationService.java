@@ -226,24 +226,33 @@ public class SystemAdministrationService {
     }
 
     public PageResult<OperationLogRespVO> getOperationLogs(PageParam pageParam, String username, String requestUri,
-                                                            String businessRef, Integer success) {
+                                                            String businessRef, String operationType,
+                                                            Integer highRisk, Integer success) {
         if (success != null && success != 0 && success != 1) throw new ServerException(400, "操作结果不正确");
+        if (highRisk != null && highRisk != 0 && highRisk != 1) throw new ServerException(400, "高风险标记不正确");
         StringBuilder where = new StringBuilder(" WHERE 1 = 1"); List<Object> parameters = new ArrayList<>();
         if (notBlank(username)) { where.append(" AND u.username LIKE ?"); parameters.add("%" + username.trim() + "%"); }
         if (notBlank(requestUri)) { where.append(" AND l.request_uri LIKE ?"); parameters.add("%" + requestUri.trim() + "%"); }
         if (notBlank(businessRef)) { where.append(" AND l.business_ref LIKE ?"); parameters.add("%" + businessRef.trim() + "%"); }
+        if (notBlank(operationType)) { where.append(" AND l.operation_type LIKE ?"); parameters.add("%" + operationType.trim() + "%"); }
+        if (highRisk != null) { where.append(" AND l.high_risk = ?"); parameters.add(highRisk); }
         if (success != null) { where.append(" AND l.success = ?"); parameters.add(success); }
         String from = " FROM sys_operation_log l LEFT JOIN sys_admin_user u ON u.id = l.admin_user_id";
         Long total = jdbcTemplate.queryForObject("SELECT COUNT(*)" + from + where, Long.class, parameters.toArray());
         parameters.add(pageParam.getPageSize()); parameters.add((pageParam.getPageNo() - 1) * pageParam.getPageSize());
         List<OperationLogRespVO> rows = jdbcTemplate.query("""
                 SELECT l.id, l.admin_user_id, COALESCE(u.username, '') username, COALESCE(u.nickname, '') nickname,
-                       l.method, l.request_uri, l.business_ref, l.success, l.ip, l.duration_ms, l.message, l.create_time
+                       l.admin_role_codes, l.method, l.request_uri, l.operation_type, l.high_risk,
+                       l.business_ref, l.success, l.ip, l.user_agent, l.duration_ms, l.message,
+                       l.before_snapshot, l.after_snapshot, l.create_time
                 """ + from + where + " ORDER BY l.id DESC LIMIT ? OFFSET ?", (rs, index) -> {
             OperationLogRespVO item = new OperationLogRespVO(); item.setId(rs.getLong("id")); item.setAdminUserId(rs.getLong("admin_user_id"));
-            item.setUsername(rs.getString("username")); item.setNickname(rs.getString("nickname")); item.setMethod(rs.getString("method"));
-            item.setRequestUri(rs.getString("request_uri")); item.setBusinessRef(rs.getString("business_ref")); item.setSuccess(rs.getInt("success")); item.setIp(rs.getString("ip"));
-            item.setDurationMs(rs.getLong("duration_ms")); item.setMessage(rs.getString("message")); item.setCreateTime(toLocalDateTime(rs.getTimestamp("create_time"))); return item;
+            item.setUsername(rs.getString("username")); item.setNickname(rs.getString("nickname")); item.setAdminRoleCodes(rs.getString("admin_role_codes"));
+            item.setMethod(rs.getString("method")); item.setRequestUri(rs.getString("request_uri")); item.setOperationType(rs.getString("operation_type"));
+            item.setHighRisk(rs.getInt("high_risk")); item.setBusinessRef(rs.getString("business_ref")); item.setSuccess(rs.getInt("success")); item.setIp(rs.getString("ip"));
+            item.setUserAgent(rs.getString("user_agent")); item.setDurationMs(rs.getLong("duration_ms")); item.setMessage(rs.getString("message"));
+            item.setBeforeSnapshot(rs.getString("before_snapshot")); item.setAfterSnapshot(rs.getString("after_snapshot"));
+            item.setCreateTime(toLocalDateTime(rs.getTimestamp("create_time"))); return item;
         }, parameters.toArray());
         return new PageResult<>(rows, total == null ? 0L : total);
     }

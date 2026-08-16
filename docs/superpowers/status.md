@@ -955,6 +955,18 @@
 - 验证通过：`mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`，商品 50 个、会员 4 个、交易 93 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
 - 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_09__rbac_v1_permission_matrix.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-13 高风险操作审计补齐
+
+- 后台操作审计从“请求落库”升级为“高风险业务审计”：`sys_operation_log` 新增操作人角色快照、操作类型、高风险标记、User-Agent、变更前关键字段摘要和变更后关键字段摘要。
+- `AdminSecurityFilter` 统一识别高风险操作，覆盖创建/禁用管理员、重置密码、修改角色权限、上传/删除素材、新建或改价商品、批量调价、批量上下架、人工/批量调库存、修改运费或包邮规则、创建/停用优惠券和满减、发货、批量发货、售后同意/拒绝/退货收货、人工同步支付/退款、处理支付/退款异常、标记对账差异、导出订单和导出对账。
+- 高风险审计按业务对象尽量记录变更前后快照：管理员、角色、素材、商品、SKU 库存、优惠券、满减、运费规则、订单、售后、支付单、支付异常和对账差异均有关键字段摘要；无法拿到新实体 ID 的创建类操作回退为脱敏请求摘要。
+- 审计日志不记录完整请求体；请求摘要只采集白名单字段，并对 password、token、secret、session、key、certificate、手机号、地址、openid 等敏感字段做屏蔽或不采集。
+- 系统审计页新增操作类型、高风险筛选，列表展示风险标记、操作类型和业务编号，展开行可查看角色快照、User-Agent、变更前摘要和变更后摘要。
+- 审计日志后台仍只有查询接口，无更新或删除接口；失败请求、403 权限拒绝和业务异常响应也会记录操作结果与失败原因。
+- 数据库必需迁移版本推进到 `20260816_10`，新增迁移 `V20260816_10__high_risk_operation_audit_fields.sql`，数据库门禁新增审计字段和查询索引断言。
+- 验证通过：`mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`，商品 50 个、会员 4 个、交易 93 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
+- 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_10__high_risk_operation_audit_fields.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -995,7 +1007,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 下一步进入 P0-13 高风险操作审计补齐：按资金、库存、价格、订单状态和生产配置影响面逐项补齐审计字段与查询验收。
+2. 下一步进入 P0-16 可观测性与告警：补齐 Request ID、业务日志字段、外部接口调用日志、核心业务指标和异常告警。
 3. 继续完善交付门禁：依赖漏洞扫描、后台 Lint 策略、生产部署回滚和数据库迁移复验。
 4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 

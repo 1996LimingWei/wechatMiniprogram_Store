@@ -118,8 +118,9 @@ public class SystemAdministrationController {
     @GetMapping("/audit/operation-page")
     public CommonResult<PageResult<OperationLogRespVO>> operationLogs(PageParam pageParam,
             @RequestParam(required = false) String username, @RequestParam(required = false) String requestUri,
-            @RequestParam(required = false) String businessRef, @RequestParam(required = false) Integer success) {
-        administrationService.requireSuperAdmin(currentAdminId()); return CommonResult.success(administrationService.getOperationLogs(pageParam, username, requestUri, businessRef, success));
+            @RequestParam(required = false) String businessRef, @RequestParam(required = false) String operationType,
+            @RequestParam(required = false) Integer highRisk, @RequestParam(required = false) Integer success) {
+        administrationService.requireSuperAdmin(currentAdminId()); return CommonResult.success(administrationService.getOperationLogs(pageParam, username, requestUri, businessRef, operationType, highRisk, success));
     }
 
     private Long currentAdminId() {
