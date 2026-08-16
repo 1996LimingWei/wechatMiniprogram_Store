@@ -9,7 +9,8 @@ export default {
   meta: {
     icon: "ep/home-filled",
     title: "首页",
-    rank: 0
+    rank: 0,
+    permissions: ["dashboard:view"]
   },
   children: [
     {
@@ -18,6 +19,7 @@ export default {
       component: () => import("@/views/dashboard/index.vue"),
       meta: {
         title: "数据看板",
+        permissions: ["dashboard:view"],
         showLink: VITE_HIDE_HOME === "true" ? false : true
       }
     }

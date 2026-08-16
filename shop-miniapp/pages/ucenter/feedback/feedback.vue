@@ -19,7 +19,7 @@
 				 @input="mobileInput" v-model="mobile" />
 			</view>
 		</view>
-		<view class="submit-btn" @tap="sbmitFeedback">提交反馈</view>
+		<view class="submit-btn" :class="{ disabled: submitting }" @tap="submitFeedback">{{ submitting ? '提交中...' : '提交反馈' }}</view>
 	</view>
 </template>
 
@@ -33,7 +33,8 @@
 				index: 0,
 				content: '',
 				contentLength: 0,
-				mobile: ''
+				mobile: '',
+				submitting: false
 			}
 		},
 		methods: {
@@ -47,16 +48,18 @@
 				this.contentLength = e.detail.cursor;
 				this.content = e.detail.value;
 			},
-			sbmitFeedback: function() {
+			submitFeedback: function() {
 				let that = this;
+				if (that.submitting) return;
 				if (that.index == 0) { util.toast('请选择反馈类型'); return; }
-				if (that.content == '') { util.toast('请输入反馈内容'); return; }
-				if (that.mobile == '') { util.toast('请输入手机号码'); return; }
+				if (that.content.trim().length < 5) { util.toast('反馈内容不少于5个字符'); return; }
+				if (that.mobile && !/^1\d{10}$/.test(that.mobile)) { util.toast('请输入正确的手机号码'); return; }
 
+				that.submitting = true;
 				util.request(api.FeedbackAdd, {
 					mobile: that.mobile,
-					index: that.index,
-					content: that.content
+					type: Number(that.index),
+					content: that.content.trim()
 				}, "POST", "application/json").then(function(res) {
 					if (res.code === 0) {
 						uni.showToast({
@@ -70,10 +73,13 @@
 							}
 						});
 					} else {
-						util.toast(res.data || '提交失败');
+						util.toast(res.msg || '提交失败');
 					}
-				});
+				}).catch(() => util.toast('提交失败，请稍后重试')).finally(() => { that.submitting = false; });
 			}
+		},
+		onLoad() {
+			this.mobile = (uni.getStorageSync('userInfo') || {}).mobile || '';
 		}
 	}
 </script>
@@ -177,4 +183,5 @@
 		font-weight: 500;
 		box-shadow: 0 6rpx 24rpx rgba(91,140,90,0.3);
 	}
+	.submit-btn.disabled { opacity: 0.65; }
 </style>

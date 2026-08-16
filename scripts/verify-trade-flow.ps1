@@ -87,11 +87,18 @@ function Assert-HttpDenied([string]$Path, [string]$Token = "", [string]$Method =
 function Assert-ApiRejected([string]$Path, [object]$Body, [string]$Token) {
     $headers = @{ Authorization = "Bearer $Token" }
     $json = $Body | ConvertTo-Json -Depth 8 -Compress
-    $httpResponse = Invoke-WebRequest -Uri "$BaseUrl$Path" -Method Post -Headers $headers `
-        -ContentType "application/json" -Body $json -SkipHttpErrorCheck
-    $response = $httpResponse.Content | ConvertFrom-Json
-    Assert-True ($httpResponse.StatusCode -ge 400) "$Path 应返回 HTTP 错误状态"
-    Assert-True ($response.code -ne 0) "$Path 应拒绝当前操作"
+    try {
+        $response = Invoke-RestMethod -Uri "$BaseUrl$Path" -Method Post -Headers $headers `
+            -ContentType "application/json" -Body $json
+        Assert-True ($response.code -ne 0) "$Path 应拒绝当前操作"
+    } catch {
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+            Assert-True ($statusCode -ge 400) "$Path 应返回 HTTP 错误状态"
+            return
+        }
+        throw
+    }
 }
 
 function Cleanup-TestData {
@@ -138,7 +145,7 @@ VALUES
 INSERT INTO product_sku
   (id, spu_id, properties, price, market_price, stock, pic_url)
 VALUES
-  ($SkuId, $ProductId, '[{"id":1,"name":"规格","valueId":1,"valueName":"验收规格"}]', 9900, 12900, 30, 'https://example.com/trade-acceptance.png');
+  ($SkuId, $ProductId, JSON_ARRAY(JSON_OBJECT('id', 1, 'name', 'Spec', 'valueId', 1, 'valueName', 'Standard')), 9900, 12900, 30, 'https://example.com/trade-acceptance.png');
 "@
     Invoke-Sql $sql | Out-Null
 }
@@ -267,7 +274,7 @@ try {
     Assert-True ($adminDetail.orderInfo.id -eq $shipFlow.OrderId) "管理端订单详情订单 ID 不匹配"
     Invoke-Api "/admin-api/trade/order/ship" @{
         orderId = $shipFlow.OrderId
-        logisticsCompany = "顺丰速运"
+        logisticsCompany = "shunfeng"
         logisticsCode = "shunfeng"
         logisticsNo = "SFTRADE$($shipFlow.OrderId)"
     } $adminToken | Out-Null

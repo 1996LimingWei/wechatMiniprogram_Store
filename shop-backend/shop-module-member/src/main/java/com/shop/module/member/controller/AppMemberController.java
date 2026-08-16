@@ -1,13 +1,15 @@
 package com.shop.module.member.controller;
 
 import com.shop.common.pojo.CommonResult;
+import com.shop.common.exception.ServerException;
 import com.shop.framework.security.LoginUser;
 import com.shop.framework.security.TokenService;
+import com.shop.module.member.config.MemberFeatureProperties;
 import com.shop.module.member.dal.dataobject.MemberUserDO;
 import com.shop.module.member.dal.mysql.MemberUserMapper;
+import com.shop.module.member.vo.MemberProfileUpdateReqVO;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -23,120 +25,33 @@ public class AppMemberController {
 
     private final MemberUserMapper memberUserMapper;
     private final TokenService tokenService;
+    private final MemberFeatureProperties memberFeatureProperties;
 
-    @Value("${member.gold-card.mock-subscribe-enabled:false}")
-    private boolean mockSubscribeEnabled;
+    @GetMapping("/center")
+    public CommonResult<Void> center() {
+        return membershipUnavailable();
+    }
 
-    /**
-     * 会员中心首页 — 返回当前会员等级、权益概览
-     */
-    @RequestMapping("/center")
-    public CommonResult<Map<String, Object>> center(HttpServletRequest request) {
-        LoginUser loginUser = resolveLoginUser(request);
-        if (loginUser == null) {
-            return CommonResult.error(401, "请先登录");
-        }
-        MemberUserDO user = memberUserMapper.selectById(loginUser.getUserId());
-        if (user == null) {
-            return CommonResult.error(404, "用户不存在");
-        }
+    @GetMapping("/gold-card")
+    public CommonResult<Void> goldCard() {
+        return membershipUnavailable();
+    }
 
-        int level = user.getMemberLevel() != null ? user.getMemberLevel() : 1;
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("memberLevel", level);
-        data.put("memberLevelName", level == 2 ? "黄金会员" : "白银会员");
-        data.put("nickname", user.getNickname());
-        data.put("avatar", user.getAvatar());
-        data.put("mobile", user.getMobile() != null ? user.getMobile() : "");
-        data.put("purchaseEnabled", mockSubscribeEnabled);
-        data.put("purchaseMessage", mockSubscribeEnabled ? "开发环境体验开通" : "黄金会员服务暂未开放");
-
-        // 当前等级权益
-        Map<String, Object> currentBenefits = new LinkedHashMap<>();
-        currentBenefits.put("discount", mockSubscribeEnabled && level == 2 ? "全场9折" : "无专属折扣");
-        currentBenefits.put("shipping", mockSubscribeEnabled && level == 2 ? "优先发货" : "标准发货");
-        currentBenefits.put("coupon", mockSubscribeEnabled && level == 2 ? "每月赠送优惠券" : "无专属优惠券");
-        data.put("benefits", currentBenefits);
-
-        return CommonResult.success(data);
+    @PostMapping("/gold-card/subscribe")
+    public CommonResult<Void> subscribe() {
+        return membershipUnavailable();
     }
 
     /**
-     * 黄金卡详情 — 展示黄金会员权益和价格
+     * 会员资料编辑尚未交付对象存储和手机号授权闭环，默认拒绝写入。
      */
-    @RequestMapping("/gold-card")
-    public CommonResult<Map<String, Object>> goldCard(HttpServletRequest request) {
-        LoginUser loginUser = resolveLoginUser(request);
-        if (loginUser == null) {
-            return CommonResult.error(401, "请先登录");
-        }
-        MemberUserDO user = memberUserMapper.selectById(loginUser.getUserId());
-        int currentLevel = (user != null && user.getMemberLevel() != null) ? user.getMemberLevel() : 1;
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("currentLevel", currentLevel);
-        data.put("isGold", currentLevel == 2);
-        data.put("purchaseEnabled", mockSubscribeEnabled);
-        data.put("purchaseMessage", mockSubscribeEnabled ? "开发环境体验开通" : "黄金会员服务暂未开放");
-
-        if (mockSubscribeEnabled) {
-            data.put("price", 9900);
-            data.put("originalPrice", 19900);
-            data.put("duration", "365天");
-            data.put("dailyPrice", "0.27元/天");
-            data.put("benefits", new Object[]{
-                    Map.of("icon", "discount", "title", "专享折扣", "desc", "全场商品享受9折优惠"),
-                    Map.of("icon", "shipping", "title", "优先发货", "desc", "订单优先处理，更快送达"),
-                    Map.of("icon", "coupon", "title", "每月优惠券", "desc", "每月赠送满100减20优惠券"),
-                    Map.of("icon", "service", "title", "专属客服", "desc", "VIP专属客服通道，优先响应"),
-                    Map.of("icon", "birthday", "title", "生日礼遇", "desc", "生日当月双倍积分+专属礼品")
-            });
-        } else {
-            data.put("benefits", new Object[0]);
-        }
-
-        return CommonResult.success(data);
-    }
-
-    /**
-     * 开通黄金会员（Mock，无真实支付）
-     */
-    @RequestMapping("/gold-card/subscribe")
-    public CommonResult<Map<String, Object>> subscribe(HttpServletRequest request) {
-        if (!mockSubscribeEnabled) {
-            return CommonResult.error(403, "黄金会员购买暂未开放");
-        }
-        LoginUser loginUser = resolveLoginUser(request);
-        if (loginUser == null) {
-            return CommonResult.error(401, "请先登录");
-        }
-        MemberUserDO user = memberUserMapper.selectById(loginUser.getUserId());
-        if (user == null) {
-            return CommonResult.error(404, "用户不存在");
-        }
-        if (user.getMemberLevel() != null && user.getMemberLevel() == 2) {
-            return CommonResult.error(400, "您已经是黄金会员");
-        }
-
-        // Mock：直接升级为黄金会员
-        user.setMemberLevel(2);
-        memberUserMapper.updateById(user);
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("memberLevel", 2);
-        data.put("memberLevelName", "黄金会员");
-        data.put("message", "恭喜！您已成功开通黄金会员（体验模式）");
-        return CommonResult.success(data);
-    }
-
-    /**
-     * 更新个人资料（昵称、头像、手机号）
-     */
-    @RequestMapping("/profile")
+    @PostMapping("/profile")
     public CommonResult<Map<String, Object>> updateProfile(
-            @RequestBody Map<String, Object> body,
+            @RequestBody MemberProfileUpdateReqVO body,
             HttpServletRequest request) {
+        if (!memberFeatureProperties.isProfileEditEnabled()) {
+            throw new ServerException(403, "个人资料编辑暂未开放");
+        }
         LoginUser loginUser = resolveLoginUser(request);
         if (loginUser == null) {
             return CommonResult.error(401, "请先登录");
@@ -146,30 +61,19 @@ public class AppMemberController {
             return CommonResult.error(404, "用户不存在");
         }
 
-        // 更新昵称
-        if (body.containsKey("nickname")) {
-            String nickname = (String) body.get("nickname");
-            if (nickname != null && !nickname.isBlank()) {
-                user.setNickname(nickname.trim());
-            }
+        String nickname = body == null ? "" : normalize(body.getNickname());
+        if (nickname.length() < 1 || nickname.length() > 20) {
+            throw new ServerException(400, "昵称应为 1 至 20 个字符");
         }
-
-        // 更新头像
-        if (body.containsKey("avatar")) {
-            String avatar = (String) body.get("avatar");
-            if (avatar != null) {
-                user.setAvatar(avatar);
+        user.setNickname(nickname);
+        String avatar = body == null ? "" : normalize(body.getAvatar());
+        if (!avatar.isEmpty()) {
+            if (avatar.length() > 512 || avatar.startsWith("wxfile://") || avatar.startsWith("http://tmp")
+                    || !(avatar.startsWith("https://") || avatar.startsWith("/static/"))) {
+                throw new ServerException(400, "头像地址必须是已上传的 HTTPS 或站内静态资源");
             }
+            user.setAvatar(avatar);
         }
-
-        // 更新手机号
-        if (body.containsKey("mobile")) {
-            String mobile = (String) body.get("mobile");
-            if (mobile != null && !mobile.isBlank()) {
-                user.setMobile(mobile.trim());
-            }
-        }
-
         memberUserMapper.updateById(user);
 
         // 返回更新后的用户信息
@@ -181,6 +85,20 @@ public class AppMemberController {
         return CommonResult.success(data);
     }
 
+    @GetMapping("/availability")
+    public CommonResult<Map<String, Boolean>> availability() {
+        return CommonResult.success(Map.of(
+                "membershipEnabled", memberFeatureProperties.isMembershipEnabled(),
+                "profileEditEnabled", memberFeatureProperties.isProfileEditEnabled()));
+    }
+
+    private CommonResult<Void> membershipUnavailable() {
+        if (memberFeatureProperties.isMembershipEnabled()) {
+            throw new ServerException(503, "会员权益模块尚未完成交付");
+        }
+        throw new ServerException(403, "会员权益暂未开放");
+    }
+
     private LoginUser resolveLoginUser(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -188,5 +106,9 @@ public class AppMemberController {
         }
         String token = authHeader.substring(7);
         return tokenService.getLoginUser(token);
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 }

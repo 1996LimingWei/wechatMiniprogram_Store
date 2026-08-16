@@ -38,6 +38,10 @@ function Assert-Equal {
 function Initialize-TestDatabase([string]$Database) {
     $temporaryFile = New-TemporaryFile
     $containerFile = "/tmp/shop-init-$Database.sql"
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+    $PSNativeCommandUseErrorActionPreference = $false
     try {
         Get-Content (Join-Path $PSScriptRoot "..\sql\init.sql") -Encoding utf8 |
             Select-Object -Skip 7 |
@@ -51,8 +55,10 @@ function Initialize-TestDatabase([string]$Database) {
             throw "完整初始化 SQL 执行失败"
         }
     } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
         Remove-Item -LiteralPath $temporaryFile.FullName -Force -ErrorAction SilentlyContinue
         & docker exec $MysqlContainer rm -f $containerFile 2>$null | Out-Null
+        $PSNativeCommandUseErrorActionPreference = $previousNativePreference
     }
 }
 
@@ -94,6 +100,20 @@ try {
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM product_sku sku LEFT JOIN (SELECT sku_id,SUM(change_quantity) ledger_stock FROM product_stock_log GROUP BY sku_id) l ON l.sku_id=sku.id WHERE sku.deleted=b'0' AND sku.stock<>COALESCE(l.ledger_stock,0);") 0 "SKU 库存应可由库存流水完整重算"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260811_14';") 1 "应执行最新企业加固迁移"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260812_01';") 1 "应执行退款可靠性与订单完成时间迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_01';") 1 "应执行阶段 A 公开能力收口迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_02';") 1 "应执行用户反馈权限迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_03';") 1 "应执行系统账号与角色迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_04';") 1 "应执行交易最小权限与审计关联迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_05';") 1 "应执行售后明细结构修复迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_06';") 1 "应执行 RBAC 种子数据校准迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260813_07';") 1 "应执行操作审计结构修复迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'member_feedback';") 1 "应创建用户意见反馈表"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM sys_permission WHERE code = 'feedback:manage' AND path_pattern = '/admin-api/feedback/**' AND status = 1 AND deleted = b'0';") 1 "应登记用户反馈后台权限"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_log' AND column_name = 'business_ref';") 1 "操作审计应记录业务关联编号"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM sys_role_permission rp JOIN sys_role r ON r.id = rp.role_id JOIN sys_permission p ON p.id = rp.permission_id WHERE r.code = 'ORDER_CUSTOMER_SERVICE' AND p.code = 'trade:manage';") 0 "订单客服不得持有交易全权限"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM sys_role_permission rp JOIN sys_role r ON r.id = rp.role_id JOIN sys_permission p ON p.id = rp.permission_id WHERE r.code = 'AFTER_SALE_REVIEWER' AND p.code = 'trade:manage';") 0 "售后审核不得持有交易全权限"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM sys_role WHERE code IN ('PRODUCT_OPERATOR', 'ORDER_CUSTOMER_SERVICE', 'AFTER_SALE_REVIEWER') AND status = 1 AND deleted = b'0';") 3 "企业岗位角色必须完整"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM sys_role_permission rp JOIN sys_role r ON r.id = rp.role_id JOIN sys_permission p ON p.id = rp.permission_id WHERE r.code = 'SUPER_ADMIN' AND p.code IN ('system:admin-user', 'system:role', 'system:audit');") 3 "超级管理员必须具备系统管理权限"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'trade_order' AND column_name = 'finish_time';") 1 "订单表应记录不可变完成时间"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM trade_order WHERE status = 3 AND finish_time IS NULL;") 0 "历史已完成订单应回填完成时间"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'trade_after_sale' AND column_name IN ('refund_attempt_count','refund_last_attempt_time','refund_next_attempt_time','refund_claim_until','refund_last_error');") 5 "售后表应包含完整退款任务状态"

@@ -1,6 +1,7 @@
 import { http } from "@/utils/http";
 import type { PageParam, PageResult, ProductSpu } from "./types";
 import type { ProductSku } from "./types";
+import type { ProductComment } from "./types";
 
 /** 商品分页列表（支持筛选） */
 export const getProductPage = (
@@ -55,3 +56,12 @@ export const deleteProduct = (id: number) => {
         params: { id }
     });
 };
+
+export const getCommentPage = (params: {
+    pageNo?: number;
+    pageSize?: number;
+    status?: number;
+}) => http.get<PageResult<ProductComment>, typeof params>("/admin-api/product/comment/page", { params });
+
+export const updateCommentStatus = (id: number, status: number) =>
+    http.request<boolean>("put", "/admin-api/product/comment/status", { data: { id, status } });

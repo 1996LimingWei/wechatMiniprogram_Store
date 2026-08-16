@@ -16,7 +16,8 @@ export default {
             name: "OrderList",
             component: () => import("@/views/order/index.vue"),
             meta: {
-                title: "订单管理"
+                title: "订单管理",
+                permissions: ["trade:manage", "trade:order-read"]
             }
         },
         {
@@ -24,7 +25,8 @@ export default {
             name: "AfterSaleList",
             component: () => import("@/views/after-sale/index.vue"),
             meta: {
-                title: "售后管理"
+                title: "售后管理",
+                permissions: ["trade:manage", "trade:after-sale-read"]
             }
         }
     ]

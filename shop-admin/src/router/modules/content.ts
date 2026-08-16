@@ -16,7 +16,8 @@ export default {
             name: "ContentBanner",
             component: () => import("@/views/content/banner/index.vue"),
             meta: {
-                title: "Banner 管理"
+                title: "Banner 管理",
+                permissions: ["content:manage"]
             }
         },
         {
@@ -24,7 +25,8 @@ export default {
             name: "ContentChannel",
             component: () => import("@/views/content/channel/index.vue"),
             meta: {
-                title: "频道管理"
+                title: "频道管理",
+                permissions: ["content:manage"]
             }
         },
         {
@@ -32,7 +34,8 @@ export default {
             name: "ContentBrand",
             component: () => import("@/views/content/brand/index.vue"),
             meta: {
-                title: "品牌管理"
+                title: "品牌管理",
+                permissions: ["content:manage"]
             }
         },
         {
@@ -40,7 +43,17 @@ export default {
             name: "ContentTopic",
             component: () => import("@/views/content/topic/index.vue"),
             meta: {
-                title: "专题管理"
+                title: "专题管理",
+                permissions: ["content:manage"]
+            }
+        },
+        {
+            path: "/content/feedback",
+            name: "ContentFeedback",
+            component: () => import("@/views/content/feedback/index.vue"),
+            meta: {
+                title: "用户反馈",
+                permissions: ["feedback:manage"]
             }
         }
     ]

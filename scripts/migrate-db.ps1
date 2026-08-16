@@ -31,16 +31,25 @@ function Invoke-MigrationSql {
         [string]$MigrationName
     )
 
+    $temporaryFile = New-TemporaryFile
+    $containerFile = "/tmp/shop-migration-$([guid]::NewGuid().ToString('N')).sql"
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    # PowerShell 5.1 的原生命令管道会按系统代码页转码，先转 Base64 可确保 SQL 以 UTF-8 原字节进入 MySQL。
-    $encodedSql = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($Sql))
-    $mysqlCommand = 'base64 -d | mysql --default-character-set=utf8mb4 -u"$1" -p"$2" "$3"'
-    $encodedSql | & docker exec -i $MysqlContainer sh -c $mysqlCommand migration $MysqlUser $MysqlPassword $Database 2>$null
-    $exitCode = $LASTEXITCODE
-    $ErrorActionPreference = $previousErrorActionPreference
-    if ($exitCode -ne 0) {
-        throw "迁移执行失败：$MigrationName"
+    try {
+        [System.IO.File]::WriteAllText($temporaryFile.FullName, $Sql, [System.Text.UTF8Encoding]::new($false))
+        & docker cp $temporaryFile.FullName "${MysqlContainer}:$containerFile" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "迁移文件复制失败：$MigrationName"
+        }
+        $mysqlCommand = 'mysql --default-character-set=utf8mb4 -u"$1" -p"$2" "$3" < "$4"'
+        & docker exec $MysqlContainer sh -c $mysqlCommand migration $MysqlUser $MysqlPassword $Database $containerFile 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            throw "迁移执行失败：$MigrationName"
+        }
+    } finally {
+        Remove-Item -LiteralPath $temporaryFile.FullName -Force -ErrorAction SilentlyContinue
+        & docker exec $MysqlContainer rm -f $containerFile 2>$null | Out-Null
+        $ErrorActionPreference = $previousErrorActionPreference
     }
 }
 

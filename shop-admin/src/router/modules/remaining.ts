@@ -2,6 +2,15 @@ const Layout = () => import("@/layout/index.vue");
 
 export default [
   {
+    path: "/account/password",
+    name: "AccountPassword",
+    component: () => import("@/views/account/password/index.vue"),
+    meta: {
+      title: "修改密码",
+      showLink: false
+    }
+  },
+  {
     path: "/login",
     name: "Login",
     component: () => import("@/views/login/index.vue"),

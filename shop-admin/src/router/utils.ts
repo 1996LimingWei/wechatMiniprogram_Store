@@ -81,13 +81,18 @@ function isOneOfArray(a: Array<string>, b: Array<string>) {
     : true;
 }
 
-/** 从localStorage里取出当前登录用户的角色roles，过滤无权限的菜单 */
+/** 从 localStorage 取出当前登录用户的角色和接口权限，过滤无权限菜单。 */
 function filterNoPermissionTree(data: RouteComponent[]) {
-  const currentRoles =
-    storageLocal().getItem<DataInfo<number>>(userKey)?.roles ?? [];
-  const newTree = cloneDeep(data).filter((v: any) =>
-    isOneOfArray(v.meta?.roles, currentRoles)
-  );
+  const currentUser = storageLocal().getItem<DataInfo<number>>(userKey);
+  const currentRoles = currentUser?.roles ?? [];
+  const currentPermissions = currentUser?.permissions ?? [];
+  const newTree = cloneDeep(data).filter((v: any) => {
+    const hasRole = isOneOfArray(v.meta?.roles, currentRoles);
+    const requiredPermissions = v.meta?.permissions;
+    const hasPermission = !Array.isArray(requiredPermissions) || requiredPermissions.length === 0
+      || requiredPermissions.some(permission => currentPermissions.includes(permission));
+    return hasRole && hasPermission;
+  });
   newTree.forEach(
     (v: any) => v.children && (v.children = filterNoPermissionTree(v.children))
   );

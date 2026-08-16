@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { getCommentPage, updateCommentStatus } from "@/api/member";
+import { getCommentPage, updateCommentStatus } from "@/api/product";
 import type { ProductComment } from "@/api/types";
 
 defineOptions({ name: "CommentList" });

@@ -7,11 +7,13 @@ import LaySidebarBreadCrumb from "../lay-sidebar/components/SidebarBreadCrumb.vu
 import LaySidebarTopCollapse from "../lay-sidebar/components/SidebarTopCollapse.vue";
 
 import LogoutCircleRLine from "~icons/ri/logout-circle-r-line";
+import LockPasswordLine from "~icons/ri/lock-password-line";
 
 const {
   layout,
   device,
   logout,
+  changePassword,
   pureApp,
   username,
   userAvatar,
@@ -49,6 +51,10 @@ const {
         </span>
         <template #dropdown>
           <el-dropdown-menu class="logout">
+            <el-dropdown-item @click="changePassword">
+              <IconifyIconOffline :icon="LockPasswordLine" style="margin: 5px" />
+              修改密码
+            </el-dropdown-item>
             <el-dropdown-item @click="logout">
               <IconifyIconOffline
                 :icon="LogoutCircleRLine"

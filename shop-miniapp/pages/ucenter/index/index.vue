@@ -11,11 +11,6 @@
 						<text class="user-desc" v-else>{{ userInfo.mobile || '欢迎回来' }}</text>
 					</view>
 				</view>
-				<view class="vip-card" @tap.stop="goMember">
-					<text class="vip-badge">{{ memberBadge }}</text>
-					<text class="vip-title">会员中心</text>
-					<text class="vip-sub">{{ memberLevel === 2 ? '尊享全部权益' : '专享折扣 / 优先发货' }}</text>
-				</view>
 			</view>
 		</view>
 
@@ -29,10 +24,6 @@
 				<text class="stat-num">{{ footprintCount }}</text>
 				<text class="stat-label">足迹</text>
 			</navigator>
-			<view class="stat-item" @tap="goMember">
-				<text class="stat-num stat-vip">{{ memberLevel === 2 ? '黄金卡' : '黄金卡' }}</text>
-				<text class="stat-label stat-label-vip">{{ memberLevel === 2 ? '已开通' : '立即开通' }}</text>
-			</view>
 		</view>
 
 		<!-- 我的订单 -->
@@ -177,8 +168,6 @@ export default {
 	data() {
 		return {
 			userInfo: {},
-			memberLevel: 1,
-			couponCount: 0,
 			collectCount: 0,
 			footprintCount: 0
 		};
@@ -192,9 +181,6 @@ export default {
 		},
 		avatarUrl() {
 			return this.userInfo.avatar || DEFAULT_AVATAR;
-		},
-		memberBadge() {
-			return this.memberLevel === 2 ? 'GOLD' : 'SILVER';
 		}
 	},
 	methods: {
@@ -204,9 +190,6 @@ export default {
 			} else {
 				uni.navigateTo({ url: '/pages/ucenter/profile/profile' });
 			}
-		},
-		goMember() {
-			uni.navigateTo({ url: '/pages/ucenter/member/member' });
 		},
 		exitLogin() {
 			uni.showModal({
@@ -235,12 +218,10 @@ export default {
 		let token = uni.getStorageSync('token');
 		if (userInfo && token) {
 			this.userInfo = userInfo;
-			this.memberLevel = userInfo.memberLevel || 1;
 			app.globalData.userInfo = userInfo;
 			app.globalData.token = token;
 		} else {
 			this.userInfo = {};
-			this.memberLevel = 1;
 		}
 	}
 };
@@ -251,8 +232,6 @@ $green: #4D704D;
 $green-light: #E8ECE8;
 $green-bg: #FDFDF8;
 $green-dark: #667166;
-$gold: #FAFAD2;
-$gold-light: #F5F5E0;
 $text-primary: #36454F;
 $text-secondary: #667166;
 $text-hint: #9A9A9A;
@@ -332,38 +311,6 @@ page {
 	display: block;
 }
 
-.vip-card {
-	width: 178rpx;
-	flex-shrink: 0;
-	background: linear-gradient(135deg, rgba(151, 128, 90, 0.84) 0%, rgba(239, 227, 184, 0.86) 100%);
-	border-radius: 24rpx 24rpx 24rpx 8rpx;
-	padding: 16rpx 18rpx;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	box-shadow: 0 10rpx 18rpx rgba(104, 95, 60, 0.09);
-}
-
-.vip-badge {
-	font-size: 18rpx;
-	color: rgba(255, 255, 255, 0.76);
-	letter-spacing: 2rpx;
-}
-
-.vip-title {
-	font-size: 26rpx;
-	color: #FEFEFC;
-	font-weight: 700;
-	margin-top: 6rpx;
-}
-
-.vip-sub {
-	font-size: 18rpx;
-	color: rgba(255, 255, 255, 0.78);
-	margin-top: 4rpx;
-	line-height: 1.45;
-}
-
 /* 数据统计行 */
 .stats-row {
 	display: flex;
@@ -388,15 +335,6 @@ page {
 	font-size: 34rpx;
 	font-weight: 700;
 	color: $text-primary;
-}
-
-.stat-vip {
-	color: #C9AE63;
-	font-size: 30rpx;
-}
-
-.stat-label-vip {
-	color: #B59955;
 }
 
 .stat-label {

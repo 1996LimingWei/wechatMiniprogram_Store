@@ -151,6 +151,15 @@ router.beforeEach((to: ToRouteType, _from, next) => {
     // 无权限跳转403页面
     if (to.meta?.roles && !isOneOfArray(to.meta?.roles, userInfo?.roles)) {
       next({ path: "/error/403" });
+      return;
+    }
+    if (
+      Array.isArray(to.meta?.permissions) &&
+      to.meta.permissions.length > 0 &&
+      !to.meta.permissions.some(permission => userInfo?.permissions?.includes(permission))
+    ) {
+      next({ path: "/access-denied" });
+      return;
     }
     // 开启隐藏首页后在浏览器地址栏手动输入首页welcome路由则跳转到404页面
     if (VITE_HIDE_HOME === "true" && to.fullPath === "/welcome") {

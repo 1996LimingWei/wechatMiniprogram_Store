@@ -56,8 +56,11 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         if (environment.getProperty("product.mock-endpoints-enabled", Boolean.class, false)) {
             missing.add("product.mock-endpoints-enabled 必须为 false");
         }
-        if (environment.getProperty("member.gold-card.mock-subscribe-enabled", Boolean.class, false)) {
-            missing.add("member.gold-card.mock-subscribe-enabled 必须为 false");
+        if (environment.getProperty("member.features.membership-enabled", Boolean.class, false)) {
+            missing.add("member.features.membership-enabled 当前版本必须为 false");
+        }
+        if (environment.getProperty("member.features.profile-edit-enabled", Boolean.class, false)) {
+            missing.add("member.features.profile-edit-enabled 当前版本必须为 false");
         }
         if (!"wechat".equals(environment.getProperty("trade.refund.provider"))) {
             missing.add("trade.refund.provider 必须为 wechat");

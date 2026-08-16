@@ -11,6 +11,7 @@ import {
   syncAfterSale
 } from "@/api/afterSale";
 import type { AfterSale } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "AfterSaleList" });
 
@@ -25,6 +26,7 @@ const statusTabs = [
   { label: "已拒绝", value: "2" },
   { label: "已撤销", value: "3" }
 ];
+const canProcess = hasAnyPerms(["trade:manage", "trade:after-sale-process"]);
 
 const loading = ref(false);
 const tableData = ref<AfterSale[]>([]);
@@ -323,7 +325,7 @@ function refundDescription(row: AfterSale) {
               >详情</el-button
             >
             <el-button
-              v-if="row.status === 0"
+              v-if="canProcess && row.status === 0"
               type="success"
               link
               :icon="Check"
@@ -331,7 +333,7 @@ function refundDescription(row: AfterSale) {
               >同意</el-button
             >
             <el-button
-              v-if="row.status === 0"
+              v-if="canProcess && row.status === 0"
               type="danger"
               link
               :icon="Close"
@@ -339,7 +341,7 @@ function refundDescription(row: AfterSale) {
               >拒绝</el-button
             >
             <el-button
-              v-if="row.status === 7"
+              v-if="canProcess && row.status === 7"
               type="success"
               link
               :icon="Check"
@@ -347,7 +349,7 @@ function refundDescription(row: AfterSale) {
               >确认收货</el-button
             >
             <el-button
-              v-if="row.status === 4"
+              v-if="canProcess && row.status === 4"
               type="primary"
               link
               :loading="syncSaving"
@@ -483,7 +485,7 @@ function refundDescription(row: AfterSale) {
           />
         </section>
 
-        <div v-if="detail.status === 0" class="drawer-actions">
+        <div v-if="canProcess && detail.status === 0" class="drawer-actions">
           <el-button type="danger" :icon="Close" @click="openReject(detail)"
             >拒绝退款</el-button
           >
@@ -491,10 +493,10 @@ function refundDescription(row: AfterSale) {
             >同意退款</el-button
           >
         </div>
-        <div v-if="detail.status === 7" class="drawer-actions">
+        <div v-if="canProcess && detail.status === 7" class="drawer-actions">
           <el-button type="success" :icon="Check" @click="handleReceive(detail)">确认收货并退款</el-button>
         </div>
-        <div v-else-if="detail.status === 4" class="drawer-actions">
+        <div v-else-if="canProcess && detail.status === 4" class="drawer-actions">
           <el-button
             type="primary"
             :icon="Refresh"

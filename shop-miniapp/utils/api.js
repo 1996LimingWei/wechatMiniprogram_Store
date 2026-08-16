@@ -74,21 +74,11 @@ module.exports = {
 	FootprintDelete: 'footprint/delete', //删除足迹
 	FootprintRecord: 'footprint/record', //记录商品浏览足迹
 
-	FeedbackAdd: 'feedback/save', //添加反馈
-	SmsCode: 'user/smscode', //发送短信
-	BindMobile: 'user/bindMobile', //绑定手机
-	Login: 'auth/login', //账号登录
-	Code: 'auth/', //静默登录
-	Register: 'auth/register', //注册
+	FeedbackAdd: 'feedback/submit', //提交反馈
 	OrderQuery: 'pay/query', //微信查询订单状态
 
 	HelpTypeList: 'helpissue/typeList', //查看帮助类型列表
 	HelpIssueList: 'helpissue/issueList', //查看问题列表
-
-	MemberCenter: 'member/center', //会员中心
-	MemberGoldCard: 'member/gold-card', //黄金卡详情
-	MemberGoldSubscribe: 'member/gold-card/subscribe', //开通黄金会员
-	MemberProfile: 'member/profile', //个人资料更新
 
 	CouponList: 'coupon/list', //用户优惠券列表
 	CouponAvailable: 'coupon/available', //结算可用优惠券

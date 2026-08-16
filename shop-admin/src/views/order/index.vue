@@ -17,6 +17,7 @@ import type {
   TradeOrderDetail,
   TradeOrderItem
 } from "@/api/types";
+import { hasAnyPerms } from "@/utils/auth";
 
 defineOptions({ name: "OrderList" });
 
@@ -195,6 +196,8 @@ const logisticsCompanies = [
   { name: "京东物流", code: "jd" },
   { name: "邮政 EMS", code: "ems" }
 ];
+const canShip = hasAnyPerms(["trade:manage", "trade:order-ship"]);
+const canReadLogistics = hasAnyPerms(["trade:manage", "trade:logistics-read"]);
 
 function handleLogisticsCompanyChange(code: string) {
   const company = logisticsCompanies.find(item => item.code === code);
@@ -382,7 +385,7 @@ onMounted(fetchData);
               >详情</el-button
             >
             <el-button
-              v-if="row.handleOption?.ship"
+              v-if="canShip && row.handleOption?.ship"
               type="success"
               link
               :icon="Van"
@@ -390,7 +393,7 @@ onMounted(fetchData);
               >发货</el-button
             >
             <el-button
-              v-if="row.handleOption?.logistics"
+              v-if="canReadLogistics && row.handleOption?.logistics"
               type="primary"
               link
               :icon="Van"
@@ -423,14 +426,14 @@ onMounted(fetchData);
           </div>
           <div v-if="detailOrder" class="drawer-actions">
             <el-button
-              v-if="detail?.handleOption?.ship"
+              v-if="canShip && detail?.handleOption?.ship"
               type="success"
               :icon="Van"
               @click="openShip(detailOrder)"
               >发货</el-button
             >
             <el-button
-              v-if="detail?.handleOption?.logistics"
+              v-if="canReadLogistics && detail?.handleOption?.logistics"
               :icon="Van"
               @click="openLogistics(detailOrder)"
               >查看物流</el-button

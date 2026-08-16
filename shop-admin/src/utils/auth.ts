@@ -113,3 +113,9 @@ export const hasPerms = (value: string | Array<string>): boolean => {
     ? permissions.includes(value as string)
     : (value as string[]).every(p => permissions.includes(p));
 };
+
+/** 是否拥有任一接口权限，用于可选操作按钮。 */
+export const hasAnyPerms = (values: Array<string>): boolean => {
+  const { permissions } = useUserStoreHook();
+  return values.some(permission => permissions.includes(permission));
+};

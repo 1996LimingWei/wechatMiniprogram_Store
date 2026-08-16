@@ -23,8 +23,9 @@ wechat:
     reconcile-job-enabled: false
 
 member:
-  gold-card:
-    mock-subscribe-enabled: true
+  features:
+    membership-enabled: false
+    profile-edit-enabled: false
 
 # 商品与库存数据提供方。统一使用 database，所有商品数据从数据库读取。
 product:

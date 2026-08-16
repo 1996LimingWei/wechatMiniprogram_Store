@@ -57,8 +57,8 @@ public class TradeLogisticsService {
         if (order.getStatus() == null || order.getStatus() != 1) {
             throw new ServerException(400, "当前订单不能发货");
         }
-        String company = TradeRequestUtils.getString(request, "logisticsCompany",
-                allowMockDefaults ? "顺丰速运" : "").trim();
+        String company = normalizeLogisticsCompany(TradeRequestUtils.getString(request, "logisticsCompany",
+                allowMockDefaults ? "顺丰速运" : "").trim());
         String logisticsCode = TradeRequestUtils.getString(request, "logisticsCode",
                 LOGISTICS_CODES.getOrDefault(company, "")).trim().toLowerCase();
         String logisticsNo = TradeRequestUtils.getString(request, "logisticsNo", "").trim();
@@ -218,5 +218,14 @@ public class TradeLogisticsService {
 
     private String formatTime(LocalDateTime time) {
         return time == null ? "" : time.format(TIME_FORMATTER);
+    }
+
+    private String normalizeLogisticsCompany(String company) {
+        if (!SUPPORTED_CODES.contains(company)) return company;
+        return LOGISTICS_CODES.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(company))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(company);
     }
 }

@@ -16,7 +16,8 @@ export default {
             name: "ProductList",
             component: () => import("@/views/product/spu/index.vue"),
             meta: {
-                title: "商品列表"
+                title: "商品列表",
+                permissions: ["product:manage"]
             }
         },
         {
@@ -24,7 +25,17 @@ export default {
             name: "ProductCategory",
             component: () => import("@/views/product/category/index.vue"),
             meta: {
-                title: "分类管理"
+                title: "分类管理",
+                permissions: ["product:manage"]
+            }
+        },
+        {
+            path: "/product/comment",
+            name: "ProductComment",
+            component: () => import("@/views/member/comment/index.vue"),
+            meta: {
+                title: "评论管理",
+                permissions: ["product:manage"]
             }
         },
         {
@@ -33,7 +44,8 @@ export default {
             component: () => import("@/views/product/spu-form/index.vue"),
             meta: {
                 title: "新增商品",
-                showLink: false
+                showLink: false,
+                permissions: ["product:manage"]
             }
         },
         {
@@ -42,7 +54,8 @@ export default {
             component: () => import("@/views/product/spu-form/index.vue"),
             meta: {
                 title: "编辑商品",
-                showLink: false
+                showLink: false,
+                permissions: ["product:manage"]
             }
         }
     ]
