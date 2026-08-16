@@ -154,7 +154,14 @@ public class TradeOrderService {
     }
 
     public Map<String, Object> getAdminOrderDetail(Long orderId) {
-        return buildOrderDetail(getOrder(orderId));
+        TradeOrderDO order = getOrder(orderId);
+        Map<String, Object> detail = buildOrderDetail(order);
+        if (detail.get("orderInfo") instanceof Map<?, ?> orderInfo) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> writableOrderInfo = (Map<String, Object>) orderInfo;
+            writableOrderInfo.put("adminRemark", order.getAdminRemark());
+        }
+        return detail;
     }
 
     @Transactional(rollbackFor = Exception.class)

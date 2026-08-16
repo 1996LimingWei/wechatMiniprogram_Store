@@ -3,15 +3,24 @@ import { computed, onMounted, reactive, ref } from "vue";
 import dayjs from "dayjs";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
-import { Refresh, Search, Van, View } from "@element-plus/icons-vue";
+import { Download, Printer, Refresh, Search, Upload, Van, View } from "@element-plus/icons-vue";
 import {
+  downloadBatchShipTemplate,
+  exportOrders,
+  getDeliveryNote,
   getOrderDetail,
   getOrderLogistics,
   getOrderPage,
-  shipOrder
+  getPickingList,
+  importBatchShip,
+  shipOrder,
+  updateOrderRemark
 } from "@/api/order";
 import type {
+  BatchShipResult,
+  DeliveryNote,
   LogisticsTrace,
+  PickingList,
   TradeLogistics,
   TradeOrder,
   TradeOrderDetail,
@@ -44,13 +53,11 @@ const query = reactive({
   payStatus: "all"
 });
 
-async function fetchData() {
-  loading.value = true;
-  try {
-    const params: Parameters<typeof getOrderPage>[0] = {
-      page: query.page,
-      size: query.size
-    };
+function buildQueryParams() {
+  const params: Parameters<typeof getOrderPage>[0] = {
+    page: query.page,
+    size: query.size
+  };
     if (activeStatus.value !== "all") {
       params.status = Number(activeStatus.value);
     }
@@ -74,6 +81,13 @@ async function fetchData() {
         "YYYY-MM-DD HH:mm:ss"
       );
     }
+  return params;
+}
+
+async function fetchData() {
+  loading.value = true;
+  try {
+    const params = buildQueryParams();
     const result = await getOrderPage(params);
     tableData.value = result.list ?? [];
     total.value = result.total ?? 0;
@@ -139,11 +153,14 @@ function goodsSummary(goods: TradeOrderItem[] = []) {
 const detailVisible = ref(false);
 const detailLoading = ref(false);
 const detail = ref<TradeOrderDetail | null>(null);
+const adminRemark = ref("");
+const remarkSaving = ref(false);
 
 async function loadDetail(orderId: number) {
   detailLoading.value = true;
   try {
     detail.value = await getOrderDetail(orderId);
+    adminRemark.value = detail.value.orderInfo.adminRemark || "";
   } finally {
     detailLoading.value = false;
   }
@@ -157,6 +174,7 @@ async function openDetail(row: TradeOrder) {
 
 const detailOrder = computed(() => detail.value?.orderInfo);
 const detailGoods = computed(() => detail.value?.orderGoods ?? []);
+const selectedRows = ref<TradeOrder[]>([]);
 
 function goodsSubtotal(item: TradeOrderItem) {
   return money(Number(item.retailPrice || 0) * (item.number || 0));
@@ -213,6 +231,10 @@ function openShip(row: TradeOrder) {
   shipVisible.value = true;
 }
 
+function handleSelectionChange(rows: TradeOrder[]) {
+  selectedRows.value = rows;
+}
+
 async function submitShip() {
   await shipFormRef.value?.validate();
   await ElMessageBox.confirm(
@@ -258,6 +280,132 @@ async function openLogistics(row: TradeOrder) {
 
 function traceType(_trace: LogisticsTrace, index: number) {
   return index === 0 ? "primary" : "info";
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function handleExport() {
+  const blob = await exportOrders(buildQueryParams());
+  downloadBlob(blob, `订单导出-${dayjs().format("YYYYMMDDHHmmss")}.csv`);
+}
+
+async function handleDownloadTemplate() {
+  const blob = await downloadBatchShipTemplate();
+  downloadBlob(blob, "批量发货模板.csv");
+}
+
+const batchVisible = ref(false);
+const batchSubmitting = ref(false);
+const batchContent = ref("");
+const batchFileName = ref("");
+const batchResult = ref<BatchShipResult | null>(null);
+
+function openBatchShip() {
+  batchVisible.value = true;
+  batchContent.value = "";
+  batchFileName.value = "";
+  batchResult.value = null;
+}
+
+function handleBatchFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  batchFileName.value = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    batchContent.value = String(reader.result || "");
+  };
+  reader.readAsText(file, "utf-8");
+}
+
+async function submitBatchShip(dryRun = false) {
+  if (!batchContent.value.trim()) {
+    ElMessage.warning("请先选择批量发货 CSV 文件");
+    return;
+  }
+  batchSubmitting.value = true;
+  try {
+    batchResult.value = await importBatchShip({
+      content: batchContent.value,
+      dryRun
+    });
+    ElMessage.success(dryRun ? "预校验完成" : "批量发货完成");
+    if (!dryRun) await fetchData();
+  } finally {
+    batchSubmitting.value = false;
+  }
+}
+
+async function saveRemark() {
+  if (!detailOrder.value) return;
+  remarkSaving.value = true;
+  try {
+    await updateOrderRemark({
+      orderId: detailOrder.value.id,
+      remark: adminRemark.value
+    });
+    ElMessage.success("内部备注已保存");
+    await loadDetail(detailOrder.value.id);
+  } finally {
+    remarkSaving.value = false;
+  }
+}
+
+function openPrintWindow(title: string, html: string) {
+  const win = window.open("", "_blank", "width=960,height=720");
+  if (!win) return;
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+    body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#1f2937;padding:24px}
+    h1{font-size:22px;margin:0 0 16px}.meta{display:grid;grid-template-columns:120px 1fr;gap:8px 14px;margin-bottom:18px}
+    table{width:100%;border-collapse:collapse}th,td{border:1px solid #d1d5db;padding:8px;font-size:13px;text-align:left}
+    th{background:#f3f4f6}.right{text-align:right}.remark{margin-top:16px;white-space:pre-wrap}
+    @media print{button{display:none}body{padding:0}}
+  </style></head><body><button onclick="window.print()">打印</button>${html}</body></html>`);
+  win.document.close();
+}
+
+function escapeHtml(value?: string | number) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function printDelivery(row?: TradeOrder) {
+  const orderId = row?.id || detailOrder.value?.id;
+  if (!orderId) return;
+  const note = await getDeliveryNote(orderId);
+  openPrintWindow("发货单", deliveryNoteHtml(note));
+}
+
+async function printPicking() {
+  const ids = selectedRows.value.map(item => item.id);
+  if (!ids.length) {
+    ElMessage.warning("请先勾选要打印拣货单的订单");
+    return;
+  }
+  const list = await getPickingList(ids);
+  openPrintWindow("拣货单", pickingListHtml(list));
+}
+
+function deliveryNoteHtml(note: DeliveryNote) {
+  const rows = note.items.map(item => `<tr><td>${escapeHtml(item.goodsName)}</td><td>${escapeHtml(item.specName || "默认规格")}</td><td>${escapeHtml(item.skuId)}</td><td class="right">${escapeHtml(item.count)}</td><td class="right">¥${escapeHtml(item.retailPrice)}</td><td class="right">¥${escapeHtml(item.totalPrice)}</td></tr>`).join("");
+  return `<h1>发货单</h1><div class="meta"><strong>订单号</strong><span>${escapeHtml(note.orderSn)}</span><strong>收货人</strong><span>${escapeHtml(note.consignee)} ${escapeHtml(note.mobile)}</span><strong>收货地址</strong><span>${escapeHtml(note.fullAddress)}</span><strong>物流</strong><span>${escapeHtml(note.logisticsCompany || "")} ${escapeHtml(note.logisticsNo || "")}</span><strong>实付金额</strong><span>¥${escapeHtml(note.actualPrice)}</span></div><table><thead><tr><th>商品</th><th>规格</th><th>SKU</th><th>数量</th><th>单价</th><th>小计</th></tr></thead><tbody>${rows}</tbody></table><div class="remark"><strong>内部备注：</strong>${escapeHtml(note.adminRemark || "")}</div>`;
+}
+
+function pickingListHtml(list: PickingList) {
+  const rows = list.items.map(item => `<tr><td>${escapeHtml(item.goodsName)}</td><td>${escapeHtml(item.specName || "默认规格")}</td><td>${escapeHtml(item.skuId)}</td><td class="right">${escapeHtml(item.count)}</td><td>${escapeHtml(item.orderSns.join(", "))}</td></tr>`).join("");
+  return `<h1>拣货单</h1><div class="meta"><strong>订单数</strong><span>${escapeHtml(list.orderCount)}</span><strong>商品件数</strong><span>${escapeHtml(list.itemCount)}</span></div><table><thead><tr><th>商品</th><th>规格</th><th>SKU</th><th>应拣数量</th><th>订单号</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 onMounted(fetchData);
@@ -318,6 +466,10 @@ onMounted(fetchData);
             >搜索</el-button
           >
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button :icon="Download" @click="handleExport">导出</el-button>
+          <el-button v-if="canShip" :icon="Upload" @click="openBatchShip"
+            >批量发货</el-button
+          >
         </el-form-item>
       </el-form>
     </el-card>
@@ -332,13 +484,23 @@ onMounted(fetchData);
         />
       </el-tabs>
 
-      <div class="table-toolbar">共 {{ total }} 笔订单</div>
+      <div class="table-toolbar">
+        <span>共 {{ total }} 笔订单</span>
+        <el-button
+          :icon="Printer"
+          :disabled="!selectedRows.length"
+          @click="printPicking"
+          >打印拣货单</el-button
+        >
+      </div>
       <el-table
         v-loading="loading"
         :data="tableData"
         border
         class="order-table"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="48" fixed="left" />
         <el-table-column
           prop="orderSn"
           label="订单号"
@@ -400,6 +562,13 @@ onMounted(fetchData);
               @click="openLogistics(row)"
               >物流</el-button
             >
+            <el-button
+              type="primary"
+              link
+              :icon="Printer"
+              @click="printDelivery(row)"
+              >发货单</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -437,6 +606,9 @@ onMounted(fetchData);
               :icon="Van"
               @click="openLogistics(detailOrder)"
               >查看物流</el-button
+            >
+            <el-button :icon="Printer" @click="printDelivery(detailOrder)"
+              >打印发货单</el-button
             >
           </div>
         </div>
@@ -565,6 +737,26 @@ onMounted(fetchData);
           </section>
 
           <section class="detail-section">
+            <h4>内部备注</h4>
+            <el-input
+              v-model="adminRemark"
+              type="textarea"
+              maxlength="200"
+              show-word-limit
+              :rows="3"
+              placeholder="客服内部备注，不会展示给小程序用户"
+            />
+            <div class="remark-actions">
+              <el-button
+                type="primary"
+                :loading="remarkSaving"
+                @click="saveRemark"
+                >保存备注</el-button
+              >
+            </div>
+          </section>
+
+          <section class="detail-section">
             <h4>订单状态时间线</h4>
             <el-timeline class="order-timeline">
               <el-timeline-item
@@ -672,6 +864,54 @@ onMounted(fetchData);
         <el-empty v-else description="该订单暂无物流信息" :image-size="72" />
       </div>
     </el-dialog>
+
+    <el-dialog
+      v-model="batchVisible"
+      title="批量发货"
+      width="min(760px, 94vw)"
+      destroy-on-close
+    >
+      <div class="batch-tools">
+        <el-button :icon="Download" @click="handleDownloadTemplate"
+          >下载模板</el-button
+        >
+        <label class="file-button">
+          <input type="file" accept=".csv,text/csv" @change="handleBatchFileChange" />
+          <span>{{ batchFileName || "选择 CSV 文件" }}</span>
+        </label>
+        <el-button :loading="batchSubmitting" @click="submitBatchShip(true)"
+          >预校验</el-button
+        >
+        <el-button
+          type="primary"
+          :loading="batchSubmitting"
+          @click="submitBatchShip(false)"
+          >确认导入发货</el-button
+        >
+      </div>
+      <el-table
+        v-if="batchResult"
+        :data="batchResult.rows"
+        border
+        class="batch-result"
+      >
+        <el-table-column prop="rowNo" label="行号" width="80" align="center" />
+        <el-table-column prop="orderSn" label="订单号" min-width="180" />
+        <el-table-column label="结果" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.success ? 'success' : 'danger'">{{
+              row.success ? "成功" : "失败"
+            }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="message"
+          label="说明"
+          min-width="220"
+          show-overflow-tooltip
+        />
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -705,8 +945,12 @@ onMounted(fetchData);
 }
 
 .table-toolbar {
+  align-items: center;
   color: var(--el-text-color-secondary);
+  display: flex;
   font-size: 14px;
+  justify-content: space-between;
+  gap: 12px;
   margin: 4px 0 12px;
 }
 
@@ -833,6 +1077,46 @@ onMounted(fetchData);
 
 .dialog-alert {
   margin-bottom: 20px;
+}
+
+.remark-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.batch-tools {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.file-button {
+  align-items: center;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  display: inline-flex;
+  min-height: 32px;
+  max-width: 260px;
+  padding: 0 12px;
+}
+
+.file-button input {
+  display: none;
+}
+
+.file-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-result {
+  margin-top: 8px;
 }
 
 .logistics-content {

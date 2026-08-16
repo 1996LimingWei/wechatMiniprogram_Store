@@ -102,6 +102,7 @@ export interface TradeOrder {
   handleOption?: TradeHandleOption;
   logistics?: TradeLogistics;
   afterSale?: AfterSale;
+  adminRemark?: string;
 }
 
 /** 订单明细 */
@@ -186,6 +187,56 @@ export interface TradeOrderDetail {
   afterSale: AfterSale;
   payOrder: PayOrderInfo;
   orderLogs: OrderLog[];
+}
+
+export interface BatchShipResult {
+  totalCount: number;
+  successCount: number;
+  failedCount: number;
+  dryRun: boolean;
+  rows: Array<{
+    rowNo: number;
+    orderSn: string;
+    success: boolean;
+    message: string;
+  }>;
+}
+
+export interface DeliveryNote {
+  orderId: number;
+  orderSn: string;
+  consignee: string;
+  mobile: string;
+  fullAddress: string;
+  logisticsCompany?: string;
+  logisticsNo?: string;
+  deliveryTime?: string;
+  goodsPrice: string;
+  freightPrice: string;
+  couponPrice: string;
+  actualPrice: string;
+  adminRemark?: string;
+  items: Array<{
+    skuId: number;
+    goodsName: string;
+    specName?: string;
+    retailPrice: string;
+    count: number;
+    totalPrice: string;
+  }>;
+}
+
+export interface PickingList {
+  orderCount: number;
+  itemCount: number;
+  items: Array<{
+    spuId: number;
+    skuId: number;
+    goodsName: string;
+    specName?: string;
+    count: number;
+    orderSns: string[];
+  }>;
 }
 
 /** 售后单 */

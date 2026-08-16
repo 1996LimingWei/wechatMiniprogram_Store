@@ -891,6 +891,18 @@
 - 验证通过：交易模块 `mvn -pl shop-module-trade -am test "-Dmaven.compiler.release=24"`，交易 89 个测试零失败且依赖商品 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
 - 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_04__shipping_rule_effective_window.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-08 订单导出、批量发货与拣货单
+
+- 后端新增订单运营服务，支持按订单号、订单状态、支付状态、用户 ID、手机号前缀和下单时间范围导出 CSV；导出字段覆盖订单、商品、SKU、数量、收货人、手机号、地址、商品金额、运费、优惠、实付金额、支付状态、发货状态和物流信息。
+- 订单导出按权限脱敏：超级管理员或具备 `trade:order-export-sensitive` 权限可导出完整手机号和地址，订单客服等普通运营导出时手机号和地址自动脱敏。
+- 新增批量发货模板下载和 CSV 导入接口，逐行校验订单号、待发货状态、物流公司、物流编码和物流单号；正式导入复用单订单发货状态机，写订单日志并由后台操作审计记录接口操作。
+- 订单表新增 `admin_remark` 内部备注字段，只在管理后台订单详情、发货单中展示；小程序用户订单详情不会返回该字段。
+- 管理后台订单列表新增导出、批量发货、拣货单打印和发货单打印入口；批量发货弹窗支持模板下载、CSV 文件选择、预校验、正式导入和错误行展示。
+- 后端提供发货单数据接口和拣货单数据接口；前端打印窗口对业务文本做 HTML 转义，避免打印内容注入。
+- 数据库必需迁移版本推进到 `20260816_05`，新增迁移 `V20260816_05__order_operation_delivery_tools.sql`，同步补齐内部备注字段和订单运营权限。
+- 验证通过：交易模块 `mvn -pl shop-module-trade -am test "-Dmaven.compiler.release=24"`，交易 91 个测试零失败且依赖商品 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
+- 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_05__order_operation_delivery_tools.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -931,7 +943,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
+2. 继续补齐订单、售后和资金闭环：支付异常、退款异常、日终对账。
 3. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
 4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 

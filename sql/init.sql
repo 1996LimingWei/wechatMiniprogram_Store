@@ -324,6 +324,7 @@ CREATE TABLE `trade_order` (
     `close_time` datetime DEFAULT NULL COMMENT '订单关闭时间',
     `close_reason` varchar(128) DEFAULT '' COMMENT '订单关闭原因',
     `finish_time` datetime DEFAULT NULL COMMENT '订单完成时间',
+    `admin_remark` varchar(255) NOT NULL DEFAULT '' COMMENT '客服内部备注，小程序不可见',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted` bit(1) NOT NULL DEFAULT b'0',

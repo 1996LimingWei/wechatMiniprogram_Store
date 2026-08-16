@@ -98,6 +98,7 @@ public class TradeOrderLogService {
             case "USER_CANCEL" -> "用户取消";
             case "SYSTEM_CLOSE" -> "系统关闭";
             case "SHIP_ORDER" -> "商家发货";
+            case "UPDATE_ADMIN_REMARK" -> "更新内部备注";
             case "CONFIRM_RECEIPT" -> "确认收货";
             case "APPLY_AFTER_SALE" -> "申请售后";
             case "REFUND_PROCESSING" -> "退款处理中";
