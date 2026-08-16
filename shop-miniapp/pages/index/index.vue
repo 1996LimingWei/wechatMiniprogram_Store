@@ -41,9 +41,9 @@
 				indicator-color="rgba(77,112,77,0.3)" indicator-active-color="#4D704D">
 				<swiper-item v-for="(item, index) in banner" :key="index">
 					<navigator v-if="item.link" :url="item.link">
-						<image class="banner-img" :src="item.imageUrl" mode="aspectFill"></image>
+						<image class="banner-img" :src="imageUrl(item.imageUrl)" mode="aspectFill" @error="setImageFallback(item, 'imageUrl')"></image>
 					</navigator>
-					<image v-else class="banner-img" :src="item.imageUrl" mode="aspectFill"></image>
+					<image v-else class="banner-img" :src="imageUrl(item.imageUrl)" mode="aspectFill" @error="setImageFallback(item, 'imageUrl')"></image>
 				</swiper-item>
 			</swiper>
 		</view>
@@ -75,7 +75,7 @@
 				</view>
 				<view class="dual-products">
 					<view class="dual-product" v-for="(item, index) in hotGoods.slice(0,2)" :key="index">
-						<image class="dual-product-img" :src="item.listPicUrl" mode="aspectFill"></image>
+						<image class="dual-product-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="setImageFallback(item, 'listPicUrl')"></image>
 						<text class="dual-product-price">¥{{item.retailPrice}}</text>
 					</view>
 				</view>
@@ -86,7 +86,7 @@
 					<text class="dual-card-title">新品尝鲜</text>
 					<text class="dual-card-sub">每周上新</text>
 					<view class="dual-card-img-wrap" v-if="newGoods.length > 0">
-						<image class="dual-card-img" :src="newGoods[0].listPicUrl" mode="aspectFill"></image>
+						<image class="dual-card-img" :src="imageUrl(newGoods[0].listPicUrl)" mode="aspectFill" @error="setImageFallback(newGoods[0], 'listPicUrl')"></image>
 					</view>
 				</view>
 				<view class="dual-card" @tap="goToBrand">
@@ -94,7 +94,7 @@
 					<text class="dual-card-title">品牌精选</text>
 					<text class="dual-card-sub">查看更多</text>
 					<view class="dual-card-img-wrap" v-if="brands.length > 0">
-						<image class="dual-card-img" :src="brands[0].newPicUrl" mode="aspectFill"></image>
+						<image class="dual-card-img" :src="imageUrl(brands[0].newPicUrl)" mode="aspectFill" @error="setImageFallback(brands[0], 'newPicUrl')"></image>
 					</view>
 				</view>
 			</view>
@@ -115,7 +115,7 @@
 			<scroll-view scroll-x class="topic-scroll" :show-scrollbar="false">
 				<view class="topic-list-row">
 					<view class="topic-card" v-for="(item, index) in topics" :key="index" @tap="goToTopicDetail(item.id)">
-						<image class="topic-card-img" :src="item.scenePicUrl" mode="aspectFill"></image>
+						<image class="topic-card-img" :src="imageUrl(item.scenePicUrl)" mode="aspectFill" @error="setImageFallback(item, 'scenePicUrl')"></image>
 						<view class="topic-card-info">
 							<text class="topic-card-title">{{item.title}}</text>
 							<text class="topic-card-sub">{{item.subtitle}}</text>
@@ -128,7 +128,7 @@
 
 		<!-- 二级分类专区 Banner -->
 		<view class="category-banner-wrap" v-if="currentTab > 0">
-			<image v-if="categoryTabs[currentTab].icon" class="category-banner-img" :src="categoryTabs[currentTab].icon" mode="aspectFill"></image>
+			<image v-if="categoryTabs[currentTab].icon" class="category-banner-img" :src="imageUrl(categoryTabs[currentTab].icon)" mode="aspectFill" @error="setImageFallback(categoryTabs[currentTab], 'icon')"></image>
 			<view class="category-banner-text">
 				<text class="cat-title">{{categoryTabs[currentTab].name}}专区</text>
 				<text class="cat-sub">查看当前分类商品</text>
@@ -152,7 +152,7 @@
 		<view class="goods-grid">
 			<view class="goods-column">
 				<view class="goods-card" v-for="(item, index) in leftGoods" :key="index" @tap="goToGoods(item.id)">
-					<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+					<image class="goods-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="setImageFallback(item, 'listPicUrl')"></image>
 					<view class="goods-info">
 						<text class="goods-name">{{item.name}}</text>
 						<view class="goods-price-row">
@@ -166,7 +166,7 @@
 			</view>
 			<view class="goods-column">
 				<view class="goods-card" v-for="(item, index) in rightGoods" :key="index" @tap="goToGoods(item.id)">
-					<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+					<image class="goods-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="setImageFallback(item, 'listPicUrl')"></image>
 					<view class="goods-info">
 						<text class="goods-name">{{item.name}}</text>
 						<view class="goods-price-row">
@@ -194,6 +194,7 @@
 <script>
 const api = require('@/utils/api.js');
 const util = require('@/utils/util.js');
+const imageUtil = require('@/utils/image.js');
 
 export default {
 	data() {
@@ -243,6 +244,12 @@ export default {
 		}
 	},
 	methods: {
+		imageUrl(url) {
+			return imageUtil.normalizeImageUrl(url);
+		},
+		setImageFallback(item, field) {
+			if (item && item[field] !== imageUtil.FALLBACK_IMAGE) this.$set(item, field, imageUtil.FALLBACK_IMAGE);
+		},
 		getIndexData() {
 			this.loadFailed = false;
 			Promise.all([

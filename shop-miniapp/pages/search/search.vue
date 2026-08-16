@@ -74,7 +74,7 @@
 			<view class="goods-grid">
 				<navigator class="goods-card" v-for="(item, index) in goodsList" :key="index"
 					:url="'/pages/goods/goods?id='+item.id">
-					<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+					<image class="goods-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="setImageFallback(item, 'listPicUrl')"></image>
 					<view class="goods-info">
 						<text class="goods-name">{{item.name}}</text>
 						<text class="goods-price">¥{{item.retailPrice}}</text>
@@ -95,6 +95,7 @@
 <script>
 const util = require("@/utils/util.js");
 const api = require('@/utils/api.js');
+const imageUtil = require('@/utils/image.js');
 
 export default {
 	data() {
@@ -116,6 +117,12 @@ export default {
 		}
 	},
 	methods: {
+		imageUrl(url) {
+			return imageUtil.normalizeImageUrl(url);
+		},
+		setImageFallback(item, field) {
+			if (item && item[field] !== imageUtil.FALLBACK_IMAGE) this.$set(item, field, imageUtil.FALLBACK_IMAGE);
+		},
 		closeSearch() {
 			uni.navigateBack();
 		},

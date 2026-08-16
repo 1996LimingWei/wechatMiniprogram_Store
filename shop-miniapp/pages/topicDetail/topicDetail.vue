@@ -38,7 +38,7 @@
 			</view>
 			<view class="goods-list">
 				<view class="goods-item" v-for="(item, index) in goodsList" :key="index" @tap="goToGoods(item.id)">
-					<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+					<image class="goods-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 					<view class="goods-info">
 						<text class="goods-name">{{item.name}}</text>
 						<text class="goods-brief">{{item.goodsBrief}}</text>
@@ -58,7 +58,7 @@
 			<view class="recommend-list">
 				<navigator class="recommend-item" v-for="(item, index) in topicList" :key="index"
 				 :url="'../topicDetail/topicDetail?id='+item.id">
-					<image class="recommend-img" :src="item.scenePicUrl" mode="aspectFill"></image>
+					<image class="recommend-img" :src="$imageUrl(item.scenePicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'scenePicUrl')"></image>
 					<text class="recommend-title">{{item.title}}</text>
 				</navigator>
 			</view>

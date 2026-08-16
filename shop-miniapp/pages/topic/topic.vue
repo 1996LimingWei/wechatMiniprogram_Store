@@ -2,7 +2,7 @@
 	<view class="container">
 		<view class="topic-list" v-if="topicList.length > 0">
 			<navigator class="topic-card" v-for="(item, index) in topicList" :key="index" :url="'../topicDetail/topicDetail?id='+item.id">
-				<image class="topic-img" :src="item.scenePicUrl" mode="aspectFill"></image>
+				<image class="topic-img" :src="$imageUrl(item.scenePicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'scenePicUrl')"></image>
 				<view class="topic-info">
 					<text class="topic-title">{{item.title}}</text>
 					<text class="topic-desc">{{item.subtitle}}</text>

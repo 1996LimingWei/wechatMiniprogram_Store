@@ -91,7 +91,7 @@ class ProductAdminServiceTest {
 
         ProductAdminService service = new ProductAdminService(
                 spuMapper, skuMapper, categoryMapper, mock(ProductInventoryService.class),
-                mock(JdbcTemplate.class));
+                mock(JdbcTemplate.class), mock(MaterialAssetService.class));
 
         ServerException exception = assertThrows(ServerException.class,
                 () -> service.saveProduct(spu, List.of(sku(null, null, 8))));
@@ -113,7 +113,7 @@ class ProductAdminServiceTest {
 
         ProductAdminService service = new ProductAdminService(
                 spuMapper, skuMapper, mock(CategoryMapper.class),
-                mock(ProductInventoryService.class), jdbcTemplate);
+                mock(ProductInventoryService.class), jdbcTemplate, mock(MaterialAssetService.class));
         service.saveSkus(10L, List.of(requested), 99L, "仓库盘点补录库存");
 
         verify(jdbcTemplate).update(any(String.class),
@@ -142,7 +142,7 @@ class ProductAdminServiceTest {
     private ProductAdminService service(ProductSpuMapper spuMapper, ProductSkuMapper skuMapper,
                                         ProductInventoryService inventoryService) {
         return new ProductAdminService(spuMapper, skuMapper, mock(CategoryMapper.class),
-                inventoryService, mock(JdbcTemplate.class));
+                inventoryService, mock(JdbcTemplate.class), mock(MaterialAssetService.class));
     }
 
     private ProductSpuDO spu(Long id) {

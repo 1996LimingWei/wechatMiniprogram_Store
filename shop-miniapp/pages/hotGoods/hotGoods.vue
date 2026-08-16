@@ -2,7 +2,7 @@
 	<view class="page">
 		<!-- Banner -->
 		<view class="banner" v-if="bannerInfo.imgUrl">
-			<image class="banner-img" :src="bannerInfo.imgUrl" mode="aspectFill"></image>
+			<image class="banner-img" :src="imageUrl(bannerInfo.imgUrl)" mode="aspectFill" @error="setImageFallback(bannerInfo, 'imgUrl')"></image>
 			<view class="banner-mask">
 				<text class="banner-title">{{bannerInfo.name||'热销商品'}}</text>
 			</view>
@@ -33,7 +33,7 @@
 		<view class="goods-grid">
 			<navigator class="goods-card" v-for="(item, index) in goodsList" :key="index"
 				:url="'../goods/goods?id='+item.id">
-				<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+				<image class="goods-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="setImageFallback(item, 'listPicUrl')"></image>
 				<view class="goods-info">
 					<text class="goods-name">{{item.name||''}}</text>
 					<text class="goods-price">¥{{item.retailPrice||''}}</text>
@@ -46,6 +46,7 @@
 <script>
 const api = require('@/utils/api.js');
 const util = require("@/utils/util.js");
+const imageUtil = require('@/utils/image.js');
 
 export default {
 	data() {
@@ -62,6 +63,12 @@ export default {
 		}
 	},
 	methods: {
+		imageUrl(url) {
+			return imageUtil.normalizeImageUrl(url);
+		},
+		setImageFallback(item, field) {
+			if (item && item[field] !== imageUtil.FALLBACK_IMAGE) this.$set(item, field, imageUtil.FALLBACK_IMAGE);
+		},
 		getData() {
 			util.request(api.GoodsHot).then(res => {
 				if (res.code === 0) {

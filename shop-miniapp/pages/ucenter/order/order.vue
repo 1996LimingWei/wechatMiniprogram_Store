@@ -26,7 +26,7 @@
 
 				<!-- 商品列表 -->
 				<view class="order-goods" v-for="(gitem, gi) in item.goodsList" :key="gi">
-					<image class="order-goods-img" :src="gitem.listPicUrl" mode="aspectFill"></image>
+					<image class="order-goods-img" :src="$imageUrl(gitem.listPicUrl)" mode="aspectFill" @error="$setImageFallback(gitem, 'listPicUrl')"></image>
 					<view class="order-goods-info">
 						<text class="order-goods-name">{{gitem.goodsName||''}}</text>
 						<text class="order-goods-num">共{{gitem.number||0}}件</text>

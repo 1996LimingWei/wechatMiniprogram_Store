@@ -1,7 +1,7 @@
 <template>
 	<view class="container">
 		<view class="brand-header">
-			<image class="brand-banner" :src="brand.appListPicUrl || brand.picUrl" mode="aspectFill"></image>
+			<image class="brand-banner" :src="$imageUrl(brand.appListPicUrl || brand.picUrl)" mode="aspectFill" @error="$setImageFallback(brand, brand.appListPicUrl ? 'appListPicUrl' : 'picUrl')"></image>
 			<view class="brand-overlay"></view>
 			<view class="brand-title">
 				<text class="brand-name">{{brand.name||''}}</text>
@@ -15,7 +15,7 @@
 			<view class="section-title">品牌商品</view>
 			<view class="goods-grid">
 				<navigator class="goods-item" v-for="(item, index) in goodsList" :key="index" :url="'../goods/goods?id='+item.id">
-					<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+					<image class="goods-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 					<text class="goods-name">{{item.name||''}}</text>
 					<text class="goods-price">¥{{item.retailPrice||0}}</text>
 				</navigator>

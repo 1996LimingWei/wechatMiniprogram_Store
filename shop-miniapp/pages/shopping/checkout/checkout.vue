@@ -20,7 +20,7 @@
 		<!-- 商品列表 -->
 		<view class="goods-card">
 			<view class="goods-item" v-for="(item, index) in checkedGoodsList" :key="item.id">
-				<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+				<image class="goods-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 				<view class="goods-info">
 					<text class="goods-name">{{item.goodsName||''}}</text>
 					<text class="goods-spec" v-if="item.goodsSpecifitionNameValue">{{item.goodsSpecifitionNameValue}}</text>

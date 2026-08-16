@@ -4,6 +4,7 @@ import com.shop.common.exception.ServerException;
 import com.shop.module.product.config.MaterialStorageProperties;
 import com.shop.module.product.dal.dataobject.MaterialAssetDO;
 import com.shop.module.product.dal.mysql.MaterialAssetMapper;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
@@ -101,6 +102,29 @@ class MaterialAssetServiceTest {
         assertEquals(409, exception.getCode());
         verify(mapper, never()).deleteById(10L);
         verify(storageService, never()).delete(any());
+    }
+
+    @Test
+    void shouldAllowBusinessImageFromConfiguredMaterialPrefix() {
+        MaterialAssetMapper mapper = mock(MaterialAssetMapper.class);
+        MaterialAssetService service = new MaterialAssetService(
+                mapper, mock(MaterialFileStorageService.class), properties());
+
+        service.validateBusinessImageUrl(
+                "https://cdn.example.com/uploads/material/2026/08/16/a.png", "商品主图", true);
+    }
+
+    @Test
+    void shouldRejectBusinessImageOutsideWhitelist() {
+        MaterialAssetMapper mapper = mock(MaterialAssetMapper.class);
+        MaterialAssetService service = new MaterialAssetService(
+                mapper, mock(MaterialFileStorageService.class), properties());
+        when(mapper.selectCount(any(Wrapper.class))).thenReturn(0L);
+
+        ServerException exception = assertThrows(ServerException.class,
+                () -> service.validateBusinessImageUrl("https://not-allowed.example.com/a.png", "商品主图", true));
+
+        assertEquals(400, exception.getCode());
     }
 
     private MaterialStorageProperties properties() {

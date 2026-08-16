@@ -6,7 +6,7 @@
 				<view class="day-list">
 					<view class="footprint-item" :data-footprint="iitem" @touchstart="touchStart" @touchend="touchEnd"
 					 @tap="deleteItem" v-for="(iitem, iindex) in item" :key="iitem.id">
-						<image class="item-img" :src="iitem.listPicUrl" mode="aspectFill"></image>
+						<image class="item-img" :src="$imageUrl(iitem.listPicUrl)" mode="aspectFill" @error="$setImageFallback(iitem, 'listPicUrl')"></image>
 						<view class="item-info">
 							<text class="item-name">{{iitem.name||''}}</text>
 							<text class="item-brief">{{iitem.goodsBrief||''}}</text>

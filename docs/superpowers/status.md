@@ -839,6 +839,15 @@
 - 验证通过：Secret 扫描、生产配置静态校验、后端 API 契约基线校验、小程序 API 契约校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`、生产 compose 配置解析、后端 `mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`、商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`、管理后台 `corepack pnpm typecheck` 和 `corepack pnpm build`。
 - 未完成验收：`verify-db-migration.ps1` 仍因本机 `shop-mysql` 容器 60 秒内未就绪而失败，新增迁移 `V20260816_01__material_asset_schema.sql` 的空库迁移与重放需在 Docker/MySQL 就绪后复验；商品表单内嵌上传/素材选择属于下一项 P0-03。
 
+## 2026-08-16 v1.0 P0-03 商品图片上传与素材选择
+
+- 后端商品主图、轮播图、详情图、SKU 图片和分类图标统一接入素材 URL 校验；保存、SKU 保存、分类创建/更新/删除、商品删除后刷新素材引用计数，替换或删除图片后引用数会自动释放。
+- 图片 URL 保存规则升级为“素材库或配置白名单”策略；拒绝 `wxfile://`、`file://`、`http://tmp/` 和非白名单外链；开发环境允许本地素材服务、Picsum/Unsplash/Example 测试图，生产/预发布通过 `MATERIAL_ALLOWED_URL_PREFIXES` 显式配置。
+- 管理后台新增通用 `MaterialImagePicker`，支持上传 JPG/PNG/WebP、选择素材、预览、删除、多图排序和上传失败原因提示；商品表单已接入主图、轮播图、详情图和 SKU 图，分类表单已接入分类图标。
+- 小程序新增统一图片兜底工具，商品详情、首页、分类、搜索、新品、热销、购物车、结算、订单、收藏、足迹、品牌、专题和评论图片均会过滤临时/开发机路径，并在加载失败时回退品牌兜底图。
+- `v1.0 客户交付版.md` 已将 P0-03 和 P0-02 小程序图片验收项标记完成；下一步进入 P0-04 商品导入导出。
+- 验证通过：商品模块干净测试 `mvn -pl shop-module-product -am clean test "-Dmaven.compiler.release=24"`，共 38 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；小程序 API 契约校验 63 个已使用 API 与 120 条后端路由；Secret 扫描、生产/预发布配置静态校验、后端 API 契约基线校验和 `git diff --check`。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |

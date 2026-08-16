@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -85,6 +86,43 @@ public class MaterialAssetService {
         int referenceCount = materialAssetMapper.countReferences(asset.getUrl());
         updateReferenceCount(asset, referenceCount);
         return materialAssetMapper.selectReferences(asset.getUrl());
+    }
+
+    public void validateBusinessImageUrl(String url, String fieldName, boolean required) {
+        String value = url == null ? "" : url.trim();
+        if (value.isEmpty()) {
+            if (required) throw new ServerException(400, fieldName + "不能为空");
+            return;
+        }
+        String lowerValue = value.toLowerCase(Locale.ROOT);
+        if (value.length() > 1024 || lowerValue.startsWith("wxfile://") || lowerValue.startsWith("http://tmp/")
+                || lowerValue.startsWith("file://")) {
+            throw new ServerException(400, fieldName + "必须使用素材库中的正式图片");
+        }
+        boolean relativeMaterialUrl = value.startsWith("/uploads/material/");
+        boolean publicBaseMatched = hasText(properties.getPublicBaseUrl())
+                && value.startsWith(normalizeBaseUrl(properties.getPublicBaseUrl()));
+        List<String> allowedPrefixes = properties.getAllowedUrlPrefixes() == null
+                ? List.of() : properties.getAllowedUrlPrefixes();
+        boolean configuredPrefixMatched = allowedPrefixes.stream()
+                .filter(this::hasText)
+                .map(this::normalizeBaseUrl)
+                .anyMatch(value::startsWith);
+        if (relativeMaterialUrl || publicBaseMatched || configuredPrefixMatched || existsActiveAsset(value)) {
+            return;
+        }
+        throw new ServerException(400, fieldName + "必须来自素材库或配置白名单");
+    }
+
+    public void refreshAllReferenceCounts() {
+        List<MaterialAssetDO> assets = materialAssetMapper.selectList(new LambdaQueryWrapper<MaterialAssetDO>()
+                .select(MaterialAssetDO::getId, MaterialAssetDO::getUrl, MaterialAssetDO::getReferenceCount));
+        for (MaterialAssetDO asset : assets) {
+            int referenceCount = materialAssetMapper.countReferences(asset.getUrl());
+            if (!Objects.equals(asset.getReferenceCount(), referenceCount)) {
+                updateReferenceCount(asset, referenceCount);
+            }
+        }
     }
 
     @Transactional
@@ -230,6 +268,17 @@ public class MaterialAssetService {
 
     private String normalizeContentType(String contentType) {
         return contentType == null ? "" : contentType.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private boolean existsActiveAsset(String url) {
+        Long count = materialAssetMapper.selectCount(new LambdaQueryWrapper<MaterialAssetDO>()
+                .eq(MaterialAssetDO::getUrl, url));
+        return count != null && count > 0;
+    }
+
+    private String normalizeBaseUrl(String value) {
+        String normalized = value.trim();
+        return normalized.endsWith("/") ? normalized : normalized + "/";
     }
 
     private boolean hasText(String value) {

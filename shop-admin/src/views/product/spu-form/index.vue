@@ -9,6 +9,7 @@ import {
 } from "@/api/product";
 import { getCategoryList } from "@/api/category";
 import { getSkuList } from "@/api/sku";
+import MaterialImagePicker from "@/components/MaterialImagePicker/index.vue";
 import type { ProductSpu, Category, ProductSku } from "@/api/types";
 
 defineOptions({ name: "ProductForm" });
@@ -37,6 +38,7 @@ const form = reactive({
     description: "",
     picUrl: "",
     sliderPicUrls: [] as string[],
+    detailImageUrls: [] as string[],
     price: 0,
     marketPrice: 0,
     stock: 0,
@@ -78,6 +80,40 @@ function parseSliderPics(raw: string): string[] {
     return raw.split(",").filter(Boolean);
 }
 
+const IMAGE_TAG = /<img\b[^>]*\bsrc\s*=\s*(['"])(.*?)\1[^>]*>/gi;
+
+function extractImageUrlsFromDescription(description: string): string[] {
+    const urls: string[] = [];
+    let match: RegExpExecArray | null;
+    IMAGE_TAG.lastIndex = 0;
+    while ((match = IMAGE_TAG.exec(description)) !== null) {
+        if (match[2]) urls.push(match[2]);
+    }
+    return urls;
+}
+
+function stripImageTags(description: string): string {
+    IMAGE_TAG.lastIndex = 0;
+    return description.replace(IMAGE_TAG, "").trim();
+}
+
+function escapeHtmlAttr(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+function buildDescriptionHtml(): string {
+    const content = form.description.trim();
+    const images = form.detailImageUrls
+        .filter(Boolean)
+        .map(url => `<p><img src="${escapeHtmlAttr(url)}" /></p>`)
+        .join("\n");
+    return [content, images].filter(Boolean).join("\n");
+}
+
 /** 加载商品详情 */
 async function loadProduct() {
     if (!spuId.value) return;
@@ -88,7 +124,8 @@ async function loadProduct() {
         form.categoryId = detail.categoryId;
         form.keyword = detail.keyword || "";
         form.introduction = detail.introduction || "";
-        form.description = detail.description || "";
+        form.detailImageUrls = extractImageUrlsFromDescription(detail.description || "");
+        form.description = stripImageTags(detail.description || "");
         form.picUrl = detail.picUrl || "";
         form.sliderPicUrls = detail.sliderPicUrls
             ? parseSliderPics(detail.sliderPicUrls)
@@ -226,15 +263,6 @@ function removeSpecValue(dimIndex: number, valIndex: number) {
     generateMatrix();
 }
 
-/* ---------- 图片操作 ---------- */
-function addSliderPic() {
-    form.sliderPicUrls.push("");
-}
-
-function removeSliderPic(index: number) {
-    form.sliderPicUrls.splice(index, 1);
-}
-
 /* ---------- 保存 ---------- */
 function buildSpuPayload(): ProductSpu {
     return {
@@ -243,7 +271,7 @@ function buildSpuPayload(): ProductSpu {
         categoryId: form.categoryId,
         keyword: form.keyword.trim(),
         introduction: form.introduction.trim(),
-        description: form.description,
+        description: buildDescriptionHtml(),
         picUrl: form.picUrl,
         sliderPicUrls: form.sliderPicUrls.filter(Boolean).length > 0
             ? JSON.stringify(form.sliderPicUrls.filter(Boolean))
@@ -399,27 +427,27 @@ onMounted(async () => {
             <el-form label-width="100px">
                 <el-form-item>
                     <template #label>
-                        主图 URL
-                        <el-tooltip content="商品列表和详情页展示的主图，填写可访问的图片链接" placement="top">
+                        主图
+                        <el-tooltip content="商品列表和详情页展示的主图，可上传新图或选择素材库图片" placement="top">
                             <el-icon class="tip-icon"><QuestionFilled /></el-icon>
                         </el-tooltip>
                     </template>
-                    <el-input v-model="form.picUrl" placeholder="输入主图 URL" />
+                    <MaterialImagePicker v-model="form.picUrl" biz-type="product" empty-text="请选择商品主图" />
                 </el-form-item>
                 <el-form-item>
-                                    <template #label>
-                                        轮播图
-                                        <el-tooltip content="商品详情页顶部的滑动图片，可添加多张，填 URL 后点击添加" placement="top">
-                                            <el-icon class="tip-icon"><QuestionFilled /></el-icon>
-                                        </el-tooltip>
-                                    </template>
-                    <div class="slider-list">
-                        <div v-for="(url, idx) in form.sliderPicUrls" :key="idx" class="slider-item">
-                            <el-input v-model="form.sliderPicUrls[idx]" placeholder="图片 URL" />
-                            <el-button type="danger" link size="small" @click="removeSliderPic(idx)">删除</el-button>
-                        </div>
-                        <el-button type="primary" link @click="addSliderPic">+ 添加轮播图</el-button>
-                    </div>
+                    <template #label>
+                        轮播图
+                        <el-tooltip content="商品详情页顶部滑动图片，支持多图上传、选择、排序和删除" placement="top">
+                            <el-icon class="tip-icon"><QuestionFilled /></el-icon>
+                        </el-tooltip>
+                    </template>
+                    <MaterialImagePicker
+                        v-model="form.sliderPicUrls"
+                        multiple
+                        biz-type="product"
+                        :max="10"
+                        empty-text="请选择轮播图"
+                    />
                 </el-form-item>
             </el-form>
         </el-card>
@@ -450,12 +478,31 @@ onMounted(async () => {
         <!-- 4. 商品详情 -->
         <el-card shadow="never" class="section">
             <template #header><span class="card-title">商品详情（HTML）</span></template>
-            <el-input
-                v-model="form.description"
-                type="textarea"
-                :rows="8"
-                placeholder="输入商品详情，支持 HTML 标签"
-            />
+            <el-form label-width="100px">
+                <el-form-item label="详情内容">
+                    <el-input
+                        v-model="form.description"
+                        type="textarea"
+                        :rows="8"
+                        placeholder="输入商品详情，支持 HTML 标签"
+                    />
+                </el-form-item>
+                <el-form-item>
+                    <template #label>
+                        详情图
+                        <el-tooltip content="商品详情图会保存为 HTML 图片标签并参与素材引用保护" placement="top">
+                            <el-icon class="tip-icon"><QuestionFilled /></el-icon>
+                        </el-tooltip>
+                    </template>
+                    <MaterialImagePicker
+                        v-model="form.detailImageUrls"
+                        multiple
+                        biz-type="product"
+                        :max="20"
+                        empty-text="请选择详情图"
+                    />
+                </el-form-item>
+            </el-form>
         </el-card>
 
         <!-- 5. SKU 规格管理（仅编辑模式） -->
@@ -545,9 +592,9 @@ onMounted(async () => {
                         />
                     </template>
                 </el-table-column>
-                <el-table-column label="图片 URL" min-width="200">
+                <el-table-column label="图片" min-width="220">
                     <template #default="{ row }">
-                        <el-input v-model="row.picUrl" size="small" placeholder="可选" />
+                        <MaterialImagePicker v-model="row.picUrl" biz-type="product" empty-text="可选" />
                     </template>
                 </el-table-column>
             </el-table>
@@ -598,15 +645,6 @@ onMounted(async () => {
 .card-title {
     font-weight: 600;
     font-size: 15px;
-}
-.slider-list {
-    width: 100%;
-}
-.slider-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
 }
 .spec-dim {
     background: #f9fafb;

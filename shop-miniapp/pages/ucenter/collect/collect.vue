@@ -3,7 +3,7 @@
 		<view class="collect-list" v-if="collectList.length>0">
 			<view class="collect-item" @tap="openGoods" @touchstart="touchStart" @touchend="touchEnd"
 			 v-for="(item, index) in collectList" :key="item.id" :data-index="index">
-				<image class="item-img" :src="item.listPicUrl" mode="aspectFill"></image>
+				<image class="item-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 				<view class="item-info">
 					<text class="item-name">{{item.name||''}}</text>
 					<text class="item-brief">{{item.goodsBrief||''}}</text>

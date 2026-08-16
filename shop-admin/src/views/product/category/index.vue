@@ -9,6 +9,7 @@ import {
     updateCategoryStatus,
     deleteCategory
 } from "@/api/category";
+import MaterialImagePicker from "@/components/MaterialImagePicker/index.vue";
 import type { Category } from "@/api/types";
 
 defineOptions({ name: "ProductCategory" });
@@ -273,15 +274,12 @@ onMounted(fetchData);
                 </el-form-item>
                 <el-form-item>
                     <template #label>
-                        图标地址
-                        <el-tooltip content="分类列表中展示的小图标，填写可访问的图片 URL" placement="top">
+                        分类图标
+                        <el-tooltip content="分类列表中展示的小图标，可上传新图或选择素材库图片" placement="top">
                             <el-icon class="tip-icon"><QuestionFilled /></el-icon>
                         </el-tooltip>
                     </template>
-                    <el-input
-                        v-model="form.icon"
-                        placeholder="输入图标 URL（可选）"
-                    />
+                    <MaterialImagePicker v-model="form.icon" biz-type="product" empty-text="请选择分类图标" />
                 </el-form-item>
                 <el-form-item>
                     <template #label>

@@ -30,7 +30,7 @@
 				<text class="order-status">{{orderInfo.orderStatusText}}</text>
 			</view>
 			<view class="goods-item" v-for="(item, index) in orderGoods" :key="item.id">
-				<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+				<image class="goods-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 				<view class="goods-info">
 					<view class="goods-top">
 						<text class="goods-name">{{item.goodsName}}</text>

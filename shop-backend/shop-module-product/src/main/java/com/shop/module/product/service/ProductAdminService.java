@@ -34,12 +34,15 @@ public class ProductAdminService {
     private static final int MAX_PRICE_CENTS = 100_000_000;
     private static final Pattern DANGEROUS_HTML = Pattern.compile(
             "(?i)<\\s*(script|iframe|object|embed|form|link|meta)|javascript\\s*:|on[a-z]+\\s*=");
+    private static final Pattern IMG_SRC = Pattern.compile(
+            "(?i)<img\\b[^>]*\\bsrc\\s*=\\s*(['\"])(.*?)\\1");
 
     private final ProductSpuMapper productSpuMapper;
     private final ProductSkuMapper productSkuMapper;
     private final CategoryMapper categoryMapper;
     private final ProductInventoryService productInventoryService;
     private final JdbcTemplate jdbcTemplate;
+    private final MaterialAssetService materialAssetService;
 
     @Transactional(rollbackFor = Exception.class)
     public Long saveProduct(ProductSpuDO spu, List<ProductSkuDO> requestedSkus) {
@@ -72,6 +75,7 @@ public class ProductAdminService {
                 ? "商品创建初始化库存" : stockAdjustReason;
         saveSkusInternal(spu.getId(), skus, adminStockBizNo(), adminId, reason);
         syncSpuSummary(spu.getId());
+        materialAssetService.refreshAllReferenceCounts();
         return spu.getId();
     }
 
@@ -87,6 +91,7 @@ public class ProductAdminService {
         List<ProductSkuDO> skus = normalizeRequestedSkus(spu, requestedSkus);
         saveSkusInternal(spuId, skus, adminStockBizNo(), adminId, stockAdjustReason);
         syncSpuSummary(spuId);
+        materialAssetService.refreshAllReferenceCounts();
     }
 
     public List<ProductSkuDO> listSkus(Long spuId) {
@@ -102,8 +107,20 @@ public class ProductAdminService {
             throw new ServerException(400, "商品 ID 不能为空");
         }
         ProductSpuDO current = requireSpu(request.getId());
-        if (request.getStatus() != null && request.getStatus() == 1) {
-            validateProductCanBeOnSale(current.getId());
+        if (requiresMergedValidation(request)) {
+            ProductSpuDO merged = mergeForValidation(current, request);
+            validateSpu(merged);
+            if (Integer.valueOf(1).equals(merged.getStatus())) {
+                List<ProductSkuDO> skus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>()
+                        .eq(ProductSkuDO::getSpuId, current.getId()));
+                if (skus.isEmpty()) {
+                    throw new ServerException(400, "商品至少需要一个有效规格才能上架");
+                }
+                for (ProductSkuDO sku : skus) {
+                    validateSku(sku);
+                }
+                syncSpuSummary(current.getId());
+            }
         }
         request.setPrice(null);
         request.setMarketPrice(null);
@@ -112,6 +129,7 @@ public class ProductAdminService {
         if (productSpuMapper.updateById(request) != 1) {
             throw new ServerException(409, "商品信息已变化，请刷新后重试");
         }
+        materialAssetService.refreshAllReferenceCounts();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -126,6 +144,7 @@ public class ProductAdminService {
         productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuDO>()
                 .eq(ProductSkuDO::getSpuId, spuId));
         productSpuMapper.deleteById(spuId);
+        materialAssetService.refreshAllReferenceCounts();
     }
 
     private void saveSkusInternal(Long spuId, List<ProductSkuDO> requestedSkus, String stockBizNo,
@@ -234,6 +253,7 @@ public class ProductAdminService {
             throw new ServerException(400, "上架商品必须设置主图");
         }
         spu.setPicUrl(normalizeResourceUrl(spu.getPicUrl(), "商品主图", spu.getStatus() == 1));
+        materialAssetService.validateBusinessImageUrl(spu.getPicUrl(), "商品主图", spu.getStatus() == 1);
         spu.setSliderPicUrls(normalizeSliderPicUrls(spu.getSliderPicUrls(), spu.getPicUrl(), spu.getStatus() == 1));
         String introduction = spu.getIntroduction() == null ? "" : spu.getIntroduction().trim();
         if (introduction.length() > 255) {
@@ -252,6 +272,7 @@ public class ProductAdminService {
         if (DANGEROUS_HTML.matcher(description).find()) {
             throw new ServerException(400, "商品详情包含不安全的脚本或标签");
         }
+        validateDescriptionImages(description);
         spu.setDescription(description);
     }
 
@@ -273,6 +294,7 @@ public class ProductAdminService {
             throw new ServerException(400, "规格体积不能为负数");
         }
         sku.setPicUrl(normalizeResourceUrl(sku.getPicUrl(), "规格图片", false));
+        materialAssetService.validateBusinessImageUrl(sku.getPicUrl(), "规格图片", false);
     }
 
     private String normalizeSliderPicUrls(String rawValue, String mainPicUrl, boolean required) {
@@ -291,6 +313,7 @@ public class ProductAdminService {
                     throw new ServerException(400, "商品轮播图格式不正确");
                 }
                 String url = normalizeResourceUrl(node.asText(), "商品轮播图", true);
+                materialAssetService.validateBusinessImageUrl(url, "商品轮播图", true);
                 if (!uniqueUrls.add(url)) {
                     throw new ServerException(400, "商品轮播图不能重复");
                 }
@@ -310,8 +333,9 @@ public class ProductAdminService {
             if (required) throw new ServerException(400, fieldName + "不能为空");
             return "";
         }
-        if (value.length() > 1024 || (!value.startsWith("https://") && !value.startsWith("/"))) {
-            throw new ServerException(400, fieldName + "必须使用 HTTPS 或站内路径");
+        if (value.length() > 1024
+                || (!value.startsWith("https://") && !value.startsWith("http://") && !value.startsWith("/"))) {
+            throw new ServerException(400, fieldName + "必须使用 HTTP(S) 或站内路径");
         }
         return value;
     }
@@ -322,6 +346,36 @@ public class ProductAdminService {
         } catch (Exception exception) {
             throw new ServerException(500, "商品图片数据序列化失败");
         }
+    }
+
+    private void validateDescriptionImages(String description) {
+        var matcher = IMG_SRC.matcher(description);
+        while (matcher.find()) {
+            materialAssetService.validateBusinessImageUrl(matcher.group(2), "商品详情图", true);
+        }
+    }
+
+    private boolean requiresMergedValidation(ProductSpuDO request) {
+        return request.getStatus() != null
+                || request.getCategoryId() != null
+                || request.getName() != null
+                || request.getPicUrl() != null
+                || request.getSliderPicUrls() != null
+                || request.getDescription() != null;
+    }
+
+    private ProductSpuDO mergeForValidation(ProductSpuDO current, ProductSpuDO request) {
+        ProductSpuDO merged = new ProductSpuDO();
+        merged.setId(current.getId());
+        merged.setName(request.getName() != null ? request.getName() : current.getName());
+        merged.setCategoryId(request.getCategoryId() != null ? request.getCategoryId() : current.getCategoryId());
+        merged.setKeyword(request.getKeyword() != null ? request.getKeyword() : current.getKeyword());
+        merged.setIntroduction(request.getIntroduction() != null ? request.getIntroduction() : current.getIntroduction());
+        merged.setDescription(request.getDescription() != null ? request.getDescription() : current.getDescription());
+        merged.setPicUrl(request.getPicUrl() != null ? request.getPicUrl() : current.getPicUrl());
+        merged.setSliderPicUrls(request.getSliderPicUrls() != null ? request.getSliderPicUrls() : current.getSliderPicUrls());
+        merged.setStatus(request.getStatus() != null ? request.getStatus() : current.getStatus());
+        return merged;
     }
 
     private void applySkuSummary(ProductSpuDO spu, List<ProductSkuDO> skus) {

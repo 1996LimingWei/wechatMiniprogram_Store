@@ -11,7 +11,7 @@
 				<swiper class="gallery-swiper" indicator-dots circular autoplay :interval="3000"
 					indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#FEFEFC">
 					<swiper-item v-for="(item, index) in gallery" :key="item.id">
-						<image class="gallery-img" :src="item.imgUrl" mode="aspectFill"></image>
+						<image class="gallery-img" :src="imageUrl(item.imgUrl)" mode="aspectFill" @error="onGalleryImageError(index)"></image>
 					</swiper-item>
 				</swiper>
 
@@ -68,13 +68,13 @@
 					</navigator>
 					<view class="comment-item" v-if="comment.data">
 						<view class="comment-user">
-							<image class="comment-avatar" :src="comment.data.avatar"></image>
+							<image class="comment-avatar" :src="imageUrl(comment.data.avatar)" @error="onCommentAvatarError"></image>
 							<text class="comment-name">{{comment.data.nickname}}</text>
 							<text class="comment-time">{{comment.data.addTime}}</text>
 						</view>
 						<text class="comment-content">{{comment.data.content}}</text>
 						<view class="comment-imgs" v-if="comment.data.picList && comment.data.picList.length > 0">
-							<image class="comment-pic" v-for="(item, index) in comment.data.picList" :key="index" :src="item.picUrl" mode="aspectFill"></image>
+							<image class="comment-pic" v-for="(item, index) in comment.data.picList" :key="index" :src="imageUrl(item.picUrl)" mode="aspectFill" @error="onCommentPicError(index)"></image>
 						</view>
 					</view>
 				</view>
@@ -127,7 +127,7 @@
 					</view>
 					<view class="related-grid">
 						<navigator class="related-item" v-for="(item, index) in relatedGoods" :key="item.id" :url="'/pages/goods/goods?id='+item.id">
-							<image class="related-img" :src="item.listPicUrl" mode="aspectFill"></image>
+							<image class="related-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="onRelatedImageError(index)"></image>
 							<text class="related-name">{{item.name}}</text>
 							<text class="related-price">¥{{item.retailPrice}}</text>
 						</navigator>
@@ -138,7 +138,7 @@
 			<!-- 规格选择模式 -->
 			<view v-if="openAttr" class="sku-panel">
 				<view class="sku-header">
-					<image class="sku-img" :src="goods.listPicUrl" mode="aspectFill"></image>
+					<image class="sku-img" :src="imageUrl(goods.listPicUrl)" mode="aspectFill" @error="onSkuImageError"></image>
 					<view class="sku-meta">
 						<text class="sku-price">¥{{goods.retailPrice}}</text>
 						<text class="sku-selected">{{checkedSpecText}}</text>
@@ -195,6 +195,7 @@
 const util = require('@/utils/util.js');
 const api = require('@/utils/api.js');
 const skuUtil = require('@/utils/sku.js');
+const imageUtil = require('@/utils/image.js');
 import uParse from '@/components/uParse/src/wxParse';
 
 export default {
@@ -227,13 +228,28 @@ export default {
 		}
 	},
 	methods: {
+		imageUrl(url) {
+			return imageUtil.normalizeImageUrl(url);
+		},
+		normalizeRichTextImages(content) {
+			if (!content || typeof content !== 'string') return '';
+			return content.replace(/(<img\b[^>]*\bsrc\s*=\s*['"])(.*?)(['"][^>]*>)/gi, (match, before, url, after) => {
+				return before + imageUtil.normalizeImageUrl(url) + after;
+			});
+		},
 		getGoodsInfo() {
 			this.loadingFailed = false;
 			util.request(api.GoodsDetail, { id: this.id }).then(res => {
 				if (res.code === 0) {
-					this.baseGoods = res.data.info;
+					const info = Object.assign({}, res.data.info || {});
+					info.picUrl = this.imageUrl(info.picUrl);
+					info.listPicUrl = this.imageUrl(info.listPicUrl);
+					info.goodsDesc = this.normalizeRichTextImages(info.goodsDesc || '');
+					this.baseGoods = info;
 					this.goods = Object.assign({}, this.baseGoods);
-					this.baseGallery = res.data.gallery || [];
+					this.baseGallery = (res.data.gallery || []).map(item => Object.assign({}, item, {
+						imgUrl: this.imageUrl(item.imgUrl)
+					}));
 					this.gallery = this.baseGallery;
 					this.attribute = res.data.attribute;
 					this.issueList = res.data.issue;
@@ -258,7 +274,11 @@ export default {
 		},
 		getGoodsRelated() {
 			util.request(api.GoodsRelated, { id: this.id }).then(res => {
-				if (res.code === 0) this.relatedGoods = res.data.goodsList;
+				if (res.code === 0) {
+					this.relatedGoods = (res.data.goodsList || []).map(item => Object.assign({}, item, {
+						listPicUrl: this.imageUrl(item.listPicUrl)
+					}));
+				}
 			});
 		},
 		clickSkuValue(specNameId, specValueId) {
@@ -315,7 +335,9 @@ export default {
 			return this.productList.find(product => this.productMatchesSelection(product, selected, true));
 		},
 		normalizeProduct(product) {
-			return skuUtil.normalizeProduct(product, this.baseGoods);
+			const normalized = skuUtil.normalizeProduct(product, this.baseGoods);
+			normalized.picUrl = this.imageUrl(normalized.picUrl);
+			return normalized;
 		},
 		productMatchesSelection(product, selected, requireComplete) {
 			return skuUtil.productMatchesSelection(product, selected, requireComplete);
@@ -437,6 +459,23 @@ export default {
 					let specValueId = specification.valueList[0].id;
 					that.clickSkuValue(specNameId, specValueId);
 				}
+			}
+		},
+		onGalleryImageError(index) {
+			if (this.gallery[index]) this.$set(this.gallery[index], 'imgUrl', imageUtil.FALLBACK_IMAGE);
+		},
+		onRelatedImageError(index) {
+			if (this.relatedGoods[index]) this.$set(this.relatedGoods[index], 'listPicUrl', imageUtil.FALLBACK_IMAGE);
+		},
+		onSkuImageError() {
+			this.$set(this.goods, 'listPicUrl', imageUtil.FALLBACK_IMAGE);
+		},
+		onCommentAvatarError() {
+			if (this.comment.data) this.$set(this.comment.data, 'avatar', imageUtil.FALLBACK_IMAGE);
+		},
+		onCommentPicError(index) {
+			if (this.comment.data && this.comment.data.picList && this.comment.data.picList[index]) {
+				this.$set(this.comment.data.picList[index], 'picUrl', imageUtil.FALLBACK_IMAGE);
 			}
 		}
 	},

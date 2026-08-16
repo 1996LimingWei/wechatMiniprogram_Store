@@ -4,7 +4,7 @@
 			<view class="comment-item" v-for="(item, index) in comments" :key="item.id">
 				<view class="comment-header">
 					<view class="comment-user">
-						<image class="user-avatar" :src="item.userInfo.avatar"></image>
+						<image class="user-avatar" :src="$imageUrl(item.userInfo.avatar)" @error="$setImageFallback(item.userInfo, 'avatar')"></image>
 						<text class="user-name">{{item.userInfo.nickname||''}}</text>
 					</view>
 					<text class="comment-time">{{item.addTime||''}}</text>
@@ -12,7 +12,7 @@
 				<view class="comment-content">{{item.content||''}}</view>
 				<view class="comment-imgs" v-if="item.picList && item.picList.length > 0">
 					<image class="comment-pic" v-for="(pitem, pindex) in item.picList" :key="pitem.id"
-					 :src="pitem.picUrl" mode="aspectFill"></image>
+					 :src="$imageUrl(pitem.picUrl)" mode="aspectFill" @error="$setImageFallback(pitem, 'picUrl')"></image>
 				</view>
 			</view>
 			<view class="empty-view" v-if="comments.length === 0">

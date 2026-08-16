@@ -58,7 +58,7 @@
 					</view>
 
 					<navigator :url="'/pages/goods/goods?id=' + item.goodsId" class="item-img-wrap">
-						<image class="item-img" :src="item.listPicUrl" mode="aspectFill"></image>
+						<image class="item-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 					</navigator>
 
 					<view class="item-info">
@@ -92,7 +92,7 @@
 				<view class="addon-list">
 					<navigator class="addon-card" v-for="(item, index) in recommendList"
 					 :key="index" :url="'/pages/goods/goods?id='+item.id">
-						<image class="addon-img" :src="item.listPicUrl" mode="aspectFill"></image>
+						<image class="addon-img" :src="$imageUrl(item.listPicUrl)" mode="aspectFill" @error="$setImageFallback(item, 'listPicUrl')"></image>
 						<text class="addon-name">{{item.name}}</text>
 						<text class="addon-price">¥{{item.retailPrice}}</text>
 					</navigator>

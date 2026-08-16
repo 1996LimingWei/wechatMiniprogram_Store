@@ -52,6 +52,7 @@ material:
     provider: ${MATERIAL_STORAGE_PROVIDER:mounted}
     root: ${MATERIAL_STORAGE_ROOT:/app/material}
     public-base-url: ${MATERIAL_PUBLIC_BASE_URL:}
+    allowed-url-prefixes: ${MATERIAL_ALLOWED_URL_PREFIXES:}
     max-size: ${MATERIAL_MAX_SIZE:5242880}
 
 trade:

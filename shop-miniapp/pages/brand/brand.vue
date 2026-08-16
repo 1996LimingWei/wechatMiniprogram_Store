@@ -3,7 +3,7 @@
 		<view class="brand-list">
 			<navigator :url="'../brandDetail/brandDetail?id='+item.id" class="brand-card" v-for="(item, index) in brandList" :key="index">
 				<view class="brand-img">
-					<image :src="item.appListPicUrl || item.picUrl" mode="aspectFill"></image>
+					<image :src="$imageUrl(item.appListPicUrl || item.picUrl)" mode="aspectFill" @error="$setImageFallback(item, item.appListPicUrl ? 'appListPicUrl' : 'picUrl')"></image>
 					<view class="brand-overlay"></view>
 					<view class="brand-info">
 						<text class="brand-name">{{item.name||''}}</text>

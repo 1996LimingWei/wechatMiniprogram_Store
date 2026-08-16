@@ -19,6 +19,7 @@ public class CategoryService {
 
     private final CategoryMapper categoryMapper;
     private final ProductSpuMapper productSpuMapper;
+    private final MaterialAssetService materialAssetService;
 
     public List<CategoryDO> getEnabledList() {
         return categoryMapper.selectList(new LambdaQueryWrapper<CategoryDO>()
@@ -34,6 +35,7 @@ public class CategoryService {
     public void create(CategoryDO category) {
         normalizeAndValidate(category, null);
         categoryMapper.insert(category);
+        materialAssetService.refreshAllReferenceCounts();
     }
 
     public void update(CategoryDO category) {
@@ -47,6 +49,7 @@ public class CategoryService {
         if (categoryMapper.updateById(category) != 1) {
             throw new ServerException(409, "分类信息已变化，请刷新后重试");
         }
+        materialAssetService.refreshAllReferenceCounts();
     }
 
     /** 仅切换分类启用/禁用状态（跳过全量字段校验） */
@@ -84,6 +87,7 @@ public class CategoryService {
             throw new ServerException(400, "分类仍被商品引用，不能删除");
         }
         categoryMapper.deleteById(id);
+        materialAssetService.refreshAllReferenceCounts();
     }
 
     private void normalizeAndValidate(CategoryDO category, Long currentId) {
@@ -123,6 +127,9 @@ public class CategoryService {
         if (category.getIcon() != null && category.getIcon().length() > 512) {
             throw new ServerException(400, "分类图标地址过长");
         }
+        String icon = category.getIcon() == null ? "" : category.getIcon().trim();
+        materialAssetService.validateBusinessImageUrl(icon, "分类图标", false);
+        category.setIcon(icon);
     }
 
     private boolean hasOnSaleProduct(Long categoryId) {

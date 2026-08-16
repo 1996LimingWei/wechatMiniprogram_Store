@@ -40,7 +40,7 @@
 				<view class="goods-list">
 					<view class="goods-card" v-for="(item, index) in goodsList" :key="index"
 					 @tap="goToGoods(item.id)">
-						<image class="goods-img" :src="item.listPicUrl" mode="aspectFill"></image>
+						<image class="goods-img" :src="imageUrl(item.listPicUrl)" mode="aspectFill" @error="setImageFallback(item, 'listPicUrl')"></image>
 						<view class="goods-info">
 							<text class="goods-name">{{item.name||''}}</text>
 							<text class="goods-brief">{{item.goodsBrief || ''}}</text>
@@ -72,6 +72,7 @@
 <script>
 const util = require('@/utils/util.js');
 const api = require('@/utils/api.js');
+const imageUtil = require('@/utils/image.js');
 
 export default {
 	data() {
@@ -91,6 +92,12 @@ export default {
 		}
 	},
 	methods: {
+		imageUrl(url) {
+			return imageUtil.normalizeImageUrl(url);
+		},
+		setImageFallback(item, field) {
+			if (item && item[field] !== imageUtil.FALLBACK_IMAGE) this.$set(item, field, imageUtil.FALLBACK_IMAGE);
+		},
 		getCatalog() {
 			this.loadFailed = false;
 			util.request(api.CatalogList).then(res => {
