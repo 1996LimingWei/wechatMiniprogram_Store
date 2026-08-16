@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class MarketingShippingService {
@@ -23,11 +25,7 @@ public class MarketingShippingService {
      * 计算运费（从数据库包邮规则读取，无规则时兜底使用配置）
      */
     public int calculateFreight(int goodsTotalPrice) {
-        MarketingShippingRuleDO rule = shippingRuleMapper.selectOne(
-                new LambdaQueryWrapper<MarketingShippingRuleDO>()
-                        .eq(MarketingShippingRuleDO::getStatus, 1)
-                        .orderByDesc(MarketingShippingRuleDO::getId)
-                        .last("LIMIT 1"));
+        MarketingShippingRuleDO rule = getCurrentRule();
         if (rule == null) {
             return calculateFallback(goodsTotalPrice);
         }
@@ -37,6 +35,26 @@ public class MarketingShippingService {
         }
         return goodsTotalPrice > 0 && goodsTotalPrice < rule.getFreeThreshold()
                 ? rule.getBaseFee() : 0;
+    }
+
+    /**
+     * 全局运费规则优先级：在有效期内且启用的数据库规则优先，按生效时间和 ID 最新规则胜出；没有规则时才使用配置兜底。
+     * 规则内部优先执行免邮门槛，达到门槛时运费为 0，否则收取基础运费。
+     */
+    public MarketingShippingRuleDO getCurrentRule() {
+        LocalDateTime now = LocalDateTime.now();
+        return shippingRuleMapper.selectOne(
+                new LambdaQueryWrapper<MarketingShippingRuleDO>()
+                        .eq(MarketingShippingRuleDO::getStatus, 1)
+                        .and(wrapper -> wrapper.isNull(MarketingShippingRuleDO::getStartTime)
+                                .or()
+                                .le(MarketingShippingRuleDO::getStartTime, now))
+                        .and(wrapper -> wrapper.isNull(MarketingShippingRuleDO::getEndTime)
+                                .or()
+                                .gt(MarketingShippingRuleDO::getEndTime, now))
+                        .orderByDesc(MarketingShippingRuleDO::getStartTime)
+                        .orderByDesc(MarketingShippingRuleDO::getId)
+                        .last("LIMIT 1"));
     }
 
     private int calculateFallback(int goodsTotalPrice) {

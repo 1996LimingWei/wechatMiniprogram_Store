@@ -313,6 +313,7 @@ CREATE TABLE `trade_order` (
     `coupon_price` int NOT NULL DEFAULT 0 COMMENT '优惠金额(分)',
     `order_price` int NOT NULL DEFAULT 0 COMMENT '订单总价(分)',
     `actual_price` int NOT NULL DEFAULT 0 COMMENT '实付金额(分)',
+    `refunded_amount` int NOT NULL DEFAULT 0 COMMENT '累计已退款金额(分)',
     `address_id` bigint DEFAULT NULL COMMENT '地址ID',
     `consignee` varchar(64) DEFAULT '' COMMENT '收货人快照',
     `mobile` varchar(20) DEFAULT '' COMMENT '手机号快照',
@@ -468,3 +469,80 @@ CREATE TABLE `trade_after_sale` (
     KEY `idx_status_create_time_id` (`status`, `create_time`, `id`),
     KEY `idx_refund_retry` (`status`, `refund_next_attempt_time`, `refund_claim_until`, `refund_attempt_count`, `id`)
 ) ENGINE=InnoDB COMMENT='交易售后表';
+
+-- ============ 营销与运费配置 ============
+
+CREATE TABLE `marketing_coupon_template` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(128) NOT NULL COMMENT '券名称',
+    `type` tinyint NOT NULL DEFAULT 1 COMMENT '1=满减券 2=新人券',
+    `threshold_amount` int NOT NULL DEFAULT 0 COMMENT '满减门槛(分)，0=无门槛',
+    `discount_amount` int NOT NULL COMMENT '优惠金额(分)',
+    `total_count` int NOT NULL DEFAULT 0 COMMENT '发行总量，0=不限量',
+    `claimed_count` int NOT NULL DEFAULT 0 COMMENT '已领取数量',
+    `per_user_limit` int NOT NULL DEFAULT 1 COMMENT '每人限领',
+    `validity_type` tinyint NOT NULL DEFAULT 1 COMMENT '1=固定日期 2=领取后N天',
+    `valid_start_time` datetime DEFAULT NULL COMMENT '有效期开始',
+    `valid_end_time` datetime DEFAULT NULL COMMENT '有效期结束',
+    `valid_days` int DEFAULT NULL COMMENT '领取后有效天数',
+    `status` tinyint NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_type` (`type`)
+) ENGINE=InnoDB COMMENT='优惠券模板表';
+
+CREATE TABLE `marketing_coupon` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `user_id` bigint NOT NULL COMMENT '会员用户ID',
+    `template_id` bigint NOT NULL COMMENT '优惠券模板ID',
+    `status` tinyint NOT NULL DEFAULT 0 COMMENT '0=未使用 1=已使用 2=已过期',
+    `order_id` bigint DEFAULT NULL COMMENT '使用的订单ID',
+    `used_time` datetime DEFAULT NULL COMMENT '使用时间',
+    `expire_time` datetime NOT NULL COMMENT '过期时间',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_status` (`user_id`, `status`),
+    KEY `idx_template` (`template_id`),
+    KEY `idx_expire` (`expire_time`, `status`),
+    KEY `idx_order` (`order_id`)
+) ENGINE=InnoDB COMMENT='用户优惠券实例表';
+
+CREATE TABLE `marketing_promotion_rule` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(128) NOT NULL COMMENT '活动名称',
+    `type` tinyint NOT NULL DEFAULT 1 COMMENT '1=全店满减',
+    `threshold_amount` int NOT NULL COMMENT '满减门槛(分)',
+    `discount_amount` int NOT NULL COMMENT '优惠金额(分)',
+    `status` tinyint NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用',
+    `priority` int NOT NULL DEFAULT 0 COMMENT '排序优先级',
+    `start_time` datetime DEFAULT NULL COMMENT '活动开始时间',
+    `end_time` datetime DEFAULT NULL COMMENT '活动结束时间',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    KEY `idx_status_priority` (`status`, `priority`)
+) ENGINE=InnoDB COMMENT='满减活动规则表';
+
+CREATE TABLE `marketing_shipping_rule` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(64) NOT NULL COMMENT '规则名称',
+    `free_threshold` int NOT NULL COMMENT '包邮门槛(分)',
+    `base_fee` int NOT NULL COMMENT '基础运费(分)',
+    `status` tinyint NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用',
+    `start_time` datetime DEFAULT NULL COMMENT '生效时间，空表示立即生效',
+    `end_time` datetime DEFAULT NULL COMMENT '停用时间，空表示长期有效',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    PRIMARY KEY (`id`),
+    KEY `idx_shipping_active_window` (`status`, `start_time`, `end_time`, `id`)
+) ENGINE=InnoDB COMMENT='全局运费规则表';
+
+INSERT INTO `marketing_shipping_rule` (`name`, `free_threshold`, `base_fee`, `status`)
+VALUES ('默认运费规则', 19900, 1000, 1);

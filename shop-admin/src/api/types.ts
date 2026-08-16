@@ -391,6 +391,24 @@ export interface ShippingRule {
   freeThreshold: string;
   baseFee: string;
   status: number;
+  startTime?: string;
+  endTime?: string;
+  currentActive?: boolean;
+  createTime?: string;
+}
+
+export interface MarketingShippingAuditLog {
+  id: number;
+  adminUserId: number;
+  username: string;
+  nickname: string;
+  method: string;
+  requestUri: string;
+  businessRef?: string;
+  success: number;
+  ip?: string;
+  durationMs: number;
+  message?: string;
   createTime?: string;
 }
 

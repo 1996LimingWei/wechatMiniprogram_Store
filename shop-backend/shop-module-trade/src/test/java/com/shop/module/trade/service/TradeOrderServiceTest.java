@@ -125,6 +125,9 @@ class TradeOrderServiceTest {
         ArgumentCaptor<TradeOrderDO> orderCaptor = ArgumentCaptor.forClass(TradeOrderDO.class);
         verify(tradeOrderMapper).insert(orderCaptor.capture());
         assertEquals(2598, orderCaptor.getValue().getGoodsPrice());
+        assertEquals(1000, orderCaptor.getValue().getFreightPrice());
+        assertEquals(0, orderCaptor.getValue().getCouponPrice());
+        assertEquals(3598, orderCaptor.getValue().getOrderPrice());
         assertEquals(3598, orderCaptor.getValue().getActualPrice());
         assertEquals("MP202607310001", orderCaptor.getValue().getRequestId());
         ArgumentCaptor<TradeOrderItemDO> itemCaptor = ArgumentCaptor.forClass(TradeOrderItemDO.class);
@@ -243,7 +246,9 @@ class TradeOrderServiceTest {
         verify(tradeOrderMapper).insert(orderCaptor.capture());
         TradeOrderDO savedOrder = orderCaptor.getValue();
         assertEquals(10000, savedOrder.getGoodsPrice());
+        assertEquals(1000, savedOrder.getFreightPrice());
         assertEquals(2000, savedOrder.getCouponPrice());
+        assertEquals(9000, savedOrder.getOrderPrice());
         assertEquals(9000, savedOrder.getActualPrice()); // 10000 + 1000 - 2000
         assertEquals(50L, savedOrder.getCouponId());
         assertEquals("coupon", savedOrder.getDiscountSource());

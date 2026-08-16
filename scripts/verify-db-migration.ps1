@@ -113,6 +113,8 @@ try {
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'product_sku' AND column_name = 'sku_code';") 1 "商品 SKU 应包含运营编码字段"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260816_03';") 1 "应执行库存工作台预警库存迁移"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'product_sku' AND column_name = 'warning_stock';") 1 "商品 SKU 应包含预警库存字段"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM schema_migration_history WHERE version = '20260816_04';") 1 "应执行运费规则生效窗口迁移"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'marketing_shipping_rule' AND column_name IN ('start_time','end_time');") 2 "运费规则应包含生效与停用时间"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'member_feedback';") 1 "应创建用户意见反馈表"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM sys_permission WHERE code = 'feedback:manage' AND path_pattern = '/admin-api/feedback/**' AND status = 1 AND deleted = b'0';") 1 "应登记用户反馈后台权限"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_log' AND column_name = 'business_ref';") 1 "操作审计应记录业务关联编号"

@@ -7,6 +7,8 @@ import com.shop.framework.mybatis.core.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDateTime;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("marketing_shipping_rule")
@@ -26,4 +28,10 @@ public class MarketingShippingRuleDO extends BaseDO {
 
     /** 1=启用 0=禁用 */
     private Integer status;
+
+    /** 生效时间，空表示立即生效 */
+    private LocalDateTime startTime;
+
+    /** 停用时间，空表示长期有效 */
+    private LocalDateTime endTime;
 }

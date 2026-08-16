@@ -880,6 +880,17 @@
 - 验证通过：商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`，共 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
 - 未完成复验：Docker Desktop 未启动，数据库迁移门禁仍需在 Docker Engine 可用后补跑；新增迁移 `V20260816_03__inventory_workbench_warning_stock.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-07 运费配置与订单金额快照
+
+- 全局运费规则升级为启用状态、基础运费、免邮门槛、生效时间、停用时间完整配置；`marketing_shipping_rule` 新增 `start_time`、`end_time`，初始化 SQL、增量迁移和生产/预发布迁移门禁推进到 `20260816_04`。
+- 运费优先级明确为：启用且在有效期内的数据库全局运费规则优先，按生效时间和 ID 最新规则胜出；规则内达到免邮门槛时运费为 0；无生效规则时回退 `trade.freight.*` 配置。
+- 结算页和下单接口继续复用同一个 `MarketingShippingService`，订单落库时固化商品金额、运费金额、优惠金额、订单金额和实付金额，后续运费或优惠规则变更不影响历史订单。
+- 管理后台“营销管理 / 包邮规则”升级为运费配置页，支持新增、编辑、启用、停用、生效窗口、当前生效规则展示和变更记录抽屉。
+- 运费规则变更记录复用后台操作审计 `sys_operation_log`，新增页面按运费规则接口和规则 ID 查询新增、编辑、启停操作。
+- 小程序结算页展示商品金额、优惠金额、运费、实付金额；订单详情补充优惠金额行，并继续展示下单时运费和实付金额快照。
+- 验证通过：交易模块 `mvn -pl shop-module-trade -am test "-Dmaven.compiler.release=24"`，交易 89 个测试零失败且依赖商品 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
+- 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_04__shipping_rule_effective_window.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -920,10 +931,9 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 执行客户运营能力：运费配置。
-3. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
-4. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
-5. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
+2. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
+3. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
+4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 
 ---
 

@@ -129,6 +129,10 @@
 				<text class="total-label">运费</text>
 				<text class="total-value">¥{{orderInfo.freightPrice}}</text>
 			</view>
+			<view class="total-row" v-if="hasCouponPrice">
+				<text class="total-label">优惠</text>
+				<text class="total-value discount">-¥{{orderInfo.couponPrice}}</text>
+			</view>
 			<view class="total-row final">
 				<text class="total-label">实付金额</text>
 				<text class="total-value highlight">¥{{orderInfo.actualPrice}}</text>
@@ -154,6 +158,11 @@
 				refundItems: [],
 				returnCompany: '',
 				returnNo: ''
+			}
+		},
+		computed: {
+			hasCouponPrice() {
+				return parseFloat(this.orderInfo.couponPrice || 0) > 0;
 			}
 		},
 		methods: {
@@ -685,6 +694,10 @@
 	.total-value {
 		font-size: 26rpx;
 		color: #333;
+
+		&.discount {
+			color: #C85A4A;
+		}
 
 		&.highlight {
 			color: $red;

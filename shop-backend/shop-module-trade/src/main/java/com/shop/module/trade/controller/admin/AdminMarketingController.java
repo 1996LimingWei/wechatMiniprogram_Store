@@ -15,11 +15,17 @@ import com.shop.module.trade.dal.mysql.MarketingPromotionRuleMapper;
 import com.shop.module.trade.dal.mysql.MarketingShippingRuleMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import com.shop.module.trade.util.TradeRequestUtils;
+import com.shop.module.trade.service.MarketingShippingService;
+import com.shop.module.trade.vo.MarketingShippingAuditRespVO;
+import com.shop.module.trade.vo.MarketingShippingRuleRespVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +40,8 @@ public class AdminMarketingController {
     private final MarketingCouponMapper couponMapper;
     private final MarketingPromotionRuleMapper promotionRuleMapper;
     private final MarketingShippingRuleMapper shippingRuleMapper;
+    private final MarketingShippingService marketingShippingService;
+    private final JdbcTemplate jdbcTemplate;
 
     // ==================== 优惠券模板 CRUD ====================
 
@@ -157,6 +165,60 @@ public class AdminMarketingController {
         return CommonResult.success(Map.of("list", list, "total", page.getTotal()));
     }
 
+    @GetMapping("/admin-api/marketing/shipping/current")
+    public CommonResult<MarketingShippingRuleRespVO> getCurrentShippingRule() {
+        return CommonResult.success(toShippingVO(marketingShippingService.getCurrentRule()));
+    }
+
+    @GetMapping("/admin-api/marketing/shipping/audit-page")
+    public CommonResult<PageResult<MarketingShippingAuditRespVO>> listShippingAudits(
+            PageParam pageParam,
+            @RequestParam(value = "ruleId", required = false) Long ruleId) {
+        List<Object> args = new ArrayList<>();
+        StringBuilder where = new StringBuilder("""
+                 WHERE l.request_uri IN (
+                       '/admin-api/marketing/shipping/create',
+                       '/admin-api/marketing/shipping/update',
+                       '/admin-api/marketing/shipping/update-status'
+                 )
+                """);
+        if (ruleId != null && ruleId > 0) {
+            where.append(" AND l.business_ref = ?");
+            args.add(String.valueOf(ruleId));
+        }
+        Long total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sys_operation_log l" + where,
+                Long.class,
+                args.toArray());
+        List<Object> queryArgs = new ArrayList<>(args);
+        queryArgs.add(pageParam.getPageSize());
+        queryArgs.add((pageParam.getPageNo() - 1) * pageParam.getPageSize());
+        List<MarketingShippingAuditRespVO> rows = jdbcTemplate.query("""
+                SELECT l.id, l.admin_user_id, COALESCE(u.username, '') username, COALESCE(u.nickname, '') nickname,
+                       l.method, l.request_uri, l.business_ref, l.success, l.ip, l.duration_ms, l.message, l.create_time
+                  FROM sys_operation_log l
+                  LEFT JOIN sys_admin_user u ON u.id = l.admin_user_id
+                """ + where + " ORDER BY l.create_time DESC, l.id DESC LIMIT ? OFFSET ?",
+                (rs, index) -> {
+                    MarketingShippingAuditRespVO item = new MarketingShippingAuditRespVO();
+                    item.setId(rs.getLong("id"));
+                    item.setAdminUserId(rs.getLong("admin_user_id"));
+                    item.setUsername(rs.getString("username"));
+                    item.setNickname(rs.getString("nickname"));
+                    item.setMethod(rs.getString("method"));
+                    item.setRequestUri(rs.getString("request_uri"));
+                    item.setBusinessRef(rs.getString("business_ref"));
+                    item.setSuccess(rs.getInt("success"));
+                    item.setIp(rs.getString("ip"));
+                    item.setDurationMs(rs.getLong("duration_ms"));
+                    item.setMessage(rs.getString("message"));
+                    Timestamp createTime = rs.getTimestamp("create_time");
+                    item.setCreateTime(createTime == null ? null : createTime.toLocalDateTime());
+                    return item;
+                }, queryArgs.toArray());
+        return CommonResult.success(new PageResult<>(rows, total == null ? 0L : total));
+    }
+
     @PostMapping("/admin-api/marketing/shipping/create")
     public CommonResult<Map<String, Object>> createShippingRule(@RequestBody Map<String, Object> body) {
         MarketingShippingRuleDO rule = new MarketingShippingRuleDO();
@@ -181,6 +243,9 @@ public class AdminMarketingController {
     public CommonResult<Boolean> updateShippingStatus(@RequestBody Map<String, Object> body) {
         Long id = TradeRequestUtils.getLong(body, "id", 0L);
         Integer status = TradeRequestUtils.getInt(body, "status", 0);
+        if (status == null || (status != 0 && status != 1)) {
+            throw new com.shop.common.exception.ServerException(400, "状态不正确");
+        }
         shippingRuleMapper.update(null, new LambdaUpdateWrapper<MarketingShippingRuleDO>()
                 .eq(MarketingShippingRuleDO::getId, id)
                 .set(MarketingShippingRuleDO::getStatus, status));
@@ -281,12 +346,30 @@ public class AdminMarketingController {
         if (body.containsKey("name")) rule.setName((String) body.get("name"));
         if (body.containsKey("freeThreshold")) rule.setFreeThreshold(TradeRequestUtils.getInt(body, "freeThreshold", 0));
         if (body.containsKey("baseFee")) rule.setBaseFee(TradeRequestUtils.getInt(body, "baseFee", 0));
+        if (body.containsKey("status")) rule.setStatus(TradeRequestUtils.getInt(body, "status", 1));
+        if (body.containsKey("startTime")) rule.setStartTime(parseTime((String) body.get("startTime")));
+        if (body.containsKey("endTime")) rule.setEndTime(parseTime((String) body.get("endTime")));
+        if (rule.getName() == null || rule.getName().trim().length() < 2 || rule.getName().trim().length() > 64) {
+            throw new com.shop.common.exception.ServerException(400, "规则名称长度需为 2 至 64 字");
+        }
+        rule.setName(rule.getName().trim());
         if (rule.getFreeThreshold() == null || rule.getFreeThreshold() < 0) {
             throw new com.shop.common.exception.ServerException(400, "包邮门槛不能为负数");
         }
         if (rule.getBaseFee() == null || rule.getBaseFee() < 0) {
             throw new com.shop.common.exception.ServerException(400, "基础运费不能为负数");
         }
+        if (rule.getStatus() == null || (rule.getStatus() != 0 && rule.getStatus() != 1)) {
+            throw new com.shop.common.exception.ServerException(400, "状态不正确");
+        }
+        if (rule.getStartTime() != null && rule.getEndTime() != null
+                && !rule.getEndTime().isAfter(rule.getStartTime())) {
+            throw new com.shop.common.exception.ServerException(400, "停用时间必须晚于生效时间");
+        }
+    }
+
+    private LocalDateTime parseTime(String value) {
+        return value == null || value.isBlank() ? null : LocalDateTime.parse(value, TIME_FORMATTER);
     }
 
     private Map<String, Object> toTemplateItem(MarketingCouponTemplateDO tpl) {
@@ -330,7 +413,36 @@ public class AdminMarketingController {
         item.put("freeThreshold", TradeMoneyUtils.formatYuan(rule.getFreeThreshold()));
         item.put("baseFee", TradeMoneyUtils.formatYuan(rule.getBaseFee()));
         item.put("status", rule.getStatus());
+        item.put("startTime", rule.getStartTime() == null ? "" : rule.getStartTime().format(TIME_FORMATTER));
+        item.put("endTime", rule.getEndTime() == null ? "" : rule.getEndTime().format(TIME_FORMATTER));
+        item.put("currentActive", isCurrentActive(rule));
         item.put("createTime", rule.getCreateTime() == null ? "" : rule.getCreateTime().format(TIME_FORMATTER));
         return item;
+    }
+
+    private MarketingShippingRuleRespVO toShippingVO(MarketingShippingRuleDO rule) {
+        if (rule == null) {
+            return null;
+        }
+        MarketingShippingRuleRespVO item = new MarketingShippingRuleRespVO();
+        item.setId(rule.getId());
+        item.setName(rule.getName());
+        item.setFreeThreshold(TradeMoneyUtils.formatYuan(rule.getFreeThreshold()));
+        item.setBaseFee(TradeMoneyUtils.formatYuan(rule.getBaseFee()));
+        item.setStatus(rule.getStatus());
+        item.setStartTime(rule.getStartTime() == null ? "" : rule.getStartTime().format(TIME_FORMATTER));
+        item.setEndTime(rule.getEndTime() == null ? "" : rule.getEndTime().format(TIME_FORMATTER));
+        item.setCurrentActive(isCurrentActive(rule));
+        item.setCreateTime(rule.getCreateTime() == null ? "" : rule.getCreateTime().format(TIME_FORMATTER));
+        return item;
+    }
+
+    private boolean isCurrentActive(MarketingShippingRuleDO rule) {
+        if (rule == null || rule.getStatus() == null || rule.getStatus() != 1) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        return (rule.getStartTime() == null || !rule.getStartTime().isAfter(now))
+                && (rule.getEndTime() == null || rule.getEndTime().isAfter(now));
     }
 }

@@ -1,5 +1,5 @@
 import { http } from "@/utils/http";
-import type { CouponTemplate, PromotionRule, ShippingRule, CouponInstance } from "./types";
+import type { CouponTemplate, PromotionRule, ShippingRule, CouponInstance, MarketingShippingAuditLog } from "./types";
 
 // ==================== 优惠券模板 ====================
 export const getCouponTemplateList = (params: Record<string, any>) => {
@@ -66,6 +66,11 @@ export const getShippingList = (params: Record<string, any>) => {
         { params }
     );
 };
+export const getCurrentShipping = () => {
+    return http.get<ShippingRule | null, undefined>(
+        "/admin-api/marketing/shipping/current"
+    );
+};
 export const createShipping = (data: Record<string, any>) => {
     return http.post<ShippingRule, Record<string, any>>(
         "/admin-api/marketing/shipping/create",
@@ -80,6 +85,12 @@ export const updateShipping = (data: Record<string, any>) => {
 };
 export const updateShippingStatus = (data: { id: number; status: number }) => {
     return http.request<boolean>("put", "/admin-api/marketing/shipping/update-status", { data });
+};
+export const getShippingAuditList = (params: Record<string, any>) => {
+    return http.get<{ list: MarketingShippingAuditLog[]; total: number }, undefined>(
+        "/admin-api/marketing/shipping/audit-page",
+        { params }
+    );
 };
 
 // ==================== 优惠券实例 ====================
