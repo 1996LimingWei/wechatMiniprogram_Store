@@ -30,6 +30,15 @@ export default {
             }
         },
         {
+            path: "/product/inventory",
+            name: "ProductInventory",
+            component: () => import("@/views/product/inventory/index.vue"),
+            meta: {
+                title: "库存工作台",
+                permissions: ["product:manage"]
+            }
+        },
+        {
             path: "/product/material",
             name: "ProductMaterial",
             component: () => import("@/views/product/material/index.vue"),

@@ -19,6 +19,7 @@ public class ProductSkuDO extends BaseDO {
     private Integer price;
     private Integer marketPrice;
     private Integer stock;
+    private Integer warningStock;
     private String picUrl;
     private Double weight;
     private Double volume;

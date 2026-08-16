@@ -251,6 +251,7 @@ public class ProductBatchOperationService {
         copy.setPrice(source.getPrice());
         copy.setMarketPrice(source.getMarketPrice());
         copy.setStock(source.getStock());
+        copy.setWarningStock(source.getWarningStock());
         copy.setPicUrl(source.getPicUrl());
         copy.setWeight(source.getWeight());
         copy.setVolume(source.getVolume());

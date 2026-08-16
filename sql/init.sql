@@ -106,6 +106,7 @@ CREATE TABLE `product_sku` (
     `price` int NOT NULL COMMENT '价格(分)',
     `market_price` int DEFAULT NULL COMMENT '划线价(分)',
     `stock` int NOT NULL DEFAULT 0 COMMENT '库存',
+    `warning_stock` int NOT NULL DEFAULT 0 COMMENT '预警库存',
     `pic_url` varchar(512) DEFAULT '' COMMENT 'SKU图片',
     `weight` double DEFAULT NULL COMMENT '重量(kg)',
     `volume` double DEFAULT NULL COMMENT '体积(m3)',

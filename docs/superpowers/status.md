@@ -869,6 +869,17 @@
 - 验证通过：商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`，共 47 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
 - 未完成复验：Docker Desktop 仍未启动，数据库迁移门禁仍需在 Docker Engine 可用后补跑；P0-05 本身未新增迁移。
 
+## 2026-08-16 v1.0 P0-06 库存工作台与库存流水
+
+- 后端新增库存工作台接口，支持按商品名称、SKU 编码/SKU ID、库存状态和低库存筛选 SKU，并展示当前库存、可售库存、锁定库存、预警库存和状态。
+- `product_sku` 新增 `warning_stock`，初始化 SQL、增量迁移和生产/预发布迁移门禁推进到 `20260816_03`。
+- 支持设置 SKU 预警库存、人工增减库存；人工调整强制 4 至 200 字原因，使用乐观条件更新并写入 `product_stock_log`。
+- 库存流水可按 SKU、SPU、业务单号查询；库存对账接口按 SKU 当前库存和流水合计识别差异。
+- 管理后台新增“商品管理 / 库存工作台”，支持低库存筛选、设置预警、人工调库存、查看流水和库存对账。
+- 交易库存流水覆盖期初导入、商品导入/批量/人工调整、下单扣减、未支付关闭/取消回补、售后退款/退货收货回补；重复业务单号由 `product_stock_log` 唯一键和交易侧幂等保护。
+- 验证通过：商品模块 `mvn -pl shop-module-product -am test "-Dmaven.compiler.release=24"`，共 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
+- 未完成复验：Docker Desktop 未启动，数据库迁移门禁仍需在 Docker Engine 可用后补跑；新增迁移 `V20260816_03__inventory_workbench_warning_stock.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -909,7 +920,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 执行客户运营能力：库存工作台、运费配置。
+2. 执行客户运营能力：运费配置。
 3. 继续补齐订单、售后和资金闭环：订单导出、批量发货、拣货单、支付异常、退款异常、日终对账。
 4. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
 5. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
