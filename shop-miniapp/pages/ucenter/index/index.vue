@@ -125,6 +125,12 @@
 						</view>
 						<text class="service-label">用户协议</text>
 					</navigator>
+					<navigator url="/pages/legal/afterSale/afterSale" class="service-item">
+						<view class="service-icon" style="background: linear-gradient(135deg, #F4EFE3 0%, #FBF8F0 100%);">
+							<image class="service-icon-img" src="/static/images/service/order_refund.svg"></image>
+						</view>
+						<text class="service-label">售后政策</text>
+					</navigator>
 					<navigator url="/pages/ucenter/feedback/feedback" class="service-item">
 						<view class="service-icon" style="background: linear-gradient(135deg, #E6EEE7 0%, #F4F8F4 100%);">
 							<image class="service-icon-img" src="/static/images/service/service_feedback.svg"></image>

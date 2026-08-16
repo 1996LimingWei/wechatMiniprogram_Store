@@ -979,6 +979,16 @@
 - 验证通过：`mvn -pl shop-server -am test "-Dmaven.compiler.release=24"`，商品 50 个、会员 4 个、交易 93 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
 - 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_11__observability_alerts.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-17 小程序提审代码准备
+
+- 新增小程序“售后政策”页面，并在“我的”和“账号设置”中提供入口；隐私政策、用户协议、售后政策和在线客服入口已形成提审所需的基础用户协议链路。
+- 小程序生产环境收到后端 `mockPay=true` 时不会进入模拟支付弹窗，改为直接提示支付暂不可用；开发态模拟支付文案不再出现“开发环境”字样。
+- 清理会进入提审包的调试输出：`App.vue`、`main.js` 和 `uParse` 组件不再输出 `console.log`。
+- 新增 `docs/acceptance/v1.0-miniapp-review-checklist.md`，整理客户 AppID、合法域名、隐私保护指引、客服能力、体验版/正式版 API 域名、iOS/Android 真机回归和提审资料归档清单。
+- 新增 `scripts/verify-miniapp-review-readiness.ps1` 并纳入 `verify-ci.ps1`，自动校验隐私/协议/售后页面、客服入口、隐私检查开关、合法域名检查、模拟支付生产防线和调试输出。
+- 验证通过：`scripts/verify-miniapp-review-readiness.ps1`、小程序 API 契约校验、`verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration` 和 `git diff --check`。
+- 待客户资料与人工验收：客户正式小程序 AppID、微信后台 request/upload/download 合法域名、客服后台开通、iOS 与 Android 真机核心链路、微信体验版上传和提审资料归档。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -1019,7 +1029,7 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 下一步进入第五阶段：小程序提审与真机回归、真实微信支付退款验收、真实物流验收和客户交付文档。
+2. 下一步继续第五阶段：等待客户正式资料后执行小程序体验版上传、真机回归、真实微信支付退款验收和真实物流验收；代码侧先推进可自动完成的验收脚本和交付文档。
 3. 继续完善交付门禁：依赖漏洞扫描、后台 Lint 策略、生产部署回滚和数据库迁移复验。
 4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 

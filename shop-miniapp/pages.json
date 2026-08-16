@@ -336,6 +336,12 @@
 			}
 		},
 		{
+			"path": "pages/legal/afterSale/afterSale",
+			"style": {
+				"navigationBarTitleText": "售后政策"
+			}
+		},
+		{
 			"path": "pages/ucenter/profile/profile",
 			"style": {
 				"navigationBarTitleText": "个人资料",

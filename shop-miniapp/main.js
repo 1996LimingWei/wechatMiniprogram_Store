@@ -10,7 +10,6 @@ window.QQmap = null;
 //网络监听
 setTimeout(() => {
 	uni.onNetworkStatusChange(function(res) {
-		// console.log(res.networkType);
 		store.commit("networkChange", {
 			isConnected: res.isConnected
 		})

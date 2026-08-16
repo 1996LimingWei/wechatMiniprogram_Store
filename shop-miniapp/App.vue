@@ -67,7 +67,7 @@
 			plus.runtime.getProperty(plus.runtime.appid, widgetInfo => {
 				const res = uni.getSystemInfoSync();
 				let errMsg = `手机品牌：${res.brand}；手机型号：${res.model}；操作系统版本：${res.system}；客户端平台：${res.platform}；错误描述：${err}`;
-				console.log('发生错误：' + errMsg);
+				uni.setStorageSync('lastClientError', errMsg);
 			});
 			// #endif
 		}

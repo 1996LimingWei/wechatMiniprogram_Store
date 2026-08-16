@@ -413,9 +413,14 @@ const utils = {
 				if (res.code === 0) {
 					let payParam = res.data;
 					if (payParam.mockPay) {
+						if (env.isProduction) {
+							utils.toast('支付暂不可用，请稍后再试');
+							reject({ errMsg: 'requestPayment:mock-disabled' });
+							return;
+						}
 						uni.showModal({
-							title: '开发环境模拟支付',
-							content: '确认将当前订单标记为支付成功？',
+							title: '支付确认',
+							content: '确认完成当前支付流程？',
 							confirmText: '确认支付',
 							success: function (modalResult) {
 								if (!modalResult.confirm) {

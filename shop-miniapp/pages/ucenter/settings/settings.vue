@@ -9,6 +9,10 @@
 				<text>用户协议</text>
 				<text class="arrow">›</text>
 			</navigator>
+			<navigator class="row" url="/pages/legal/afterSale/afterSale">
+				<text>售后政策</text>
+				<text class="arrow">›</text>
+			</navigator>
 			<button class="row contact" open-type="contact">
 				<text>联系在线客服</text>
 				<text class="arrow">›</text>

@@ -10,6 +10,7 @@ $root = Split-Path -Parent $PSScriptRoot
 & (Join-Path $PSScriptRoot "verify-secret-scan.ps1")
 & (Join-Path $PSScriptRoot "verify-production-config.ps1")
 & (Join-Path $PSScriptRoot "verify-miniapp-api-contract.ps1")
+& (Join-Path $PSScriptRoot "verify-miniapp-review-readiness.ps1")
 & (Join-Path $PSScriptRoot "verify-backend-api-contract.ps1")
 
 if (-not $SkipBackendTests) {
@@ -37,4 +38,3 @@ if (-not $SkipDbMigration) {
 }
 
 Write-Host "v1.0 基础 CI 门禁通过。"
-
