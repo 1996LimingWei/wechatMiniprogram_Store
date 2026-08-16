@@ -81,6 +81,18 @@
 				<text class="logistics-label">发货时间</text>
 				<text class="logistics-value">{{logistics.deliveryTime}}</text>
 			</view>
+			<view class="logistics-message" v-if="logistics.queryMessage && (!logistics.traces || !logistics.traces.length)">
+				{{logistics.queryMessage}}
+			</view>
+			<view class="logistics-traces" v-if="logistics.traces && logistics.traces.length">
+				<view class="trace-item" v-for="(trace, index) in logistics.traces" :key="index">
+					<view class="trace-dot" :class="{active: index === 0}"></view>
+					<view class="trace-content">
+						<text class="trace-text">{{trace.text}}</text>
+						<text class="trace-time">{{trace.time}}</text>
+					</view>
+				</view>
+			</view>
 		</view>
 
 		<view class="order-after-sale" v-if="afterSale && afterSale.hasAfterSale">
@@ -247,11 +259,20 @@
 					}
 					uni.showModal({
 						title: res.data.logisticsCompany || '物流信息',
-						content: '物流单号：' + res.data.logisticsNo + '\n发货时间：' + res.data.deliveryTime,
+						content: that.formatLogisticsModal(res.data),
 						showCancel: false,
 						confirmColor: '#5B8C5A'
 					});
 				});
+			},
+			formatLogisticsModal(data) {
+				let content = '物流单号：' + data.logisticsNo + '\n发货时间：' + data.deliveryTime;
+				if (data.traces && data.traces.length) {
+					content += '\n最新轨迹：' + data.traces[0].text;
+				} else if (data.queryMessage) {
+					content += '\n' + data.queryMessage;
+				}
+				return content;
 			},
 			applyRefund() {
 				this.refundItems = this.orderGoods.map(item => ({ orderItemId: item.id, count: item.number }));
@@ -634,6 +655,57 @@
 		color: #333;
 		text-align: right;
 		max-width: 460rpx;
+	}
+
+	.logistics-message {
+		margin-top: 12rpx;
+		padding: 16rpx 20rpx;
+		border-radius: 12rpx;
+		background: #F7F4EA;
+		color: #8A6D3B;
+		font-size: 24rpx;
+		line-height: 1.5;
+	}
+
+	.logistics-traces {
+		margin-top: 18rpx;
+	}
+
+	.trace-item {
+		display: flex;
+		position: relative;
+		padding-bottom: 18rpx;
+	}
+
+	.trace-dot {
+		width: 14rpx;
+		height: 14rpx;
+		border-radius: 50%;
+		background: #C8D6C8;
+		margin: 9rpx 18rpx 0 2rpx;
+		flex-shrink: 0;
+	}
+
+	.trace-dot.active {
+		background: #5B8C5A;
+	}
+
+	.trace-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 6rpx;
+	}
+
+	.trace-text {
+		font-size: 25rpx;
+		color: #333;
+		line-height: 1.45;
+	}
+
+	.trace-time {
+		font-size: 22rpx;
+		color: #999;
 	}
 
 	.order-after-sale {

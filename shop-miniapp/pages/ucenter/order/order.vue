@@ -204,11 +204,20 @@ export default {
 				}
 				uni.showModal({
 					title: res.data.logisticsCompany || '物流信息',
-					content: '物流单号：' + res.data.logisticsNo + '\n发货时间：' + res.data.deliveryTime,
+					content: this.formatLogisticsModal(res.data),
 					showCancel: false,
 					confirmColor: '#5B8C5A'
 				});
 			});
+		},
+		formatLogisticsModal(data) {
+			let content = '物流单号：' + data.logisticsNo + '\n发货时间：' + data.deliveryTime;
+			if (data.traces && data.traces.length) {
+				content += '\n最新轨迹：' + data.traces[0].text;
+			} else if (data.queryMessage) {
+				content += '\n' + data.queryMessage;
+			}
+			return content;
 		},
 
 	},

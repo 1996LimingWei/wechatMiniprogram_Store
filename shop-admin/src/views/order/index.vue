@@ -822,7 +822,7 @@ onMounted(fetchData);
         <el-form-item label="物流单号" prop="logisticsNo">
           <el-input
             v-model="shipForm.logisticsNo"
-            maxlength="64"
+            maxlength="32"
             show-word-limit
             placeholder="请输入物流单号"
           />
@@ -867,6 +867,13 @@ onMounted(fetchData);
               >{{ trace.text }}</el-timeline-item
             >
           </el-timeline>
+          <el-alert
+            v-if="logistics.queryMessage && !logistics.traces?.length"
+            :title="logistics.queryMessage"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
         </template>
         <el-empty v-else description="该订单暂无物流信息" :image-size="72" />
       </div>
