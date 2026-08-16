@@ -930,6 +930,19 @@
 - 验证通过：交易模块 `mvn -pl shop-module-trade -am test "-Dmaven.compiler.release=24"`，交易 93 个测试零失败且依赖商品 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验。
 - 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_07__refund_exception_workbench.sql` 的空库迁移与重放尚未本机复验。
 
+## 2026-08-16 v1.0 P0-11 日终对账与差异处理
+
+- 后端新增日终对账工作台服务和管理端接口，支持按日期生成对账批次、查看批次详情、分页查看差异、导出 CSV 和人工处理差异。
+- 新增 `trade_reconcile_batch` 对账批次表与 `trade_reconcile_difference` 对账差异表，记录本地支付、退款、净收入，渠道支付、退款、净收入，手续费、微信交易账单地址、资金账单地址、触发人和执行说明。
+- 对账差异类型覆盖平账、本地多、微信多、金额不一致、状态不一致、缺少关联订单；差异处理会记录处理人、处理时间和处理备注。
+- 微信支付服务新增交易账单和资金账单下载地址获取能力；生产商户权限未开通或微信支付未启用时，对账仍可使用本地支付/退款与已同步渠道状态生成可导出的财务结果。
+- 新增定时日终对账任务 `TradeDailyReconcileJob`，可通过 `trade.reconcile.job-enabled=true` 启用，默认每日 02:30 对前一日执行对账。
+- 管理后台“交易管理 / 日终对账”新增批次列表、汇总面板、差异明细、指定日期手动生成、CSV 导出和差异处理入口；操作按钮按 `trade:reconcile-trigger`、`trade:reconcile-export`、`trade:reconcile-handle` 控制。
+- 新增对账权限：财务角色具备日终对账查看、手动触发、导出和差异处理权限；超级管理员同步具备全部对账权限。
+- 数据库必需迁移版本推进到 `20260816_08`，新增迁移 `V20260816_08__daily_reconciliation_workbench.sql`，数据库门禁同步断言对账表和财务角色权限。
+- 验证通过：交易模块 `mvn -pl shop-module-trade -am test "-Dmaven.compiler.release=24"`，交易 93 个测试零失败且依赖商品 50 个测试零失败；管理后台 `corepack pnpm typecheck` 与 `corepack pnpm build`；Secret 扫描、生产/预发布配置静态校验、小程序 API 契约校验、后端 API 契约基线校验和 `verify-ci.ps1 -SkipBackendTests -SkipAdminBuild -SkipDbMigration`。
+- 未完成复验：Docker Engine 管道仍不可用，数据库迁移门禁仍需在 Docker Desktop 启动后补跑；新增迁移 `V20260816_08__daily_reconciliation_workbench.sql` 的空库迁移与重放尚未本机复验。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
@@ -970,8 +983,8 @@
 
 后续整改以 `v1.0 客户交付版.md` 为唯一任务来源：
 1. 完成交付基座剩余项：启动 Docker 后复验数据库迁移门禁；补齐依赖漏洞扫描、后台 Lint 策略和退款回调域名配置。
-2. 继续补齐订单、售后和资金闭环：日终对账。
-3. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
+2. 同步收口权限、安全和可观测性：角色权限矩阵、高风险操作审计、日志指标和告警。
+3. 继续完善交付门禁：依赖漏洞扫描、后台 Lint 策略、生产部署回滚和数据库迁移复验。
 4. 最后由客户提供正式资料，完成小程序提审、真实微信支付退款、真实物流和客户交付文档验收。
 
 ---

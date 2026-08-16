@@ -46,6 +46,15 @@ export default {
                 title: "退款异常",
                 permissions: ["trade:manage", "trade:refund-read", "trade:after-sale-read"]
             }
+        },
+        {
+            path: "/trade/reconcile",
+            name: "ReconcileWorkbench",
+            component: () => import("@/views/reconcile/index.vue"),
+            meta: {
+                title: "日终对账",
+                permissions: ["trade:manage", "trade:reconcile-read"]
+            }
         }
     ]
 } satisfies RouteConfigsTable;

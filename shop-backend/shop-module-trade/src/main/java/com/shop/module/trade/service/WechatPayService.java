@@ -26,6 +26,7 @@ import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.OffsetDateTime;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -270,6 +271,18 @@ public class WechatPayService {
         return String.valueOf(value);
     }
 
+    private String text(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String objectToJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception exception) {
+            return "{}";
+        }
+    }
+
     private int requireAmount(Map<String, Object> amount) {
         Object total = amount.get("total");
         if (!(total instanceof Number number) || number.intValue() <= 0) {
@@ -322,6 +335,19 @@ public class WechatPayService {
         } catch (Exception exception) {
             throw new ServerException(502, "微信支付查单服务暂时不可用");
         }
+    }
+
+    public BillDownloadResult getTradeBillDownloadUrl(LocalDate billDate) {
+        validateConfiguration();
+        Map<String, Object> response = getJson("/v3/bill/tradebill?bill_date=" + billDate + "&bill_type=ALL");
+        return new BillDownloadResult(text(response.get("download_url")), objectToJson(response));
+    }
+
+    public BillDownloadResult getFundFlowBillDownloadUrl(LocalDate billDate) {
+        validateConfiguration();
+        Map<String, Object> response = getJson("/v3/bill/fundflowbill?bill_date=" + billDate
+                + "&account_type=BASIC");
+        return new BillDownloadResult(text(response.get("download_url")), objectToJson(response));
     }
 
     public void closePayment(String paySn) {
@@ -404,5 +430,8 @@ public class WechatPayService {
     public record PaymentQueryResult(
             String paySn, String transactionId, String tradeState, Integer amount,
             java.time.LocalDateTime successTime, String rawBody) {
+    }
+
+    public record BillDownloadResult(String downloadUrl, String rawBody) {
     }
 }
