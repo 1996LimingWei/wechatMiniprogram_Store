@@ -24,6 +24,7 @@ public class WechatTradeRefundProvider implements TradeRefundProvider {
 
     @Override
     public RefundResult refund(RefundRequest request) {
+        wechatPayService.validateRefundConfiguration();
         if (request.amount() == null || request.amount() <= 0) {
             throw new ServerException(400, "退款金额必须大于 0");
         }
@@ -34,6 +35,7 @@ public class WechatTradeRefundProvider implements TradeRefundProvider {
         payload.put("out_trade_no", request.paySn());
         payload.put("out_refund_no", request.afterSaleSn());
         payload.put("reason", normalizeReason(request.reason()));
+        payload.put("notify_url", wechatPayService.getRefundNotifyUrl());
         payload.put("amount", Map.of(
                 "refund", request.amount(),
                 "total", request.totalAmount(),

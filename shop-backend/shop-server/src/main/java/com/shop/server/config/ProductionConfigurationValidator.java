@@ -71,6 +71,7 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         }
         requireHttpsUrl("app.external-base-url", missing);
         requireHttpsUrl("wechat.pay.notify-url", missing);
+        requireHttpsUrl("wechat.pay.refund-notify-url", missing);
         String materialProvider = environment.getProperty("material.storage.provider");
         if (!"mounted".equals(materialProvider)) {
             missing.add("material.storage.provider 生产/预发布必须配置为 mounted");

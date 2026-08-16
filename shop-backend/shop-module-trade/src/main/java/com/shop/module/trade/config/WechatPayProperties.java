@@ -17,4 +17,5 @@ public class WechatPayProperties {
     private String apiV3Key;
     private String platformCertificatePath;
     private String notifyUrl;
+    private String refundNotifyUrl;
 }

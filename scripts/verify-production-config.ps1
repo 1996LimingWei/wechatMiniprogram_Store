@@ -43,6 +43,7 @@ foreach ($file in @($prod, $staging)) {
     Assert-Contains $file 'public-base-url:\s*\$\{MATERIAL_PUBLIC_BASE_URL:\}' "$file 素材公开访问地址必须由环境变量注入"
     Assert-Contains $file 'allowed-origin-patterns:\s*\$\{WEB_CORS_ALLOWED_ORIGIN_PATTERNS:\}' "$file CORS 必须由环境变量注入"
     Assert-Contains $file 'external-base-url:\s*\$\{APP_EXTERNAL_BASE_URL:\}' "$file 必须配置外部访问地址"
+    Assert-Contains $file 'refund-notify-url:\s*\$\{WECHAT_PAY_REFUND_NOTIFY_URL:\}' "$file 必须配置微信退款回调地址"
     Assert-NotContains $file 'localhost|127\.0\.0\.1|admin123|password:\s*root' "$file 不得包含本地地址、默认密码或 root 密码"
 }
 

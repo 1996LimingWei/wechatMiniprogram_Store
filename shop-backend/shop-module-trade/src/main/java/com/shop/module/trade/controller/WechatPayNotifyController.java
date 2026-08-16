@@ -2,6 +2,8 @@ package com.shop.module.trade.controller;
 
 import com.shop.module.trade.service.PayOrderService;
 import com.shop.module.trade.service.PaymentNotifyAuditService;
+import com.shop.module.trade.service.RefundNotifyAuditService;
+import com.shop.module.trade.service.TradeRefundNotifyService;
 import com.shop.module.trade.service.WechatPayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,8 @@ public class WechatPayNotifyController {
     private final WechatPayService wechatPayService;
     private final PayOrderService payOrderService;
     private final PaymentNotifyAuditService paymentNotifyAuditService;
+    private final TradeRefundNotifyService tradeRefundNotifyService;
+    private final RefundNotifyAuditService refundNotifyAuditService;
 
     @PostMapping("/notify")
     public ResponseEntity<Map<String, String>> notifyPayment(
@@ -53,6 +57,38 @@ public class WechatPayNotifyController {
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", "FAIL", "message", "支付通知处理失败"));
+        }
+    }
+
+    @PostMapping("/refund-notify")
+    public ResponseEntity<Map<String, String>> notifyRefund(
+            @RequestHeader("Wechatpay-Timestamp") String timestamp,
+            @RequestHeader("Wechatpay-Nonce") String nonce,
+            @RequestHeader("Wechatpay-Signature") String signature,
+            @RequestHeader("Wechatpay-Serial") String serial,
+            @RequestBody String body) {
+        WechatPayService.RefundNotification notification = null;
+        try {
+            notification = wechatPayService.parseRefundNotification(
+                    timestamp, nonce, signature, serial, body);
+            tradeRefundNotifyService.handleWechatRefundNotification(notification, body);
+            log.info("[notifyRefund] 微信退款通知处理成功 afterSaleSn={} refundId={} refundStatus={} amount={}",
+                    notification.afterSaleSn(), notification.providerRefundNo(),
+                    notification.refundStatus(), notification.amount());
+            return ResponseEntity.ok(Map.of("code", "SUCCESS", "message", "成功"));
+        } catch (Exception exception) {
+            log.warn("[notifyRefund] 微信退款通知处理失败 afterSaleSn={} notificationId={} message={}",
+                    notification == null ? "" : notification.afterSaleSn(),
+                    notification == null ? "" : notification.notificationId(),
+                    exception.getMessage());
+            try {
+                refundNotifyAuditService.recordFailure(
+                        timestamp, serial, body, notification, exception.getMessage());
+            } catch (Exception auditException) {
+                log.error("[notifyRefund] 微信退款失败审计写入失败", auditException);
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", "FAIL", "message", "退款通知处理失败"));
         }
     }
 }

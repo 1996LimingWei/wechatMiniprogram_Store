@@ -135,7 +135,7 @@ public class RefundExceptionWorkbenchService {
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("refund", toRefundResp(rows.get(0)));
         detail.put("taskRecords", buildTaskRecords(rows.get(0)));
-        detail.put("callbackRecords", List.of());
+        detail.put("callbackRecords", buildCallbackRecords(text(rows.get(0).get("after_sale_sn"))));
         return detail;
     }
 
@@ -330,6 +330,49 @@ public class RefundExceptionWorkbenchService {
         record.put("lastError", text(row.get("refund_last_error")));
         record.put("message", text(row.get("refund_message")));
         return List.of(record);
+    }
+
+    private List<Map<String, Object>> buildCallbackRecords(String afterSaleSn) {
+        if (!hasText(afterSaleSn)) {
+            return List.of();
+        }
+        List<Map<String, Object>> records = new ArrayList<>();
+        records.addAll(jdbcTemplate.queryForList("""
+                SELECT create_time, notification_id, event_type, refund_status, status, message
+                  FROM refund_notify_log
+                 WHERE after_sale_sn = ? AND deleted = b'0'
+                 ORDER BY create_time DESC, id DESC
+                 LIMIT 20
+                """, afterSaleSn).stream().map(row -> {
+                    Map<String, Object> record = new LinkedHashMap<>();
+                    record.put("type", "SUCCESS");
+                    record.put("notificationId", text(row.get("notification_id")));
+                    record.put("eventType", text(row.get("event_type")));
+                    record.put("refundStatus", text(row.get("refund_status")));
+                    record.put("status", intValue(row.get("status")));
+                    record.put("message", text(row.get("message")));
+                    record.put("createTime", format(row.get("create_time")));
+                    return record;
+                }).toList());
+        records.addAll(jdbcTemplate.queryForList("""
+                SELECT create_time, notification_id, error_message
+                  FROM refund_notify_failure_log
+                 WHERE after_sale_sn = ?
+                 ORDER BY create_time DESC, id DESC
+                 LIMIT 20
+                """, afterSaleSn).stream().map(row -> {
+                    Map<String, Object> record = new LinkedHashMap<>();
+                    record.put("type", "FAILURE");
+                    record.put("notificationId", text(row.get("notification_id")));
+                    record.put("eventType", "");
+                    record.put("refundStatus", "FAIL");
+                    record.put("status", 0);
+                    record.put("message", text(row.get("error_message")));
+                    record.put("createTime", format(row.get("create_time")));
+                    return record;
+                }).toList());
+        records.sort((left, right) -> text(right.get("createTime")).compareTo(text(left.get("createTime"))));
+        return records.size() <= 20 ? records : records.subList(0, 20);
     }
 
     private boolean canRetry(Integer status, Integer attempts) {

@@ -2,6 +2,7 @@ package com.shop.module.trade.service.provider;
 
 import com.shop.module.trade.service.WechatPayService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.Map;
 
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class WechatTradeRefundProviderTest {
@@ -18,6 +20,7 @@ class WechatTradeRefundProviderTest {
 
     @Test
     void shouldMapWechatProcessingRefund() {
+        when(wechatPayService.getRefundNotifyUrl()).thenReturn("https://api.example.com/app-api/pay/wechat/refund-notify");
         when(wechatPayService.postJson(eq("/v3/refund/domestic/refunds"), any())).thenReturn(
                 refundResponse("PROCESSING"));
 
@@ -27,6 +30,10 @@ class WechatTradeRefundProviderTest {
 
         assertEquals(TradeRefundProvider.RefundStatus.PROCESSING, result.status());
         assertEquals("WX-R202608080001", result.providerRefundNo());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(wechatPayService).postJson(eq("/v3/refund/domestic/refunds"), captor.capture());
+        assertEquals("https://api.example.com/app-api/pay/wechat/refund-notify",
+                captor.getValue().get("notify_url"));
     }
 
     @Test

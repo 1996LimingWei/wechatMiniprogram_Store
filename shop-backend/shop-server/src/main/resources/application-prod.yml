@@ -39,6 +39,7 @@ wechat:
     api-v3-key: ${WECHAT_PAY_API_V3_KEY:}
     platform-certificate-path: ${WECHAT_PAY_PLATFORM_CERTIFICATE_PATH:}
     notify-url: ${WECHAT_PAY_NOTIFY_URL:}
+    refund-notify-url: ${WECHAT_PAY_REFUND_NOTIFY_URL:}
     reconcile-job-enabled: true
     reconcile-job-fixed-delay: ${WECHAT_PAY_RECONCILE_FIXED_DELAY:60000}
     reconcile-batch-size: ${WECHAT_PAY_RECONCILE_BATCH_SIZE:50}

@@ -93,15 +93,7 @@ public class WechatPayService {
             String timestamp, String nonce, String signature, String serial, String body) {
         validateConfiguration();
         verifySignature(timestamp + "\n" + nonce + "\n" + body + "\n", signature, serial);
-        long callbackTime;
-        try {
-            callbackTime = Long.parseLong(timestamp);
-        } catch (NumberFormatException exception) {
-            throw new ServerException(400, "微信支付回调时间戳无效");
-        }
-        if (Math.abs(System.currentTimeMillis() / 1000 - callbackTime) > 300) {
-            throw new ServerException(400, "微信支付回调已过期");
-        }
+        validateCallbackTimestamp(timestamp);
         try {
             Map<String, Object> envelope = objectMapper.readValue(body, new TypeReference<>() {});
             String notificationId = requireText(envelope, "id");
@@ -135,6 +127,47 @@ public class WechatPayService {
             throw exception;
         } catch (Exception exception) {
             throw new ServerException(400, "微信支付回调内容无效");
+        }
+    }
+
+    public RefundNotification parseRefundNotification(
+            String timestamp, String nonce, String signature, String serial, String body) {
+        validateRefundConfiguration();
+        verifySignature(timestamp + "\n" + nonce + "\n" + body + "\n", signature, serial);
+        validateCallbackTimestamp(timestamp);
+        try {
+            Map<String, Object> envelope = objectMapper.readValue(body, new TypeReference<>() {});
+            String notificationId = requireText(envelope, "id");
+            String eventType = requireText(envelope, "event_type");
+            if (!Set.of("REFUND.SUCCESS", "REFUND.ABNORMAL", "REFUND.CLOSED").contains(eventType)) {
+                throw new ServerException(400, "微信退款通知事件不受支持");
+            }
+            Map<String, Object> resource = castMap(envelope.get("resource"));
+            String plaintext = decryptResource(resource);
+            Map<String, Object> refund = objectMapper.readValue(plaintext, new TypeReference<>() {});
+            String mchId = requireText(refund, "mchid");
+            if (!properties.getMchId().equals(mchId)) {
+                throw new ServerException(400, "微信退款回调商户信息不匹配");
+            }
+            String refundStatus = requireText(refund, "refund_status");
+            if (!Set.of("SUCCESS", "PROCESSING", "ABNORMAL", "CLOSED").contains(refundStatus)) {
+                throw new ServerException(400, "微信退款通知状态不受支持");
+            }
+            Map<String, Object> amount = castMap(refund.get("amount"));
+            return new RefundNotification(
+                    notificationId,
+                    eventType,
+                    requireText(refund, "out_trade_no"),
+                    requireText(refund, "out_refund_no"),
+                    requireText(refund, "refund_id"),
+                    refundStatus,
+                    requireAmount(amount, "refund"),
+                    "SUCCESS".equals(refundStatus) ? parseSuccessTime(refund.get("success_time")) : null
+            );
+        } catch (ServerException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ServerException(400, "微信退款回调内容无效");
         }
     }
 
@@ -253,6 +286,31 @@ public class WechatPayService {
         }
     }
 
+    public void validateRefundConfiguration() {
+        validateConfiguration();
+        if (isBlank(properties.getRefundNotifyUrl())
+                || !properties.getRefundNotifyUrl().startsWith("https://")) {
+            throw new ServerException(503, "微信退款回调尚未完成生产配置");
+        }
+    }
+
+    public String getRefundNotifyUrl() {
+        validateRefundConfiguration();
+        return properties.getRefundNotifyUrl();
+    }
+
+    private void validateCallbackTimestamp(String timestamp) {
+        long callbackTime;
+        try {
+            callbackTime = Long.parseLong(timestamp);
+        } catch (NumberFormatException exception) {
+            throw new ServerException(400, "微信支付回调时间戳无效");
+        }
+        if (Math.abs(System.currentTimeMillis() / 1000 - callbackTime) > 300) {
+            throw new ServerException(400, "微信支付回调已过期");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> castMap(Object value) {
         if (!(value instanceof Map<?, ?>)) {
@@ -286,7 +344,11 @@ public class WechatPayService {
     }
 
     private int requireAmount(Map<String, Object> amount) {
-        Object total = amount.get("total");
+        return requireAmount(amount, "total");
+    }
+
+    private int requireAmount(Map<String, Object> amount, String key) {
+        Object total = amount.get(key);
         if (!(total instanceof Number number) || number.intValue() <= 0) {
             throw new ServerException(400, "微信支付回调金额无效");
         }
@@ -447,6 +509,12 @@ public class WechatPayService {
     public record PaymentNotification(
             String notificationId, String eventType, String paySn, String transactionId,
             String tradeState, Integer amount, java.time.LocalDateTime successTime) {
+    }
+
+    public record RefundNotification(
+            String notificationId, String eventType, String paySn, String afterSaleSn,
+            String providerRefundNo, String refundStatus, Integer amount,
+            java.time.LocalDateTime successTime) {
     }
 
     public record PaymentQueryResult(

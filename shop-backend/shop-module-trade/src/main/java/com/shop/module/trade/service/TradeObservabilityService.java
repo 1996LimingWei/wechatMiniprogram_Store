@@ -69,7 +69,9 @@ public class TradeObservabilityService {
         trace.setPayStatus(intValue(order.get("pay_status")));
         fillPayAndRefundTrace(trace, orderId);
         trace.setTradeLogs(listTradeLogs(orderId));
-        trace.setPayLogs(listPayLogs(trace.getPaySn()));
+        List<ObservabilitySummaryRespVO.TraceItem> payLogs = new ArrayList<>(listPayLogs(trace.getPaySn()));
+        payLogs.addAll(listRefundNotifyLogs(trace.getAfterSaleSn()));
+        trace.setPayLogs(payLogs);
         trace.setAuditLogs(listAuditLogs(trace));
         return trace;
     }
@@ -179,8 +181,13 @@ public class TradeObservabilityService {
                  WHERE deleted = b'0' AND status = 1 AND refund_time >= CURDATE()
                 """), "笔", "INFO"));
         metrics.add(metric("refund_failure", "退款失败数", count("""
-                SELECT COUNT(*) FROM trade_after_sale
-                 WHERE deleted = b'0' AND status = 5 AND update_time >= CURDATE()
+                SELECT (
+                    (SELECT COUNT(*) FROM trade_after_sale
+                      WHERE deleted = b'0' AND status = 5 AND update_time >= CURDATE())
+                    +
+                    (SELECT COUNT(*) FROM refund_notify_failure_log
+                      WHERE create_time >= CURDATE())
+                )
                 """), "笔", "WARN"));
         metrics.add(metric("refund_exception", "退款异常数", count("""
                 SELECT COUNT(*) FROM trade_after_sale
@@ -217,10 +224,15 @@ public class TradeObservabilityService {
                         """));
         activateWhenPositive(activeTypes, "REFUND_CALLBACK_FAILURE", "退款回调或同步失败",
                 "近 30 分钟存在退款渠道失败或查询失败", count("""
-                        SELECT COUNT(*) FROM trade_after_sale
-                         WHERE deleted = b'0'
-                           AND refund_exception_code IN ('REFUND_FAILED', 'REFUND_QUERY_FAILED')
-                           AND update_time >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                        SELECT (
+                            (SELECT COUNT(*) FROM refund_notify_failure_log
+                              WHERE create_time >= DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+                            +
+                            (SELECT COUNT(*) FROM trade_after_sale
+                              WHERE deleted = b'0'
+                                AND refund_exception_code IN ('REFUND_FAILED', 'REFUND_QUERY_FAILED', 'REFUND_NOTIFY_FAILED')
+                                AND update_time >= DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+                        )
                         """));
         activateWhenPositive(activeTypes, "PAY_EXCEPTION_BACKLOG", "支付异常积压",
                 "存在未处理支付异常", count("""
@@ -373,6 +385,29 @@ public class TradeObservabilityService {
                 """, paySn).stream().map(row -> traceItem("支付异常", text(row.get("reason_code")),
                 intValue(row.get("handled")) == 1 ? "已处理" : "待处理", text(row.get("reason")),
                 row.get("create_time"))).toList());
+        return logs;
+    }
+
+    private List<ObservabilitySummaryRespVO.TraceItem> listRefundNotifyLogs(String afterSaleSn) {
+        if (!hasText(afterSaleSn)) {
+            return List.of();
+        }
+        List<ObservabilitySummaryRespVO.TraceItem> logs = new ArrayList<>();
+        logs.addAll(jdbcTemplate.queryForList("""
+                SELECT create_time, notification_id, event_type, refund_status, message
+                  FROM refund_notify_log
+                 WHERE after_sale_sn = ? AND deleted = b'0'
+                 ORDER BY create_time ASC, id ASC
+                """, afterSaleSn).stream().map(row -> traceItem("退款回调", text(row.get("notification_id")),
+                text(row.get("refund_status")), text(row.get("event_type")) + " " + text(row.get("message")),
+                row.get("create_time"))).toList());
+        logs.addAll(jdbcTemplate.queryForList("""
+                SELECT create_time, notification_id, error_message
+                  FROM refund_notify_failure_log
+                 WHERE after_sale_sn = ?
+                 ORDER BY create_time ASC, id ASC
+                """, afterSaleSn).stream().map(row -> traceItem("退款回调失败", text(row.get("notification_id")),
+                "FAIL", text(row.get("error_message")), row.get("create_time"))).toList());
         return logs;
     }
 
