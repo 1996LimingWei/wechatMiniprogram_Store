@@ -695,6 +695,17 @@ public class TradeAfterSaleService {
         result.put("refundNextAttemptTime", formatTime(afterSale.getRefundNextAttemptTime()));
         result.put("refundLastError", afterSale.getRefundLastError() == null
                 ? "" : afterSale.getRefundLastError());
+        result.put("refundChannelState", afterSale.getRefundChannelState() == null
+                ? "" : afterSale.getRefundChannelState());
+        result.put("refundExceptionCode", afterSale.getRefundExceptionCode() == null
+                ? "" : afterSale.getRefundExceptionCode());
+        result.put("refundExceptionMessage", afterSale.getRefundExceptionMessage() == null
+                ? "" : afterSale.getRefundExceptionMessage());
+        result.put("refundHandled", afterSale.getRefundHandled() == null ? 0 : afterSale.getRefundHandled());
+        result.put("refundHandleRemark", afterSale.getRefundHandleRemark() == null
+                ? "" : afterSale.getRefundHandleRemark());
+        result.put("refundHandleAdminId", afterSale.getRefundHandleAdminId());
+        result.put("refundHandleTime", formatTime(afterSale.getRefundHandleTime()));
         result.put("applyTime", formatTime(afterSale.getApplyTime()));
         result.put("auditTime", formatTime(afterSale.getAuditTime()));
         result.put("refundTime", formatTime(afterSale.getRefundTime()));

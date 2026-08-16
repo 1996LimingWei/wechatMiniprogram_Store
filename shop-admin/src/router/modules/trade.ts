@@ -37,6 +37,15 @@ export default {
                 title: "支付异常",
                 permissions: ["trade:manage", "trade:payment-read"]
             }
+        },
+        {
+            path: "/trade/refund",
+            name: "RefundExceptionWorkbench",
+            component: () => import("@/views/refund/index.vue"),
+            meta: {
+                title: "退款异常",
+                permissions: ["trade:manage", "trade:refund-read", "trade:after-sale-read"]
+            }
         }
     ]
 } satisfies RouteConfigsTable;

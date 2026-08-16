@@ -34,6 +34,13 @@ public class TradeAfterSaleDO extends BaseDO {
     private LocalDateTime refundNextAttemptTime;
     private LocalDateTime refundClaimUntil;
     private String refundLastError;
+    private String refundChannelState;
+    private String refundExceptionCode;
+    private String refundExceptionMessage;
+    private Integer refundHandled;
+    private String refundHandleRemark;
+    private Long refundHandleAdminId;
+    private LocalDateTime refundHandleTime;
     private LocalDateTime applyTime;
     private LocalDateTime auditTime;
     private LocalDateTime refundTime;
