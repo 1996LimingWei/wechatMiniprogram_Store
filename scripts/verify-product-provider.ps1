@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$MockBaseUrl = "http://127.0.0.1:8086",
     [string]$DatabaseBaseUrl = "http://127.0.0.1:8087",
     [string]$ProdBaseUrl = "http://127.0.0.1:8088"

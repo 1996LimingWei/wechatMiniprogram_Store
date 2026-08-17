@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$MiniappRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) "shop-miniapp")
 )
 

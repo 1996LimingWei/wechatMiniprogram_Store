@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BaselineFile = (Join-Path $PSScriptRoot "api-contract-baseline.json"),
     [switch]$Strict
 )

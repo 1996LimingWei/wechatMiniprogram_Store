@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BaseUrl = "http://localhost:8085",
     [string]$MysqlContainer = "shop-mysql",
     [string]$MysqlDatabase = "shop",

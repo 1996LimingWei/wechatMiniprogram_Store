@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$EnvFile = ".env.prod",
     [string]$ComposeFile = "docker-compose.prod.yml",
     [string]$Service = "mysql"

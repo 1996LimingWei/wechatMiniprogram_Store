@@ -249,7 +249,7 @@ INSERT INTO `content_banner` (`title`, `pic_url`, `url`, `sort`, `status`) VALUE
 INSERT INTO `content_channel` (`name`, `icon_url`, `url`, `sort`, `status`) VALUES
 ('新品首发', 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=96', '/pages/newGoods/newGoods', 100, 1),
 ('人气推荐', 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=96', '/pages/hotGoods/hotGoods', 90, 1),
-('全部分类', 'https://images.unsplash.com/photo-1534149711956-f9b7d528f64d?w=96', '/pages/catalog/catalog', 80, 1);
+('全部分类', 'https://images.unsplash.com/photo-1595855759920-86582396756a?w=96', '/pages/catalog/catalog', 80, 1);
 
 INSERT INTO `content_brand` (`name`, `pic_url`, `floor_price`, `sort`, `status`) VALUES
 ('东阿阿胶', 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=600&auto=format&fit=crop', 9900, 100, 1),

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$SkipBackendTests,
     [switch]$SkipAdminBuild,
     [switch]$SkipDbMigration,

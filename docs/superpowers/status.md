@@ -1034,6 +1034,27 @@
 - HBuilderX 5.07 已通过 CLI 导入 `shop-miniapp` 并执行 `launch mp-weixin --compile true`，微信小程序端编译检查通过；体验版上传和真机回归仍需客户 AppID、微信开发者权限和设备。
 - 未完成复验：`scripts/verify-dependency-audit.ps1 -RunOnlineAudit` 本机两次 15 分钟窗口均超时，已结束残留 Maven 审计进程；需在网络稳定或 CI 环境补跑并归档。
 
+## 2026-08-17 本地验收环境启动
+
+- 已启动 Docker Desktop，并基于当前源码重新构建、启动 `shop-mysql`、`shop-redis` 与 `shop-backend`；三个容器均为健康状态，端口分别为 `3307`、`6380`、`8085`。
+- 已执行本地 `shop` 数据库增量迁移，迁移版本达到 `20260816_12`；修复了管理员登录前缺少 `failed_login_count` 字段的问题。
+- 后端健康检查为 `UP`，商品分类接口返回成功且包含 15 个分类；管理后台已在 `http://127.0.0.1:8848` 启动，前端代理登录验证通过，管理员角色为 `SUPER_ADMIN`。
+- 管理后台 `pnpm typecheck` 通过；Docker 后端镜像 Maven 全模块构建通过。Windows PowerShell 5 的 UTF-8 无 BOM 解析问题已修复，受影响门禁均已重新执行。
+- HBuilderX 5.23 已重新导入当前 `shop-miniapp` 路径并完成微信小程序编译，微信开发者工具已启动；`unpackage/dist/dev/mp-weixin` 已生成 `project.config.json` 与 `app.json`。
+- 当前会话已连接本地管理后台并完成登录、内容和图片运行态复验；真实微信支付、退款、物流和 iOS/Android 真机链路仍需客户正式资料与设备。
+- README 已从 258 行精简为 116 行，移除过时阶段结论与重复操作说明，保留项目简介、核心能力、快速启动、验收入口和交付文档导航；全部相对链接检查通过。
+
+## 2026-08-17 本地严格验收执行
+
+- 新增 `docs/acceptance/v1.0-acceptance-execution-report-20260817.md`，按管理后台、微信小程序和正式交付前三段清单逐项标记“通过 / 部分通过 / 未通过 / 需要人力验收”，明确自动化验收与真实渠道、真机、生产环境和客户签署的边界。
+- 本轮实际通过：本地管理员登录与数据看板加载、`scripts/verify-trade-flow.ps1`、`scripts/verify-db-migration.ps1`、管理后台 `corepack pnpm typecheck` 和 `corepack pnpm build`。
+- 本轮发现 Windows PowerShell 5 将 UTF-8 无 BOM 中文脚本按本地代码页解析，导致多项门禁语法失败；现已补充 BOM 并完成复验。
+- 管理后台写操作与越权矩阵、小程序 UI 与 iOS/Android 真机、正式 HTTPS、真实支付退款、快递 100、备份恢复/回滚、生产安全审计和客户签字继续保留为人力验收项。
+- 后续页面实操补充：商品上下架并恢复成功；分类、SKU、库存、内容、交易、营销、运行监控、角色权限和审计日志页面均完成运行态巡检。商品/分类/频道失效图片及 Banner、频道、品牌、专题历史 `????` 数据已修复；商品导出仍未能捕获下载证据。
+- HBuilderX 5.24 重新执行微信小程序编译成功；后端 `mvn -pl shop-server -am test "-Dmaven.compiler.release=24"` 全模块通过，商品 50 项、会员 4 项、交易 93 项测试均零失败。
+- 后台问题修复完成：登录成功后改为固定跳转数据看板并确保按钮状态释放；新增 `V20260817_01` 定向修复早期内容乱码和 3 组失效图片地址，当前数据库失效引用计数为 0。
+- 为 Windows PowerShell 5 下受影响的中文验收脚本补充 UTF-8 BOM；Secret、后台生产就绪、权限矩阵、小程序契约/生产/提审、物流、交付文档、后端契约和商业一致性 10 项门禁均复验通过。
+
 ## 决策记录
 
 | 日期 | 决策 | 原因 |
