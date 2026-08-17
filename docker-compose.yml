@@ -53,9 +53,12 @@ services:
       TRADE_MOCK_ACTIONS_ENABLED: "true"
       TRADE_REFUND_PROVIDER: mock
       TRADE_LOGISTICS_PROVIDER: mock
+      MATERIAL_STORAGE_ROOT: /app/material
       TZ: Asia/Shanghai
     ports:
       - "${BACKEND_PORT:-8085}:8085"
+    volumes:
+      - ./.docker-data/material:/app/material
     depends_on:
       mysql:
         condition: service_healthy

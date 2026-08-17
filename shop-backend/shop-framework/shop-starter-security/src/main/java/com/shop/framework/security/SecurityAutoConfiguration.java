@@ -34,6 +34,8 @@ public class SecurityAutoConfiguration {
                         "/app-api/pay/wechat/notify"
                 ).permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                // 本地素材地址会直接写入商品与内容数据，必须允许小程序和后台图片标签匿名读取。
+                .requestMatchers("/uploads/material/**").permitAll()
                 // 商品、首页、品牌、专题、帮助与公开评价允许游客浏览。
                 .requestMatchers(
                         "/app-api/product/**",
