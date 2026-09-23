@@ -48,6 +48,17 @@ docker compose up -d --build
 
 健康检查：<http://127.0.0.1:8085/actuator/health>
 
+**备选：本地 Maven 直接启动**（跳过 Docker 构建，编译更快）
+
+只启动 MySQL 和 Redis 容器，后端在本地用 Maven 运行：
+
+```bash
+docker compose up -d mysql redis
+cd shop-backend
+export JAVA_HOME=$(/usr/libexec/java_home -v 25 2>/dev/null || echo /usr/local/Cellar/openjdk/25.0.2/libexec/openjdk.jdk/Contents/Home)
+mvn spring-boot:run -pl shop-server
+```
+
 ### 2. 启动管理后台
 
 ```powershell
