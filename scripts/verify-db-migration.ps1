@@ -182,6 +182,23 @@ try {
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT HEX(name) FROM product_spu WHERE id=240001;") "E78EABE791B0E998BFE883B6E7B395E7A4BCE79B92" "演示商品中文名称应以 UTF-8 正确写入"
     Assert-Equal (Invoke-Mysql $TestDatabase "SELECT HEX(title) FROM content_banner WHERE id=240201;") "E78EABE791B0E998BFE883B6E7B395E5A49AE8A784E6A0BCE7A4BCE79B92" "首页内容中文标题应以 UTF-8 正确写入"
 
+    # 复现旧初始化分类的双重编码，并验证增量修复只改名称。
+    $legacyCategoryLinks = Invoke-Mysql $TestDatabase "SELECT GROUP_CONCAT(CONCAT(id,':',parent_id,':',sort,':',status) ORDER BY id) FROM product_category WHERE id IN (6,7,8);"
+    Invoke-Mysql $TestDatabase "UPDATE product_category SET name=CONVERT(0xC3A8C592C2B6C3A9C2A5C2AEC3A8C5A0C2B1C3A8C592C2B6 USING utf8mb4) WHERE id=6; UPDATE product_category SET name=CONVERT(0xC3A8C290C2A5C3A5E280A6C2BBC3A8C2A1C2A5C3A5E280A6E280A6 USING utf8mb4) WHERE id=7; UPDATE product_category SET name=CONVERT(0xC3A8C28DC2AFC3A8E280A0C2B3C3A9C2A3C5B8C3A6C29DC290 USING utf8mb4) WHERE id=8; DELETE FROM schema_migration_history WHERE version='20261118_01';" | Out-Null
+    # 其他历史初始化文本同样可能损坏，保留单独的源码夹具避免回归。
+    $encodingFixture = Join-Path $PSScriptRoot '..\sql\tests\legacy_seed_text_encoding_fixture.sql'
+    $fixtureSql = Get-Content -LiteralPath $encodingFixture -Raw -Encoding utf8
+    Invoke-Mysql $TestDatabase $fixtureSql | Out-Null
+    & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT GROUP_CONCAT(HEX(name) ORDER BY id) FROM product_category WHERE id IN (6,7,8);") "E88CB6E9A5AEE88AB1E88CB6,E890A5E585BBE8A1A5E58585,E88DAFE886B3E9A39FE69D90" "早期三条分类乱码应修复为正确中文"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT GROUP_CONCAT(CONCAT(id,':',parent_id,':',sort,':',status) ORDER BY id) FROM product_category WHERE id IN (6,7,8);") $legacyCategoryLinks "分类修复不得改变编号层级排序和状态"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT CONCAT((SELECT COUNT(*) FROM content_banner WHERE (id=1 AND HEX(title)='E6BB8BE8A1A5E585BBE7949FE5A5BDE789A9') OR (id=2 AND HEX(title)='E59B9BE5ADA3E585BBE7949FE4B893E9A298')),':',(SELECT COUNT(*) FROM content_brand WHERE (id=1 AND HEX(name)='E4B89CE998BFE998BFE883B6') OR (id=2 AND HEX(name)='E5908CE4BB81E5A082')),':',(SELECT COUNT(*) FROM content_topic WHERE (id=1 AND HEX(title)='E99995E993BAE585BBE7949FE68C87E58D97' AND HEX(subtitle)='E4BCA0E7BB9FE4B8ADE58CBBE699BAE685A7EFBC8CE78EB0E4BBA3E581A5E5BAB7E7949FE6B4BB') OR (id=2 AND HEX(title)='E59B9BE5ADA3E585BBE7949FE88CB6E9A5AE' AND HEX(subtitle)='E9A1BAE5BA94E697B6E88A82EFBC8CE8B083E585BBE8BAABE5BF83')),':',(SELECT COUNT(*) FROM marketing_shipping_rule WHERE id=1 AND HEX(name)='E9BB98E8AEA4E8BF90E8B4B9E8A784E58899'),':',(SELECT COUNT(*) FROM sys_admin_user WHERE id=1 AND HEX(nickname)='E8B685E7BAA7E7AEA1E79086E59198'));") "2:2:2:1:1" "内容运费规则及管理员昵称乱码应一并修复"
+    $legacyCategoryTimes = Invoke-Mysql $TestDatabase "SELECT GROUP_CONCAT(CONCAT(id,':',update_time) ORDER BY id) FROM product_category WHERE id IN (7,8);"
+    Invoke-Mysql $TestDatabase "UPDATE product_category SET name='CUSTOM_CATEGORY' WHERE id=6; DELETE FROM schema_migration_history WHERE version='20261118_01';" | Out-Null
+    & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT name FROM product_category WHERE id=6;") "CUSTOM_CATEGORY" "分类修复不得覆盖用户自定义名称"
+    Assert-Equal (Invoke-Mysql $TestDatabase "SELECT GROUP_CONCAT(CONCAT(id,':',update_time) ORDER BY id) FROM product_category WHERE id IN (7,8);") $legacyCategoryTimes "重复修复不得修改已正常分类的时间"
+
     $seedSignature = Invoke-Mysql $TestDatabase "SELECT CONCAT((SELECT COUNT(*) FROM product_category WHERE id BETWEEN 240101 AND 240131),':',(SELECT COUNT(*) FROM product_spu WHERE id BETWEEN 240001 AND 240006),':',(SELECT COUNT(*) FROM product_sku WHERE id BETWEEN 240011 AND 240061),':',(SELECT COUNT(*) FROM content_banner WHERE id BETWEEN 240201 AND 240202),':',(SELECT COUNT(*) FROM product_comment WHERE id=240401));"
     Invoke-Mysql $TestDatabase "DELETE FROM schema_migration_history WHERE version='20260801_02';" | Out-Null
     & "$PSScriptRoot/migrate-db.ps1" -Database $TestDatabase -MysqlContainer $MysqlContainer -MysqlUser $MysqlUser -MysqlPassword $MysqlPassword

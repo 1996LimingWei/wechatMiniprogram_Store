@@ -28,7 +28,7 @@ import type {
     ProductBatchItemResult,
     ProductImportMode
 } from "@/api/product";
-import { hasAnyPerms } from "@/utils/auth";
+import { hasAnyPerms, hasVisualEditorAccess } from "@/utils/auth";
 import { notifyPreviewDataCommitted } from "@/utils/preview-center";
 
 defineOptions({ name: "ProductList" });
@@ -580,7 +580,7 @@ onMounted(async () => {
                     <el-button v-if="canManageProduct" type="primary" @click="goCreate">
                         新增商品
                     </el-button>
-                    <el-button plain @click="openPreviewCenter">
+                    <el-button v-if="hasVisualEditorAccess()" plain @click="openPreviewCenter">
                         打开可视化装修
                     </el-button>
                     <el-button :icon="Download" @click="handleDownloadTemplate">
@@ -617,7 +617,7 @@ onMounted(async () => {
                 </span>
             </div>
 
-            <el-table scrollbar-always-on
+            <el-table native-scrollbar
                 :data="tableData"
                 v-loading="loading"
                 border
@@ -763,7 +763,7 @@ onMounted(async () => {
                 </el-tag>
             </div>
 
-            <el-table scrollbar-always-on
+            <el-table native-scrollbar
                 v-if="importPreview"
                 :data="importPreview.rows"
                 border
@@ -922,7 +922,7 @@ onMounted(async () => {
                     失败 {{ batchResult.failureCount }}
                 </el-tag>
             </div>
-            <el-table scrollbar-always-on
+            <el-table native-scrollbar
                 v-if="batchResult"
                 :data="batchResult.rows"
                 border

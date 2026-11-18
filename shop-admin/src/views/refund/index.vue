@@ -200,7 +200,7 @@ onMounted(fetchData);
       </el-form-item>
     </el-form>
 
-    <el-table scrollbar-always-on v-loading="loading" :data="rows" border>
+    <el-table native-scrollbar v-loading="loading" :data="rows" border>
       <el-table-column prop="refundSn" label="退款单号" min-width="180" />
       <el-table-column prop="afterSaleSn" label="售后单号" min-width="180" />
       <el-table-column prop="orderSn" label="订单号" min-width="180" />
@@ -322,7 +322,7 @@ onMounted(fetchData);
           </div>
 
           <h4>任务记录</h4>
-          <el-table scrollbar-always-on :data="detail.taskRecords" border size="small">
+          <el-table native-scrollbar :data="detail.taskRecords" border size="small">
             <el-table-column prop="refundAttemptCount" label="尝试次数" width="100" />
             <el-table-column prop="lastAttemptTime" label="最近执行" width="170" />
             <el-table-column prop="nextAttemptTime" label="下次执行" width="170" />

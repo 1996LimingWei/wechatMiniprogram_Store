@@ -48,7 +48,8 @@
 							@tap.stop="applyRefund(item)">申请退款</view>
 						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.refundCancel"
 							@tap.stop="cancelRefund(item)">撤销申请</view>
-						<!-- 确认收货 -->
+						<view class="action-btn ghost" v-if="item.handleOption && item.handleOption.comment" @tap.stop="goDetail(item.id)">去评价</view>
+                        <!-- 确认收货 -->
 						<view class="action-btn primary" v-if="item.handleOption && item.handleOption.confirm"
 							@tap.stop="confirmOrder(item, index)">确认收货</view>
 						<!-- 查看物流（待收货时） -->
@@ -124,7 +125,7 @@ export default {
 				uni.showToast({ title: '支付成功', icon: 'success' });
 				this.reload();
 			}).catch((error) => {
-				util.toast(error && error.pending ? '支付结果确认中' : '支付失败，请重试');
+				util.toast(util.paymentErrorMessage(error));
 				if (error && error.pending) this.reload();
 			});
 		},

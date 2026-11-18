@@ -38,6 +38,7 @@
 					</view>
 					<text class="goods-spec">{{item.goodsSpecifitionNameValue||''}}</text>
 					<text class="goods-price">￥{{item.retailPrice}}</text>
+                    <view class="action-btn" v-if="orderInfo.handleOption && orderInfo.handleOption.comment" @tap="writeComment(item)">评价商品</view>
 				</view>
 			</view>
 		</view>
@@ -178,6 +179,9 @@
 			}
 		},
 		methods: {
+            writeComment(item) {
+                uni.navigateTo({ url: '/pages/commentPost/commentPost?typeId=0&valueId=' + item.goodsId + '&orderId=' + this.orderInfo.id });
+            },
 			getOrderDetail() {
 				let that = this;
 				util.request(api.OrderDetail, { orderId: that.orderId }).then(function(res) {
@@ -221,7 +225,7 @@
 					uni.showToast({ title: '支付成功', icon: 'success' });
 					that.getOrderDetail();
 				}).catch(error => {
-					util.toast(error && error.pending ? '支付结果确认中' : '支付失败');
+					util.toast(util.paymentErrorMessage(error));
 					if (error && error.pending) that.getOrderDetail();
 				});
 			},

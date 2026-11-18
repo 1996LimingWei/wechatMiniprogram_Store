@@ -13,6 +13,12 @@ export default {
   },
   children: [
     {
+      path: "/system/shop",
+      name: "ShopDisplaySettings",
+      component: () => import("@/views/system/shop/index.vue"),
+      meta: { title: "店铺展示设置", permissions: ["system:admin-user"] }
+    },
+    {
       path: "/system/admin-user",
       name: "SystemAdminUser",
       component: () => import("@/views/system/admin-user/index.vue"),

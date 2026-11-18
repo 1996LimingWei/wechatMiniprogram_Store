@@ -128,7 +128,7 @@ onMounted(fetchSummary);
         <h3>当前告警</h3>
         <span class="muted-text">{{ summary.alerts.length }} 条</span>
       </div>
-      <el-table scrollbar-always-on :data="summary.alerts" border>
+      <el-table native-scrollbar :data="summary.alerts" border>
         <el-table-column label="级别" width="100">
           <template #default="{ row }">
             <el-tag :type="levelType(row.level)">{{ row.level }}</el-tag>
@@ -147,7 +147,7 @@ onMounted(fetchSummary);
       <div class="section-title">
         <h3>定时任务</h3>
       </div>
-      <el-table scrollbar-always-on :data="summary.jobs" border>
+      <el-table native-scrollbar :data="summary.jobs" border>
         <el-table-column prop="jobName" label="任务" min-width="180" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -178,7 +178,7 @@ onMounted(fetchSummary);
         <el-descriptions-item label="售后单号">{{ trace.afterSaleSn || "—" }}</el-descriptions-item>
         <el-descriptions-item label="退款单号">{{ trace.providerRefundNo || "—" }}</el-descriptions-item>
       </el-descriptions>
-      <el-table scrollbar-always-on :data="allTraceLogs" border>
+      <el-table native-scrollbar :data="allTraceLogs" border>
         <el-table-column prop="time" label="时间" width="170" />
         <el-table-column prop="type" label="类型" width="120" />
         <el-table-column prop="status" label="状态" width="120" />

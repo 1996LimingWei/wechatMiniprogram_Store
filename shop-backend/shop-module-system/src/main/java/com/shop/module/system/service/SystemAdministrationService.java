@@ -153,7 +153,8 @@ public class SystemAdministrationService {
         validatePassword(newPassword);
         List<String> passwords = jdbcTemplate.queryForList("SELECT password FROM sys_admin_user WHERE id = ? AND status = 1 AND deleted = b'0'", String.class, adminUserId);
         if (passwords.isEmpty()) throw new ServerException(403, "管理员账号已禁用");
-        if (oldPassword == null || !passwordEncoder.matches(oldPassword, passwords.getFirst())) throw new ServerException(400, "原密码不正确");
+        if (oldPassword == null || AdminAuthService.exceedsPasswordLimit(oldPassword)
+                || !passwordEncoder.matches(oldPassword, passwords.getFirst())) throw new ServerException(400, "原密码不正确");
         jdbcTemplate.update("UPDATE sys_admin_user SET password = ?, failed_login_count = 0, locked_until = NULL WHERE id = ?", passwordEncoder.encode(newPassword), adminUserId);
         tokenService.deleteAllTokens(adminUserId, 2);
     }
@@ -266,8 +267,10 @@ public class SystemAdministrationService {
     }
 
     private void validatePassword(String password) {
-        if (password == null || password.length() < 10 || password.length() > 128
-                || !password.matches(".*[A-Za-z].*") || !password.matches(".*\\d.*")) throw new ServerException(400, "密码须为 10 至 128 位，且同时包含字母和数字");
+        if (password == null || password.length() < 10 || AdminAuthService.exceedsPasswordLimit(password)
+                || !password.matches(".*[A-Za-z].*") || !password.matches(".*\\d.*")) {
+            throw new ServerException(400, "密码须至少 10 位、最多 72 字节，且同时包含英文字母和数字");
+        }
     }
 
     private List<Long> requireActiveRoleIds(List<Long> roleIds) {

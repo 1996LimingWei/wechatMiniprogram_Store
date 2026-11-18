@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
 import java.security.Signature;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -212,13 +214,24 @@ public class WechatPayService {
 
     private void verifySignature(String message, String encodedSignature, String serial) {
         try {
-            X509Certificate certificate = loadPlatformCertificate();
-            String certificateSerial = certificate.getSerialNumber().toString(16).toUpperCase();
-            if (!certificateSerial.equalsIgnoreCase(serial)) {
-                throw new ServerException(400, "微信支付平台证书序列号不匹配");
+            PublicKey key;
+            if (serial.startsWith("PUB_KEY_ID_")) {
+                if (!serial.equals(properties.getPublicKeyId())) throw new ServerException(400, "微信支付公钥 ID 不匹配");
+                key = loadWechatPublicKey();
+            } else {
+                key = null;
+                for (String path : certificatePaths()) {
+                    X509Certificate certificate = loadCertificate(path);
+                    if (certificate.getSerialNumber().toString(16).equalsIgnoreCase(serial)) {
+                        certificate.checkValidity();
+                        key = certificate.getPublicKey();
+                        break;
+                    }
+                }
+                if (key == null) throw new ServerException(400, "微信支付平台证书序列号不匹配");
             }
             Signature verifier = Signature.getInstance("SHA256withRSA");
-            verifier.initVerify(certificate.getPublicKey());
+            verifier.initVerify(key);
             verifier.update(message.getBytes(StandardCharsets.UTF_8));
             if (!verifier.verify(Base64.getDecoder().decode(encodedSignature))) {
                 throw new ServerException(400, "微信支付签名验证失败");
@@ -264,11 +277,23 @@ public class WechatPayService {
                 new PKCS8EncodedKeySpec(Base64.getDecoder().decode(pem)));
     }
 
-    private X509Certificate loadPlatformCertificate() throws Exception {
-        try (var input = Files.newInputStream(Path.of(properties.getPlatformCertificatePath()))) {
-            return (X509Certificate) CertificateFactory.getInstance("X.509")
-                    .generateCertificate(input);
+    private java.util.List<String> certificatePaths() {
+        java.util.List<String> paths = new java.util.ArrayList<>(properties.getPlatformCertificatePaths());
+        if (!isBlank(properties.getPlatformCertificatePath())) paths.add(properties.getPlatformCertificatePath());
+        return paths;
+    }
+
+    private X509Certificate loadCertificate(String path) throws Exception {
+        try (var input = Files.newInputStream(Path.of(path))) {
+            return (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(input);
         }
+    }
+
+    private PublicKey loadWechatPublicKey() throws Exception {
+        String pem = Files.readString(Path.of(properties.getPublicKeyPath()), StandardCharsets.UTF_8)
+                .replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "")
+                .replaceAll("\\s", "");
+        return KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(pem)));
     }
 
     public void validateConfiguration() {
@@ -279,7 +304,7 @@ public class WechatPayService {
                 || isBlank(properties.getPrivateKeyPath())
                 || isBlank(properties.getApiV3Key())
                 || properties.getApiV3Key().getBytes(StandardCharsets.UTF_8).length != 32
-                || isBlank(properties.getPlatformCertificatePath())
+                || (certificatePaths().isEmpty() && (isBlank(properties.getPublicKeyId()) || isBlank(properties.getPublicKeyPath())))
                 || isBlank(properties.getNotifyUrl())
                 || !properties.getNotifyUrl().startsWith("https://")) {
             throw new ServerException(503, "微信支付尚未完成生产配置");
@@ -496,7 +521,11 @@ public class WechatPayService {
         validateConfiguration();
         try {
             loadPrivateKey();
-            loadPlatformCertificate();
+            if (!isBlank(properties.getPublicKeyId())) {
+                if (!properties.getPublicKeyId().startsWith("PUB_KEY_ID_")) throw new IllegalArgumentException("公钥 ID 格式不正确");
+                loadWechatPublicKey();
+            }
+            for (String path : certificatePaths()) loadCertificate(path).checkValidity();
         } catch (Exception exception) {
             throw new ServerException(503, "微信支付私钥或平台证书不可用");
         }

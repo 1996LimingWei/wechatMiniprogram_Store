@@ -50,3 +50,24 @@ Desktop.ini
 
 # Office temp files
 ~$*
+
+# Python 与交付运行数据
+__pycache__/
+*.pyc
+deploy/backups/
+deploy/restore-check/
+deploy/data/
+
+# 本地交付验证输出
+*-tests.log
+admin-install.log
+build-check.log
+
+deploy/releases/
+deploy/backup-status.json
+deploy/delivery-operation.lock
+
+shop-miniapp/config/.release-build.lock
+deploy/reviews/
+
+.venv-delivery/

@@ -178,7 +178,7 @@ onMounted(fetchData);
       </div>
     </section>
 
-    <el-table scrollbar-always-on :data="list" v-loading="loading" border>
+    <el-table native-scrollbar :data="list" v-loading="loading" border>
       <el-table-column prop="id" label="ID" width="70" align="center" />
       <el-table-column prop="name" label="规则名称" min-width="150" show-overflow-tooltip />
       <el-table-column label="基础运费" width="120" align="right">
@@ -266,7 +266,7 @@ onMounted(fetchData);
     </el-dialog>
 
     <el-drawer v-model="auditVisible" title="运费规则变更记录" size="760px">
-      <el-table scrollbar-always-on :data="auditRows" v-loading="auditLoading" border>
+      <el-table native-scrollbar :data="auditRows" v-loading="auditLoading" border>
         <el-table-column prop="createTime" label="时间" width="170" />
         <el-table-column prop="username" label="操作人" width="120" />
         <el-table-column prop="method" label="方法" width="80" />

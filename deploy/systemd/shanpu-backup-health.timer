@@ -1,0 +1,9 @@
+[Unit]
+Description=每15分钟检查陕铺备份状态
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

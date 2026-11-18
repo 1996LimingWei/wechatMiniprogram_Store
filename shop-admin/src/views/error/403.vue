@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import noAccess from "@/assets/status/403.svg?component";
+import { getWorkbenchPath } from "@/router/utils";
+import { useUserStoreHook } from "@/store/modules/user";
 
 defineOptions({
   name: "403"
 });
 
 const router = useRouter();
+
+async function returnToWorkbench() {
+  const path = await getWorkbenchPath();
+  if (path) await router.push(path);
+  else await useUserStoreHook().logOut();
+}
 </script>
 
 <template>
@@ -64,7 +72,7 @@ const router = useRouter();
             delay: 160
           }
         }"
-        @click="router.push('/')"
+        @click="returnToWorkbench"
       >
         返回工作台
       </el-button>

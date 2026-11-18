@@ -1,0 +1,11 @@
+[Unit]
+Description=陕铺备份保留与双副本恢复校验
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/shanpu
+UMask=0077
+ExecStart=/opt/shanpu/.venv/bin/python scripts/backup_retention.py --env /opt/shanpu/.env.prod --offsite-dir /mnt/shanpu-backup --apply
+TimeoutStartSec=3600

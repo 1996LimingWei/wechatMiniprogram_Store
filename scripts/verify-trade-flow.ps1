@@ -94,7 +94,7 @@ function Assert-ApiRejected([string]$Path, [object]$Body, [string]$Token) {
     } catch {
         if ($_.Exception.Response) {
             $statusCode = [int]$_.Exception.Response.StatusCode
-            Assert-True ($statusCode -ge 400) "$Path 应返回 HTTP 错误状态"
+            Assert-True ($statusCode -ge 400 -and $statusCode -lt 500) "$Path 应返回业务拒绝，不能用服务端500错误代替"
             return
         }
         throw
@@ -104,6 +104,7 @@ function Assert-ApiRejected([string]$Path, [object]$Body, [string]$Token) {
 function Cleanup-TestData {
     Write-Step "清理历史验收测试数据"
     $sql = @"
+DELETE FROM product_comment WHERE spu_id = $ProductId;
 DELETE FROM trade_order_log WHERE order_id IN (
   SELECT id FROM trade_order WHERE user_id IN (SELECT id FROM member_user WHERE openid LIKE 'dev_openid_$RunCodePrefix%')
 );
@@ -185,11 +186,18 @@ function New-PaidOrder([string]$Scene) {
     $requestId = "PS$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())$([guid]::NewGuid().ToString('N').Substring(0,8))"
     $submit = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId; requestId = $requestId } $user.Token
     $orderId = [long]$submit.orderInfo.id
+    $stockAfterFirstSubmit = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id=$SkuId;")
+    $repeated = Invoke-Api "/app-api/order/submit" @{ addressId = $addressId; requestId = $requestId } $user.Token
+    Assert-True ([long]$repeated.orderInfo.id -eq $orderId) "同一requestId必须返回原订单"
+    Assert-True ([int](Invoke-Sql "SELECT stock FROM product_sku WHERE id=$SkuId;") -eq $stockAfterFirstSubmit) "重复下单不得再次扣库存"
     Invoke-Api "/app-api/pay/prepay" @{ orderId = $orderId } $user.Token | Out-Null
     $amounts = Invoke-Sql "SELECT CONCAT(p.amount, ',', o.actual_price) FROM pay_order p JOIN trade_order o ON o.id=p.order_id WHERE p.order_id=$orderId;"
     $amountParts = $amounts.Split(',')
     Assert-True ($amountParts[0] -eq $amountParts[1]) "支付单金额应与订单实付金额一致，实际为 $amounts"
     Invoke-Api "/app-api/pay/mock-success" @{ orderId = $orderId } $user.Token | Out-Null
+    $salesAfterPayment = [int](Invoke-Sql "SELECT sales_count FROM product_spu WHERE id=$ProductId;")
+    Invoke-Api "/app-api/pay/mock-success" @{ orderId = $orderId } $user.Token | Out-Null
+    Assert-True ([int](Invoke-Sql "SELECT sales_count FROM product_spu WHERE id=$ProductId;") -eq $salesAfterPayment) "重复支付成功通知不得重复增加销量"
     Assert-Order $orderId 1 1 "支付成功后订单应为待发货且已支付"
     return @{
         Token = $user.Token
@@ -255,6 +263,8 @@ try {
 
     Write-Step "验收：购物车重复加入与删除"
     $cartUser = New-TestUser "cart_repeat"
+    Assert-ApiRejected "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 0 } $cartUser.Token
+    Assert-ApiRejected "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = -1 } $cartUser.Token
     Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $cartUser.Token | Out-Null
     Invoke-Api "/app-api/cart/delete" @{ productIds = "$SkuId" } $cartUser.Token | Out-Null
     Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $cartUser.Token | Out-Null
@@ -268,6 +278,15 @@ try {
 
     Write-Step "验收：下单、支付、管理端发货、确认收货"
     $shipFlow = New-PaidOrder "ship"
+    Write-Step "验收：跨用户订单、地址、支付与售后访问拒绝"
+    Assert-ApiRejected "/app-api/order/detail" @{ orderId = $shipFlow.OrderId } $memberForAuth.Token
+    Assert-ApiRejected "/app-api/order/cancelOrder" @{ orderId = $shipFlow.OrderId } $memberForAuth.Token
+    Assert-ApiRejected "/app-api/pay/prepay" @{ orderId = $shipFlow.OrderId } $memberForAuth.Token
+    Assert-ApiRejected "/app-api/pay/query" @{ orderId = $shipFlow.OrderId } $memberForAuth.Token
+    Assert-ApiRejected "/app-api/order/refund/apply" @{ orderId = $shipFlow.OrderId; reason = '越权验收' } $memberForAuth.Token
+    $foreignAddress = [long](Invoke-Sql "SELECT id FROM member_address WHERE user_id=$($shipFlow.UserId) LIMIT 1;")
+    Assert-ApiRejected "/app-api/address/detail" @{ id = $foreignAddress } $memberForAuth.Token
+    Assert-Order $shipFlow.OrderId 1 1 "跨用户请求不能改变订单"
     $adminList = Invoke-GetApi "/admin-api/trade/order/list?page=1&size=10&orderId=$($shipFlow.OrderId)" $adminToken
     Assert-True ([int]$adminList.total -eq 1) "管理端订单列表未查到测试订单"
     $adminDetail = Invoke-GetApi "/admin-api/trade/order/detail?orderId=$($shipFlow.OrderId)" $adminToken
@@ -285,6 +304,20 @@ try {
     Invoke-Api "/app-api/order/confirmOrder" @{ orderId = $shipFlow.OrderId } $shipFlow.Token | Out-Null
     Assert-Order $shipFlow.OrderId 3 1 "确认收货后订单应为已完成"
     Assert-LogExists $shipFlow.OrderId "CONFIRM_RECEIPT"
+    Write-Step "验收：收货后商品下架仍可评价，重复评价被拒绝"
+    Invoke-Sql "UPDATE product_spu SET status=0 WHERE id=$ProductId;" | Out-Null
+    $commentForm = @{ valueId = $ProductId; orderId = $shipFlow.OrderId; content = '隔离验收收货评价'; picUrls = '' }
+    $commentHeaders = @{ Authorization = "Bearer $($shipFlow.Token)" }
+    $comment = Invoke-RestMethod -Uri "$BaseUrl/app-api/comment/post" -Method Post -Headers $commentHeaders -Body $commentForm
+    Assert-True ($comment.code -eq 0) "已收货后即使商品下架也应允许评价"
+    try {
+        $duplicate = Invoke-RestMethod -Uri "$BaseUrl/app-api/comment/post" -Method Post -Headers $commentHeaders -Body $commentForm
+        Assert-True ($duplicate.code -ne 0) "同一订单商品不能重复评价"
+    } catch {
+        if (-not $_.Exception.Response -or [int]$_.Exception.Response.StatusCode -ne 400) { throw }
+    }
+    Assert-True ([int](Invoke-Sql "SELECT COUNT(*) FROM product_comment WHERE order_id=$($shipFlow.OrderId) AND spu_id=$ProductId;") -eq 1) "重复请求不能新增第二条评价"
+    Invoke-Sql "UPDATE product_spu SET status=1 WHERE id=$ProductId;" | Out-Null
 
     Write-Step "验收：管理端同意售后"
     $approveFlow = New-PaidOrder "approve"
@@ -342,6 +375,38 @@ try {
     $stockAfterTimeout = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id = $SkuId;")
     Assert-True ($stockAfterTimeout -eq $stockBeforeTimeout) "超时关闭后库存未回补"
     Assert-LogExists $timeoutFlow.OrderId "SYSTEM_CLOSE"
+
+    Write-Step "验收：最后一件库存两个用户并发争抢，只能生成一个订单"
+    $raceCases = @()
+    foreach ($scene in @('last_stock_a', 'last_stock_b')) {
+        $raceUser = New-TestUser $scene
+        $raceAddress = Save-TestAddress $raceUser.Token $raceUser.UserId
+        Invoke-Api "/app-api/cart/add" @{ goodsId = $ProductId; productId = $SkuId; number = 1 } $raceUser.Token | Out-Null
+        $raceCases += [pscustomobject]@{ Token = $raceUser.Token; Body = (@{
+            addressId = $raceAddress; requestId = "RACE$([guid]::NewGuid().ToString('N'))"
+        } | ConvertTo-Json -Compress) }
+    }
+    $stockBeforeRace = [int](Invoke-Sql "SELECT stock FROM product_sku WHERE id=$SkuId;")
+    if ($stockBeforeRace -ne 1) {
+        Invoke-Api "/admin-api/product/inventory/adjust" @{ skuId = $SkuId; changeQuantity = (1 - $stockBeforeRace); reason = '隔离验收最后一件库存并发场景' } $adminToken | Out-Null
+    }
+    $raceResults = @($raceCases | ForEach-Object -Parallel {
+        $case = $_
+        try {
+            $result = Invoke-RestMethod -Uri "$using:BaseUrl/app-api/order/submit" -Method Post `
+                -Headers @{ Authorization = "Bearer $($case.Token)" } -ContentType 'application/json' -Body $case.Body -TimeoutSec 30
+            [pscustomobject]@{ Success = ($result.code -eq 0); OrderId = $result.data.orderInfo.id; Token = $case.Token; Status = 200 }
+        } catch {
+            if (-not $_.Exception.Response) { throw }
+            [pscustomobject]@{ Success = $false; Status = [int]$_.Exception.Response.StatusCode }
+        }
+    } -ThrottleLimit 2)
+    $winners = @($raceResults | Where-Object Success)
+    Assert-True ($raceResults.Count -eq 2 -and $winners.Count -eq 1) "最后一件只能有一个成功订单"
+    Assert-True (@($raceResults | Where-Object { $_.Status -ge 500 }).Count -eq 0) "库存争抢失败必须是业务拒绝，不能返回500"
+    Assert-True ([int](Invoke-Sql "SELECT stock FROM product_sku WHERE id=$SkuId;") -eq 0) "争抢后库存应为0，不能超卖"
+    Invoke-Api '/app-api/order/cancelOrder' @{ orderId = $winners[0].OrderId } $winners[0].Token | Out-Null
+    Assert-True ([int](Invoke-Sql "SELECT stock FROM product_sku WHERE id=$SkuId;") -eq 1) "取消争抢订单后应只恢复一件库存"
 
     Write-Step "验收通过，开始清理测试数据"
     Cleanup-TestData

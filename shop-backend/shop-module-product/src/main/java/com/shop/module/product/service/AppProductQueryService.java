@@ -50,6 +50,7 @@ public class AppProductQueryService {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         LambdaQueryWrapper<ProductSpuDO> wrapper = new LambdaQueryWrapper<ProductSpuDO>()
                 .eq(ProductSpuDO::getStatus, 1)
+                .eq(ProductSpuDO::getType, 1)
                 .in(!ids.isEmpty(), ProductSpuDO::getCategoryId, ids)
                 .and(!normalizedKeyword.isEmpty(), query -> query
                         .like(ProductSpuDO::getName, normalizedKeyword)
@@ -80,7 +81,7 @@ public class AppProductQueryService {
         return result;
     }
     public Map<String,Object> detail(Long id) {
-        ProductSpuDO s = productSpuMapper.selectById(id); if (s == null || !Integer.valueOf(1).equals(s.getStatus())) throw new ServerException(ErrorCode.PRODUCT_NOT_EXISTS);
+        ProductSpuDO s = productSpuMapper.selectById(id); if (s == null || !Integer.valueOf(1).equals(s.getStatus()) || (s.getType() != null && s.getType() != 1)) throw new ServerException(ErrorCode.PRODUCT_NOT_EXISTS);
         List<ProductSkuDO> skus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>().eq(ProductSkuDO::getSpuId,id));
         if (skus.isEmpty()) throw new ServerException(1101, "商品暂无可售规格");
         List<SkuReadModel> skuModels = skus.stream().map(this::skuReadModel).sorted(this::compareSkuModels).toList();
@@ -117,7 +118,7 @@ public class AppProductQueryService {
         }
         return result;
     }
-    private LambdaQueryWrapper<ProductSpuDO> available(){return new LambdaQueryWrapper<ProductSpuDO>().eq(ProductSpuDO::getStatus,1).orderByDesc(ProductSpuDO::getSort);}
+    private LambdaQueryWrapper<ProductSpuDO> available(){return new LambdaQueryWrapper<ProductSpuDO>().eq(ProductSpuDO::getStatus,1).eq(ProductSpuDO::getType,1).orderByDesc(ProductSpuDO::getSort);}
     private List<CategoryDO> categories(){return categoryMapper.selectList(new LambdaQueryWrapper<CategoryDO>().eq(CategoryDO::getStatus,1).orderByDesc(CategoryDO::getSort));}
     private CategoryDO category(Long id){return categories().stream().filter(c->Objects.equals(c.getId(),id)).findFirst().orElseThrow(()->new ServerException(ErrorCode.PRODUCT_NOT_EXISTS));}
     private Set<Long> categoryIds(Long id){if(id==null||id==0)return Set.of(); List<CategoryDO> all=categories(); Set<Long> ids=new HashSet<>(); ids.add(id); boolean changed; do{int before=ids.size(); all.stream().filter(c->ids.contains(c.getParentId())).forEach(c->ids.add(c.getId())); changed=ids.size()>before;}while(changed); return ids;}

@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>陕铺后台操作教程</title>
+<style>
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}
+body{margin:0;background:#f5f6f4;color:#242a26;font:16px/1.85 "Microsoft YaHei","PingFang SC",sans-serif}
+a{color:#306849;text-underline-offset:3px}a:hover{color:#174d2b}
+.layout{max-width:1440px;margin:auto;display:grid;grid-template-columns:290px minmax(0,1fr);gap:36px;padding:36px 28px}
+aside{position:sticky;top:28px;align-self:start;max-height:calc(100vh - 56px);overflow:auto;padding:0 8px 24px 0}
+.brand{font-size:28px;font-weight:700;color:#000;letter-spacing:.1em;margin:0}
+.aside-label{margin:0 0 20px;font-size:14px;color:#59665b}
+summary{font-weight:700;cursor:pointer}nav ol{list-style:none;padding:0;margin:12px 0}
+nav li{margin:0;border-bottom:1px solid #e4e8e3}nav a{display:block;padding:7px 5px;font-size:14px;line-height:1.65;text-decoration:none}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}button,.source-link{border:1px solid #b6c5b9;border-radius:5px;padding:7px 12px;background:#fff;color:#2b563b;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+.tools-note{font-size:12px;line-height:1.7;color:#637266;margin-top:12px}
+main{min-width:0;background:#fff;padding:38px 48px 70px;border:1px solid #e0e6df;border-radius:8px}
+h1,h2,h3{color:#000;line-height:1.5}h1{font-size:32px;margin:0 0 16px}h2{font-size:24px;margin:58px 0 20px;border-top:2px solid #dbe6da;padding-top:24px}h3{font-size:19px;margin:30px 0 12px}
+p{margin:14px 0}li{margin:8px 0}strong{color:#172c1d}code{font:15px/1.6 Consolas,monospace;background:#edf3ed;padding:2px 5px;border-radius:3px}
+table{border-collapse:collapse;width:100%;margin:20px 0 26px;font-size:14px;line-height:1.8}th,td{border:1px solid #d5ded3;padding:11px 13px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#edf3ec;color:#192e20;font-weight:700}tbody tr:nth-child(even){background:#fafcf9}
+.screenshot{display:block;margin-top:22px;line-height:0;border:1px solid #d5ded3;border-radius:5px;overflow:hidden;cursor:zoom-in}
+.screenshot img{width:100%;height:auto;display:block}.image-caption{display:block;text-align:center;font-size:13px;line-height:1.6;color:#5d6d60;margin:9px 0 24px}
+footer{margin-top:45px;border-top:1px solid #dce5d9;padding-top:16px;color:#607164;font-size:13px}
+@media(max-width:1000px){.layout{display:block;padding:18px}aside{position:static;max-height:none;padding:10px 4px 24px}nav ol{columns:2;column-gap:20px}nav li{break-inside:avoid}main{padding:28px}h1{font-size:28px}}
+@media(max-width:600px){.layout{padding:8px}main{padding:22px 16px}nav ol{columns:1}h2{font-size:22px}table{font-size:12px}th,td{padding:8px 6px}body{font-size:15px}ol,ul{padding-left:24px}}
+@media print{@page{size:A4;margin:16mm}body{background:white;font-size:11pt;line-height:1.65}.layout{display:block;padding:0}aside{display:none}main{padding:0;border:0;border-radius:0}h1{font-size:24pt}h2{font-size:17pt;break-after:avoid;margin-top:25px}h3{break-after:avoid;font-size:13pt}.screenshot{break-inside:avoid;border-color:#ccc}.screenshot img{max-height:155mm;object-fit:contain}.image-caption{font-size:9pt}table{font-size:9pt}tr{break-inside:avoid}thead{display:table-header-group}a{color:inherit}.source-link{display:none}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside aria-label="教程目录">
+<p class="brand">陕铺</p><p class="aside-label">后台操作教程 · 2026年11月18日</p>
+<details open><summary>按任务查找操作步骤</summary><nav><ol><li><a href="#section-01">01｜操作入口</a></li>
+<li><a href="#section-02">02｜打开后台并登录</a></li>
+<li><a href="#section-03">03｜修改小程序名称</a></li>
+<li><a href="#section-04">04｜查找商品</a></li>
+<li><a href="#section-05">05｜改商品名称、分类、关键词和简介</a></li>
+<li><a href="#section-06">06｜改主图、轮播图和选择素材</a></li>
+<li><a href="#section-07">07｜改商品详情文字和详情图</a></li>
+<li><a href="#section-08">08｜改售价、市场价和规格</a></li>
+<li><a href="#section-09">09｜保存商品</a></li>
+<li><a href="#section-10">10｜到货补库存，或盘点减少库存</a></li>
+<li><a href="#section-11">11｜商品上下架</a></li>
+<li><a href="#section-12">12｜新增一个商品</a></li>
+<li><a href="#section-13">13｜更换首页图片、频道名称和推荐内容</a></li>
+<li><a href="#section-14">14｜撤销修改与回退</a></li>
+<li><a href="#section-15">15｜检查小程序显示</a></li>
+<li><a href="#section-16">16｜常见问题</a></li>
+<li><a href="#section-17">17｜开通客户账号与权限</a></li>
+<li><a href="#section-18">18｜维护后检查</a></li></ol></nav></details>
+<div class="tools"><button type="button" onclick="window.print()">打印 / 保存为 PDF</button><a class="source-link" href="操作教程.md">可编辑正文</a></div>
+<p class="tools-note">本页可离线阅读。按 Ctrl+F 查找文字；点击截图打开原图，查看小字和操作编号。</p>
+</aside>
+<main><article><h1>陕铺后台操作教程</h1>
+<p>更新日期：2026年11月18日。截图使用演示数据，商品、价格和库存以实际后台为准。带红色编号的截图来自11月10日界面；新增商品和店铺展示设置截图来自11月14日隔离测试后台，未加编号。新增商品默认下架，回退范围见第14节。</p>
+<p>后台先交付“商品录入阶段”，随后开放商城交易。录入阶段可以维护商品、图片和内容；微信端浏览和交易暂未开放，请先在后台和预览中核对资料。收到负责人通知商城已开放后，再按第15节检查微信端。</p>
+<h2 id="section-01">01｜操作入口</h2>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>入口</th>
+<th>章节</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>把微信里显示的小程序名称改成“陕铺”</td>
+<td>微信公众平台，由小程序管理员操作</td>
+<td>03</td>
+</tr>
+<tr>
+<td>改页面上的店名和店铺 Logo</td>
+<td>系统管理 → 店铺展示设置，由超级管理员操作</td>
+<td>03</td>
+</tr>
+<tr>
+<td>改商品名称、分类、简介</td>
+<td>商品管理 → 商品列表 → 编辑</td>
+<td>04、05</td>
+</tr>
+<tr>
+<td>改商品图片、详情内容</td>
+<td>商品编辑页 → 图片设置 / 商品详情</td>
+<td>06、07</td>
+</tr>
+<tr>
+<td>改售价、规格价格</td>
+<td>商品编辑页 → 价格与库存 / SKU</td>
+<td>08</td>
+</tr>
+<tr>
+<td>到货补库存、盘点减库存</td>
+<td>商品管理 → 库存工作台</td>
+<td>10</td>
+</tr>
+<tr>
+<td>暂停销售或恢复销售</td>
+<td>商品列表 → 下架 / 上架</td>
+<td>11</td>
+</tr>
+<tr>
+<td>增加一个新商品</td>
+<td>商品列表 → 新增商品</td>
+<td>12</td>
+</tr>
+<tr>
+<td>更换首页大图、频道、推荐品牌、专题</td>
+<td>可视化装修 → 实时预览与编辑</td>
+<td>13</td>
+</tr>
+<tr>
+<td>改错了，想恢复</td>
+<td>未保存时放弃修改；已保存时核对回退记录</td>
+<td>14</td>
+</tr>
+<tr>
+<td>不知道哪里出问题</td>
+<td>按现象排查</td>
+<td>16</td>
+</tr>
+</tbody>
+</table>
+<h2 id="section-02">02｜打开后台并登录</h2>
+<p>向交付负责人领取正式后台网址、个人账号和密码。截图中的本地地址仅供演示，登录时使用负责人提供的网址。</p>
+<ol>
+<li>在电脑浏览器中打开后台网址，确认页面显示“陕铺管理后台”。</li>
+<li>在图中 <strong>①账号</strong> 输入分配给您的账号。</li>
+<li>在 <strong>②密码</strong> 输入密码。注意大小写和空格。</li>
+<li>点击 <strong>③登录</strong>。</li>
+<li>登录后会进入账号有权限的页面。如果尚未打开商品列表，点击左侧“商品管理”，再点击“商品列表”。</li>
+</ol>
+<p><a class="screenshot" href="images/01-login.png" target="_blank" rel="noopener" aria-label="查看原图：图1：后台登录页，依次填写账号、密码并登录"><img src="images/01-login.png" alt="图1：后台登录页，依次填写账号、密码并登录" loading="lazy"></a><span class="image-caption">图1：后台登录页，依次填写账号、密码并登录 · 点击图片放大查看</span></p>
+<p>如果看到“当前账号无权访问该功能”，点“返回工作台”。如果缺少“商品管理”菜单或“编辑”按钮，请负责人检查商品权限。</p>
+<h2 id="section-03">03｜修改小程序名称</h2>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>客户在哪里看到</th>
+<th>由谁修改</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>微信官方小程序名称</td>
+<td>微信搜索、最近使用的小程序、账号资料</td>
+<td>小程序管理员在微信公众平台修改</td>
+</tr>
+<tr>
+<td>页面店铺展示名和 Logo</td>
+<td>小程序首页、登录页及使用店铺配置的分享内容</td>
+<td>超级管理员在店铺展示设置中修改，需使用支持该配置的小程序版本</td>
+</tr>
+<tr>
+<td>构建名称与默认导航标题</td>
+<td>应用配置和未单独设置标题的页面</td>
+<td>维护人员更新并发布小程序版本</td>
+</tr>
+<tr>
+<td>商品名称</td>
+<td>商品列表、搜索、商品详情</td>
+<td>运营人员在本后台编辑</td>
+</tr>
+</tbody>
+</table>
+<p>小程序名称使用“陕铺”。应用名称和默认导航标题已设置为“陕铺”，更新后需重新发布小程序；微信官方名称由管理员在公众平台单独修改。</p>
+<h3>3.1 修改微信官方名称</h3>
+<ol>
+<li>请持有该小程序管理权限的人打开 <a href="https://mp.weixin.qq.com/">微信公众平台</a>。</li>
+<li>登录对应的小程序账号；如果该账号管理多个小程序，先确认进入的是“陕铺”对应的账号。</li>
+<li>进入账号设置，找到显示当前“小程序名称”的资料项。页面布局和修改入口以您登录后的微信页面为准。</li>
+<li>如果当前名称已经是“陕铺”，只需核对；如果仍有“Test”等后缀，使用名称旁的修改入口，填写 <strong>陕铺</strong>。</li>
+<li>按微信页面提示完成管理员确认或审核。能否修改、所需资料、次数和生效时间，以平台当前提示为准。</li>
+<li>完成后重新打开账号资料核对名称，再用微信搜索或重新进入小程序检查显示。</li>
+</ol>
+<p>找不到修改入口或名称未通过时，将页面提示发给小程序账号负责人处理。改名沿用原有 AppID。</p>
+<h3>3.2 应用内文字和“品牌管理”的区别</h3>
+<p>“内容管理 → 品牌管理”用于维护首页推荐品牌，例如“陕铺优选”。微信官方名称在公众平台维护。</p>
+<p>页面上的店铺展示名与 Logo 由超级管理员进入“系统管理 → 店铺展示设置”修改：填写展示名，从素材库选择 Logo，点“保存设置”，重新进入页面核对。支持该配置的小程序版本重新打开后读取新内容。普通商品运营看不到该入口时，请联系指定管理员处理。</p>
+<p>店铺展示设置不改变微信搜索中的官方名称，也不改变构建时名称和默认导航标题。</p>
+<p><a class="screenshot" href="images/18-shop-settings.png" target="_blank" rel="noopener" aria-label="查看原图：店铺展示设置：填写展示名、选择 Logo 后保存；图中为隔离测试店铺"><img src="images/18-shop-settings.png" alt="店铺展示设置：填写展示名、选择 Logo 后保存；图中为隔离测试店铺" loading="lazy"></a><span class="image-caption">店铺展示设置：填写展示名、选择 Logo 后保存；图中为隔离测试店铺 · 点击图片放大查看</span></p>
+<p>商品名称、价格和图片在商品编辑页修改，操作见下文。</p>
+<h2 id="section-04">04｜查找商品</h2>
+<p>入口：<strong>商品管理 → 商品列表</strong>。</p>
+<ol>
+<li>在图中 <strong>①商品名称</strong> 输入完整名称或一部分，例如“桂圆”。</li>
+<li>点击 <strong>②搜索</strong>。也可以选分类、状态缩小范围。</li>
+<li>在结果中核对主图、商品名称、分类和当前售价，确认是目标商品。</li>
+<li>点击这一行最右侧的 <strong>③编辑</strong>，进入后核对名称和图片。如果按钮被挡住，拖动表格底部横向滚动条向右查看。</li>
+<li>找不到商品时，先点击“重置”，清除之前的分类或状态条件，再搜索一次。</li>
+</ol>
+<p><a class="screenshot" href="images/02-product-list.png" target="_blank" rel="noopener" aria-label="查看原图：图2：商品列表中的搜索和编辑入口"><img src="images/02-product-list.png" alt="图2：商品列表中的搜索和编辑入口" loading="lazy"></a><span class="image-caption">图2：商品列表中的搜索和编辑入口 · 点击图片放大查看</span></p>
+<h2 id="section-05">05｜改商品名称、分类、关键词和简介</h2>
+<p>进入商品编辑页顶部的“基础信息”。</p>
+<ol>
+<li>在图中 <strong>①商品名称</strong> 修改名称。例如将“桂圆红枣茶”改成“桂圆红枣茶 10袋装”。不要留空。</li>
+<li>在 <strong>②商品分类</strong> 选择已启用的分类。改完后，顾客会在对应分类中找这个商品。</li>
+<li>商品类型一般保持原值。历史非实物商品须保持下架。</li>
+<li>在“关键词”中逐个选择搜索词。要加一个新词，输入后在下拉列表中选中该词，例如“花果茶”“茶饮”“红枣”。</li>
+<li>在 <strong>③简介</strong> 写一两句简短说明，例如“独立小袋包装，日常冲泡方便”。</li>
+<li>只改这些内容时，保留原价格、库存和规格。完成后按第09节保存。</li>
+</ol>
+<p><a class="screenshot" href="images/03-product-basic.png" target="_blank" rel="noopener" aria-label="查看原图：图3：商品基础信息，编号对应名称、分类、简介"><img src="images/03-product-basic.png" alt="图3：商品基础信息，编号对应名称、分类、简介" loading="lazy"></a><span class="image-caption">图3：商品基础信息，编号对应名称、分类、简介 · 点击图片放大查看</span></p>
+<p>排序数值越大，商品通常越靠前；保留原值即可维持现有排序。</p>
+<h2 id="section-06">06｜改主图、轮播图和选择素材</h2>
+<p>向下滚动到“图片设置”。</p>
+<table>
+<thead>
+<tr>
+<th>图片种类</th>
+<th>用途</th>
+<th>如何选择</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主图</td>
+<td>商品列表中的封面</td>
+<td>选清楚、完整的商品正面图</td>
+</tr>
+<tr>
+<td>轮播图</td>
+<td>商品详情顶部可左右滑动的图片</td>
+<td>展示正面、背面、包装等不同角度</td>
+</tr>
+<tr>
+<td>详情图</td>
+<td>商品详情下方的长图说明</td>
+<td>在下一节的“商品详情”区域添加</td>
+</tr>
+</tbody>
+</table>
+<h3>6.1 电脑上已有新图片</h3>
+<ol>
+<li>找到要替换的主图或轮播图区域，点击图中 <strong>①上传图片</strong>。</li>
+<li>在电脑文件窗口中选择图片并确认。</li>
+<li>等到页面提示“上传成功”，并检查该区域已出现新图片。</li>
+<li>主图展示一张，轮播图最多10张。轮播图已满时，先移除要替换的旧图。拖动图片上的手柄可调整顺序。</li>
+<li>图片上传完成后，点击“保存修改”，将新图保存到商品。</li>
+</ol>
+<p><a class="screenshot" href="images/04-product-images.png" target="_blank" rel="noopener" aria-label="查看原图：图4：图片设置中的上传图片、选择素材和轮播图区域"><img src="images/04-product-images.png" alt="图4：图片设置中的上传图片、选择素材和轮播图区域" loading="lazy"></a><span class="image-caption">图4：图片设置中的上传图片、选择素材和轮播图区域 · 点击图片放大查看</span></p>
+<h3>6.2 图片已在素材库中</h3>
+<ol>
+<li>点击图4中的 <strong>②选择素材</strong>。</li>
+<li>在弹窗图5的 <strong>①搜索框</strong> 输入图片文件名的一部分，点“查询”。</li>
+<li>点击 <strong>②目标图片</strong>。选择主图时会带回图片并关闭窗口；选择轮播图或详情图时，可以继续选择其他图片。</li>
+<li>多图选择完成后，点 <strong>③完成</strong>，返回编辑页检查。</li>
+</ol>
+<p><a class="screenshot" href="images/05-material-picker.png" target="_blank" rel="noopener" aria-label="查看原图：图5：从素材库选择已有图片"><img src="images/05-material-picker.png" alt="图5：从素材库选择已有图片" loading="lazy"></a><span class="image-caption">图5：从素材库选择已有图片 · 点击图片放大查看</span></p>
+<p>上传支持 JPG、PNG、WebP，单张不超过5MB。主图选用清晰、接近正方形的商品原图，避免使用聊天截图。</p>
+<p>轮播图第一张放正面图，后面放细节和包装。点击图片右上角的叉号，可将该图从商品图片列表移除；调整后点击“保存修改”。</p>
+<h2 id="section-07">07｜改商品详情文字和详情图</h2>
+<p>向下找到“商品详情”。</p>
+<ol>
+<li>在图中 <strong>①详情内容</strong> 填写顾客需要了解的信息，如规格、配料、食用方式和保存方式。</li>
+<li>图片在下方“详情图”区域添加：点击 <strong>②上传图片</strong> 或 <strong>③选择素材</strong>。</li>
+<li>详情图最多20张。添加多张时，按顾客阅读顺序排列。</li>
+<li>点击右侧的“详情页预览”标签，检查文字和图片是否与目标商品对应。</li>
+<li>继续核对价格和规格，再按第09节保存。</li>
+</ol>
+<p><a class="screenshot" href="images/06-product-detail.png" target="_blank" rel="noopener" aria-label="查看原图：图6：商品详情文字和详情图入口"><img src="images/06-product-detail.png" alt="图6：商品详情文字和详情图入口" loading="lazy"></a><span class="image-caption">图6：商品详情文字和详情图入口 · 点击图片放大查看</span></p>
+<p>已有内容带网页标签时，保留原有格式；需要调整格式时，请联系维护人员。</p>
+<h2 id="section-08">08｜改售价、市场价和规格</h2>
+<h3>8.1 商品规格与 SKU</h3>
+<p>“桂圆红枣茶”是一个商品；“10袋装”和“20袋装”是它的不同规格。后台把每种可售规格称为 <strong>SKU</strong>。每行规格可以有自己的价格、库存和图片。</p>
+<p>标注“元”的价格框按人民币元填写。例如售价29.90元，填 <code>29.90</code>，不要填 <code>2990</code>。</p>
+<h3>8.2 已有商品改价</h3>
+<ol>
+<li>找到“价格与库存”和下方的 SKU 表格。</li>
+<li>在下方 SKU 表格逐行修改图中 <strong>①价格（元）</strong>，售价要大于0。上方的售价显示各规格中的最低价。如果旧商品尚无 SKU，直接在“价格与库存”区域修改售价。</li>
+<li>如需展示市场价，填写合理的“市场价（元）”；填写时不要低于对应售价。</li>
+<li>核对每个规格，尤其是同一商品有多个包装或容量时。</li>
+<li>只调价时，保留图中 <strong>②库存</strong> 和规格结构。点“保存修改”，重新进入检查。</li>
+</ol>
+<p><a class="screenshot" href="images/07-product-sku.png" target="_blank" rel="noopener" aria-label="查看原图：图7：SKU规格中的价格、库存与生成矩阵入口"><img src="images/07-product-sku.png" alt="图7：SKU规格中的价格、库存与生成矩阵入口" loading="lazy"></a><span class="image-caption">图7：SKU规格中的价格、库存与生成矩阵入口 · 点击图片放大查看</span></p>
+<p>图中 <strong>③生成 SKU 矩阵</strong> 用于新建或调整规格组合。只改名称、价格或图片时，保留原有规格维度和矩阵。</p>
+<p>上方库存为各 SKU 的汇总时，输入框显示灰色，需要在对应规格行调整。日常到货和盘点可使用第10节的库存工作台。</p>
+<h2 id="section-09">09｜保存商品</h2>
+<ol>
+<li>核对名称、图片、分类、每个规格的价格、库存及上架状态。</li>
+<li>向下滚动，点击图中 <strong>①保存修改</strong>。</li>
+<li>如果保存失败，按提示检查对应字段。只改名称时，系统也会检查原有分类、图片和规格。旧商品尚无 SKU 时，单规格保存会用表单里的售价和库存补齐默认规格。选了“多规格”时，先生成 SKU 矩阵并填写各规格资料。</li>
+<li>保存后，页面返回商品列表，并提示“保存成功”。</li>
+<li>再次点击该商品“编辑”，核对刚才的内容仍在。随后按第15节检查小程序效果。</li>
+</ol>
+<p><a class="screenshot" href="images/08-product-save.png" target="_blank" rel="noopener" aria-label="查看原图：图8：保存修改、恢复和取消按钮"><img src="images/08-product-save.png" alt="图8：保存修改、恢复和取消按钮" loading="lazy"></a><span class="image-caption">图8：保存修改、恢复和取消按钮 · 点击图片放大查看</span></p>
+<p>图8的 <strong>②恢复到上次保存</strong> 用于撤销当前页尚未保存的修改；<strong>③取消</strong> 用于退出编辑。</p>
+<p><a class="screenshot" href="images/09-save-success.png" target="_blank" rel="noopener" aria-label="查看原图：图9：保存成功后返回列表，核对商品新名称"><img src="images/09-save-success.png" alt="图9：保存成功后返回列表，核对商品新名称" loading="lazy"></a><span class="image-caption">图9：保存成功后返回列表，核对商品新名称 · 点击图片放大查看</span></p>
+<p>右侧预览会随输入变化。出现“有未保存修改”时，点击“保存修改”，成功后内容写入正式商品数据。装修页的“确认发布”是另一项操作，见第13节。</p>
+<h2 id="section-10">10｜到货补库存，或盘点减少库存</h2>
+<p>入口：<strong>商品管理 → 库存工作台</strong>。</p>
+<ol>
+<li>在图11的 <strong>①商品名称</strong> 搜索商品。</li>
+<li>核对商品名、SKU编码和“规格”，确认要改的是哪一行。多个规格需要分别处理。</li>
+<li>点击该行 <strong>②调库存</strong>。</li>
+<li>在图12的 <strong>①调整数量</strong> 填写增减件数，使用非零整数。减少件数时填负数，调整后的库存须在0至100万件之间。</li>
+<li>在 <strong>②调整原因</strong> 填写真实原因，4至200个字符，例如“到货入库20件”。</li>
+<li>检查数量和原因，点 <strong>③确认调整</strong>。</li>
+<li>返回列表核对新库存；需要追溯时，点图11的 <strong>③流水</strong>。</li>
+</ol>
+<p><a class="screenshot" href="images/11-inventory.png" target="_blank" rel="noopener" aria-label="查看原图：图11：库存工作台的查找、调库存和流水入口"><img src="images/11-inventory.png" alt="图11：库存工作台的查找、调库存和流水入口" loading="lazy"></a><span class="image-caption">图11：库存工作台的查找、调库存和流水入口 · 点击图片放大查看</span></p>
+<p><a class="screenshot" href="images/12-inventory-adjust.png" target="_blank" rel="noopener" aria-label="查看原图：图12：人工调整库存，填写增减数量和原因"><img src="images/12-inventory-adjust.png" alt="图12：人工调整库存，填写增减数量和原因" loading="lazy"></a><span class="image-caption">图12：人工调整库存，填写增减数量和原因 · 点击图片放大查看</span></p>
+<table>
+<thead>
+<tr>
+<th>当前库存</th>
+<th>操作</th>
+<th>调整数量</th>
+<th>调整后的库存</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100件</td>
+<td>新到20件</td>
+<td><code>20</code></td>
+<td>120件</td>
+</tr>
+<tr>
+<td>100件</td>
+<td>盘点少了5件</td>
+<td><code>-5</code></td>
+<td>95件</td>
+</tr>
+<tr>
+<td>100件</td>
+<td>希望总数变成120件</td>
+<td><code>20</code>，不是120</td>
+<td>120件</td>
+</tr>
+</tbody>
+</table>
+<p>“可售”“锁定”和“当前库存”分别反映可购买数量、订单占用和库存记录。核对时先确认规格，再看可售数量；锁定数量按订单处理情况核对，不能直接作为盘亏扣减。若提示“库存已变化”，刷新列表并按最新库存重新核算调整数量。</p>
+<p>如果在商品编辑页直接改 SKU 库存，那里的“库存”填写的是该规格库存值；保存时同样要填写调整原因。它与库存工作台的“调整数量”含义不同。</p>
+<h2 id="section-11">11｜商品上下架</h2>
+<p>入口：<strong>商品管理 → 商品列表</strong>。</p>
+<ol>
+<li>搜索目标商品并核对名称。</li>
+<li>当前上架的商品，操作区显示“下架”；当前下架的商品显示“上架”。</li>
+<li>点击对应操作，阅读确认框中的商品名称。</li>
+<li>名称正确时点“确定”；不正确时点“取消”。</li>
+<li>操作成功后核对“状态”列，再去小程序检查。</li>
+</ol>
+<p><a class="screenshot" href="images/10-product-status.png" target="_blank" rel="noopener" aria-label="查看原图：图10：下架前确认目标商品名称"><img src="images/10-product-status.png" alt="图10：下架前确认目标商品名称" loading="lazy"></a><span class="image-caption">图10：下架前确认目标商品名称 · 点击图片放大查看</span></p>
+<p>临时停售选择“下架”，保留商品信息。重新上架前检查主图、售价、规格和可售库存；校验未通过时，按提示补齐后重试。</p>
+<h2 id="section-12">12｜新增一个商品</h2>
+<p>入口：<strong>商品管理 → 商品列表 → 新增商品</strong>。</p>
+<ol>
+<li>填写“商品名称”，选择已启用的商品分类。</li>
+<li>补充简介和关键词。</li>
+<li>默认状态为“下架”，保持下架录入，完成检查后再上架。当前交付版本仅支持实物商品。</li>
+<li>上传主图，添加轮播图和详情说明。</li>
+<li>如果只有一种规格，保持“单规格”，填写大于0的售价和库存。需要展示市场价时，填写与售价相等或更高的金额。</li>
+<li>如果有多种规格，打开“多规格”，选择规格名称，点击“添加值”逐个录入规格值，再点击“生成 SKU 矩阵”。</li>
+<li>给每一行规格填写大于0的售价和库存。SKU编码可留空，填写时使用不重复的字母、数字、下划线或连字符，最多64位。</li>
+<li>点页面底部“创建商品”，等待“商品创建成功”。</li>
+<li>重新进入商品核对；确认后，在列表点“上架”，再检查小程序。</li>
+</ol>
+<p><a class="screenshot" href="images/13-product-create.png" target="_blank" rel="noopener" aria-label="查看原图：图13：隔离测试后台新增商品页，初始状态为下架"><img src="images/13-product-create.png" alt="图13：隔离测试后台新增商品页，初始状态为下架" loading="lazy"></a><span class="image-caption">图13：隔离测试后台新增商品页，初始状态为下架 · 点击图片放大查看</span></p>
+<p>例如，规格名称选“净含量”，规格值填“250g”和“500g”，生成后会出现两行。分别填写并检查两行的价格和库存。</p>
+<p>找不到合适分类时，联系分类负责人，或进入“商品管理 → 分类管理”新增分类，保存后回商品页面重新选择。</p>
+<h2 id="section-13">13｜更换首页图片、频道名称和推荐内容</h2>
+<p>入口：<strong>可视化装修 → 实时预览与编辑</strong>。</p>
+<p>部分账号的左侧菜单会直接显示“实时预览与编辑”，点击该项即可。</p>
+<p>账号同时具备商品和运营内容查看权限时，菜单会显示装修入口。要修改首页内容，还需内容维护权限。</p>
+<p>左侧显示小程序预览，右侧显示选中内容的表单。点击带编辑标记的图片或卡片，即可在右侧修改；固定页面结构不支持直接编辑。</p>
+<h3>13.1 选择要修改的内容</h3>
+<ol>
+<li>在“首页预览”中，点击图14的 <strong>①带“点此编辑”的大图或卡片</strong>。</li>
+<li>左侧只显示部分内容时，点击对应区块 <strong>②查看全部</strong>，再选择目标项目。</li>
+<li>右侧 <strong>③编辑面板</strong> 显示当前选中的内容；先核对名称，避免改错。</li>
+</ol>
+<p>已停用的大图、频道、品牌和专题可到“内容管理”下对应页面查找和编辑。</p>
+<p><a class="screenshot" href="images/14-visual-overview.png" target="_blank" rel="noopener" aria-label="查看原图：图14：可视化装修，左侧选内容，右侧编辑"><img src="images/14-visual-overview.png" alt="图14：可视化装修，左侧选内容，右侧编辑" loading="lazy"></a><span class="image-caption">图14：可视化装修，左侧选内容，右侧编辑 · 点击图片放大查看</span></p>
+<h3>13.2 举例：更换首页大图（Banner）</h3>
+<ol>
+<li>点击左侧目标大图。</li>
+<li>在图15的 <strong>①标题</strong> 中填写 Banner 标题，便于在后台识别这张大图。</li>
+<li>要更换顾客看到的画面，在“Banner 图片”点击上传或选择素材。图上的文字也要修改时，请先准备新的完整宣传图。</li>
+<li>如需点图进入某商品，使用“跳转目标”控件选择对应商品或页面；不需要跳转时可以留空。</li>
+<li>检查左侧草稿预览；有链接时可以点击“在预览中测试跳转”。</li>
+<li>完成后按下一小节发布。</li>
+</ol>
+<p><a class="screenshot" href="images/15-visual-draft.png" target="_blank" rel="noopener" aria-label="查看原图：图15：装修编辑后的草稿、检查并发布与放弃入口"><img src="images/15-visual-draft.png" alt="图15：装修编辑后的草稿、检查并发布与放弃入口" loading="lazy"></a><span class="image-caption">图15：装修编辑后的草稿、检查并发布与放弃入口 · 点击图片放大查看</span></p>
+<p>底部显示本次修改摘要，可在发布前核对修改项。</p>
+<h3>13.3 发布装修内容</h3>
+<ol>
+<li>点击图15底部 <strong>②检查并发布</strong>。</li>
+<li>查看“发布前检查”弹窗，核对这次修改的是哪个字段。</li>
+<li>出现红色错误时，点击图16的 <strong>①继续修改</strong>，按提示补齐。</li>
+<li>出现图片比例、跳转等提醒时，逐项核对是否符合实际需求。</li>
+<li>确认无误后点击图16的 <strong>②确认发布</strong>。</li>
+<li>等待发布成功提示，再去小程序重新进入对应页面检查。</li>
+</ol>
+<p><a class="screenshot" href="images/16-publish-check.png" target="_blank" rel="noopener" aria-label="查看原图：图16：发布前检查，继续修改或确认发布"><img src="images/16-publish-check.png" alt="图16：发布前检查，继续修改或确认发布" loading="lazy"></a><span class="image-caption">图16：发布前检查，继续修改或确认发布 · 点击图片放大查看</span></p>
+<p>频道可修改名称、图标和跳转目标；推荐品牌可修改名称、图片和起售价；专题可修改标题、副标题、图片和价格说明。专题“价格说明”用于展示，关联商品的实际售价按第08节单独修改。</p>
+<p>新增首页大图、频道、品牌或专题时，进入“内容管理”下对应页面，点击新增并保存，再回装修页核对。需要在图片上展示标题或商品名时，先准备带有相应文字的图片再上传。</p>
+<h2 id="section-14">14｜撤销修改与回退</h2>
+<h3>14.1 还没有保存或发布</h3>
+<ul>
+<li><strong>商品编辑页：</strong> 点“恢复到上次保存”，撤回本页尚未保存的改动。新建商品页对应按钮是“恢复空白表单”。</li>
+<li><strong>可视化装修：</strong> 点底部“放弃本次修改”；要重新读取正式数据，使用页面右上角“回到已发布版本”。</li>
+<li>不确定当前是否保存成功时，先重新进入目标商品核对，不要连续多次提交。</li>
+</ul>
+<h3>14.2 已经保存或发布</h3>
+<ol>
+<li>进入“可视化装修 → 实时预览与编辑”。</li>
+<li>在右侧向下找到“商品一键回退”或“内容一键回退”。</li>
+<li><strong>核对操作名称、商品或内容名称、时间</strong>。同一对象有较新的操作时，系统会拦截旧记录的回退。</li>
+<li>核对该操作的回退范围，再点击“一键回退”和“确认回退”。回退新增操作会尝试移除该商品，存在交易引用时会被拦截。只需改回某个字段时，可打开商品重新编辑该字段。</li>
+<li>回退成功后重新打开原页面核对结果。商城已开放时，再到小程序检查展示。</li>
+</ol>
+<p><a class="screenshot" href="images/17-rollback.png" target="_blank" rel="noopener" aria-label="查看原图：图17：商品与内容回退入口，先核对对象和时间再操作"><img src="images/17-rollback.png" alt="图17：商品与内容回退入口，先核对对象和时间再操作" loading="lazy"></a><span class="image-caption">图17：商品与内容回退入口，先核对对象和时间再操作 · 点击图片放大查看</span></p>
+<p>可回退范围以面板列出的记录为准。没有对应记录时，重新编辑正确值或联系负责人；其他历史操作、图片删除和库存流水等需另行核对处理。</p>
+<p>商品回退只恢复允许的展示信息，不恢复历史价格、库存和销量，也不会恢复已删除商品。规格集合已经变化时会拒绝回退，请手动核对。改价回到商品编辑页操作；库存通过库存工作台调整并填写原因，不能用回退把已售出的库存补回来。</p>
+<h2 id="section-15">15｜检查小程序显示</h2>
+<p>本节适用于负责人已通知开放商城的阶段。商品录入阶段先检查后台保存结果与预览，暂时无法访问微信端不表示资料保存失败。</p>
+<ol>
+<li>用微信重新进入“陕铺”小程序，打开刚修改商品所在的页面；必要时下拉刷新或退出后重新进入。</li>
+<li>搜索新名称，检查商品及所属分类。</li>
+<li>查看列表主图，进入详情后左右滑动轮播图，再向下查看详情图片。</li>
+<li>打开规格选择，逐个核对不同规格的价格，并与列表起售价比对。</li>
+<li>检查对应规格的购买状态；下架商品应停止作为在售商品展示。</li>
+<li>如果装修页正常、小程序没有变化，先确认“确认发布”是否成功，以及登录的后台是否与当前小程序属于同一套环境。</li>
+</ol>
+<p>显示效果在商品页面和规格选择中检查即可。如需交易测试，使用负责人指定的测试方式。</p>
+<h2 id="section-16">16｜常见问题</h2>
+<table>
+<thead>
+<tr>
+<th>看到的现象</th>
+<th>先做什么</th>
+<th>仍未解决时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>登录提示账号或密码错误</td>
+<td>检查大小写、空格和是否使用分配账号</td>
+<td>请负责人重置密码</td>
+</tr>
+<tr>
+<td>页面显示“当前账号无权访问该功能”</td>
+<td>点“返回工作台”</td>
+<td>请负责人检查该功能的账号权限</td>
+</tr>
+<tr>
+<td>登录或打开页面提示“系统异常”</td>
+<td>记录发生时间、页面和提示，刷新一次</td>
+<td>联系技术负责人检查服务</td>
+</tr>
+<tr>
+<td>看不到某个菜单或编辑按钮</td>
+<td>确认账号与负责人提供的一致</td>
+<td>请负责人检查角色权限</td>
+</tr>
+<tr>
+<td>搜索不到商品</td>
+<td>点“重置”，去掉分类、状态条件后再搜</td>
+<td>核对是否进入正确后台环境</td>
+</tr>
+<tr>
+<td>改了预览，顾客看不到</td>
+<td>商品页点“保存修改”；装修页完成“确认发布”</td>
+<td>重新进入小程序，核对环境</td>
+</tr>
+<tr>
+<td>图片上传失败</td>
+<td>检查JPG/PNG/WebP格式、单张不超过5MB</td>
+<td>换一张正常图片重试，并保留报错</td>
+</tr>
+<tr>
+<td>上架时提示缺主图或价格不合法</td>
+<td>按提示补主图、售价、规格和库存</td>
+<td>联系负责人核对商品资料</td>
+</tr>
+<tr>
+<td>库存变化后不能保存</td>
+<td>按提示填写4至200个字符的真实原因，或刷新后按最新库存重算</td>
+<td>核对规格和调整后的库存</td>
+</tr>
+<tr>
+<td>名称重复或跳转目标冲突</td>
+<td>阅读提示指出的对象，修改本次冲突项</td>
+<td>请内容负责人确认保留哪一项</td>
+</tr>
+<tr>
+<td>表格右侧按钮看不到</td>
+<td>拖动表格底部横向滚动条向右</td>
+<td>将浏览器缩放恢复到100%后再看</td>
+</tr>
+<tr>
+<td>微信里仍是旧小程序名称</td>
+<td>请管理员核对微信公众平台账号名称</td>
+<td>检查平台提示及新版本发布状态</td>
+</tr>
+</tbody>
+</table>
+<p>反馈问题时，写明页面、操作、发生时间、完整提示、商品名称及规格，以及已经尝试的处理方式，并附上提示截图。反馈内容不包含账号密码。</p>
+<h2 id="section-17">17｜开通客户账号与权限</h2>
+<p>由交付负责人在正式后台创建账号并分配权限。</p>
+<ol>
+<li>进入“系统管理 → 角色权限”，查看现有角色是否适合商品运营。</li>
+<li>需要商品编辑时，授予商品管理的查看、维护能力；需要上传或选图时，包含素材查看和素材维护能力。</li>
+<li>需要客户自己改首页大图、频道和专题时，授予内容查看和内容维护权限。即使客户只维护首页，装修页也需要商品查看权限来加载预览和跳转目标。</li>
+<li>打开“系统管理 → 管理员账号”，点击“新增管理员”。输入账号、姓名和初始密码，选择至少一个已启用的角色，再点“保存”。账号以英文字母开头，使用英文字母、数字、点、下划线或连字符，长度3至64位。初始密码须包含英文字母和数字，至少10个字符，最多72字节。英文字母、数字和英文标点每个占1字节。</li>
+<li>用新账号从登录页进入，确认默认打开账号有权限的页面，再检查商品列表、编辑页及所需的素材和装修页面。</li>
+<li>正式后台网址、账号和初始密码由负责人单独交给指定使用者。</li>
+</ol>
+<p>“商品维护”权限同时包含新增、上下架、删除和批量操作。若只开放名称等指定字段，交付前需由维护人员拆分权限。</p>
+<p>微信公众平台的管理权限单独分配，官方小程序改名由对应管理员操作。</p>
+<h2 id="section-18">18｜维护后检查</h2>
+<ul>
+<li>确认改的是正确商品与规格。</li>
+<li>名称、分类、图片与详情内容一致。</li>
+<li>价格按“元”填写，每个规格都已检查。</li>
+<li>库存增减数量正确，调整原因清楚。</li>
+<li>上下架状态符合本次目的。</li>
+<li>已看到保存或发布成功提示。</li>
+<li>重新进入后台页面核对；商城开放后，再检查微信小程序展示。</li>
+</ul>
+<p>如果需要把教程发给其他人，请发送整个教程文件夹的压缩包，保留其中的“images”图片文件夹；只发HTML文件会导致截图缺失。</p>
+<h3>18.1 商品运营每天做什么</h3>
+<ol>
+<li>打开“商品管理 → 商品列表”，确认昨天新增商品的名称、分类、主图和上下架状态。</li>
+<li>打开“库存工作台”，检查缺货和预警规格；补货后按实际入库数量调整，填写原因。</li>
+<li>导入商品时，先下载本次后台提供的模板。先提交预检，按提示修正错误行，再确认导入；预检通过不代表已经保存。</li>
+<li>保存后重新搜索商品，检查每个规格的价格和库存。录入阶段只检查后台；商城正式开放后再检查微信端。</li>
+<li>误操作先停止继续修改，保留商品名称和操作时间，按第14节判断能否回退。价格和库存不靠历史快照恢复。</li>
+</ol>
+<h3>18.2 客服发货：商城开放后使用</h3>
+<p>本节入口为“交易管理 → 订单管理”。录入阶段没有这些菜单属于正常情况。</p>
+<ol>
+<li>筛选待发货订单，打开详情，核对订单号、商品规格、数量和收货信息。</li>
+<li>实际打包并取得快递面单后，再选择物流公司和填写单号；不要用测试单号给正式订单发货。</li>
+<li>提交发货后重新打开订单，确认状态和物流单号。物流轨迹可能延迟，以承运商实际揽收为准。</li>
+<li>批量发货先下载后台模板，只填写真实待发货订单；核对每个订单对应的公司和单号，再导入并检查结果。失败行按提示处理，已成功的订单不要换单号反复导入。</li>
+<li>用户反馈异常时，先记录订单号、物流单号、发生时间和现象。内部备注不要填写密码、支付密钥或无关个人资料。</li>
+</ol>
+<p>订单已进入售后或发货被拒绝时，联系售后负责人核对，不通过改库存或另建订单绕过。</p>
+<h3>18.3 售后审核：确认申请后再处理</h3>
+<p>入口为“交易管理 → 售后管理”。使用个人售后账号，先确认当前处理的是哪笔订单。</p>
+<ol>
+<li>查看申请原因、商品、数量和退款金额，核对客户已确认的退货退款规则。</li>
+<li>仅退款申请核实后选择同意或拒绝；拒绝时写明可理解的原因。</li>
+<li>退货退款先核对退货物流，实际收到退货并完成检查后，再确认收货处理。</li>
+<li>提交后刷新查看结果。出现“处理中”时记录售后单号和退款单号，不把按钮提示当作资金已经到账。</li>
+<li>退款失败或长时间无结果时，交财务在“退款异常”中查询渠道状态，核对后再按系统允许的方式处理。不要同时通过商户平台和后台各退一次。</li>
+</ol>
+<h3>18.4 财务对账：每天检查前一日</h3>
+<ol>
+<li>打开“交易管理 → 支付异常”，按订单号核对异常，必要时查询渠道实际状态。</li>
+<li>打开“退款异常”，按退款单号或售后单号筛选，检查金额、渠道状态、最近错误和下次执行时间。</li>
+<li>打开“日终对账”，选择前一日日期，确认批次状态为完成；处理中先等待结果，失败则记录原因并交维护人员检查。</li>
+<li>有差异时打开明细，逐笔核对订单、支付、退款和微信账单，查清后填写处理备注。不要只为清空列表把未核实差异标成已处理。</li>
+<li>需要归档时导出CSV并存放到指定受控位置；不要在公开群转发含客户信息的账单。</li>
+</ol>
+<p>金额或退款状态不确定时，先暂停该笔人工出款，交财务负责人核对。系统部署、数据库恢复和密钥更换由维护人员处理，运营人员无需执行命令。</p>
+<h3>18.5 找维护人员时提供什么</h3>
+<p>发送出问题的页面名称、商品或订单编号、发生时间、操作步骤和报错截图。截图遮住密码、验证码、完整手机号和地址；不要发送账号Token、支付私钥或后台配置文件。维护联系方式由交付负责人在正式交接时提供。</p>
+</article><footer>教程正文保存在同目录“操作教程.md”。转发时请保留 images 文件夹。截图为演示数据，不包含正式业务账号。</footer></main>
+</div>
+<script>
+const compactLayout = window.matchMedia('(max-width: 600px)');
+const directory = document.querySelector('aside details');
+function adaptDirectory() { directory.open = !compactLayout.matches; }
+compactLayout.addEventListener('change', adaptDirectory);
+adaptDirectory();
+</script>
+</body>
+</html>

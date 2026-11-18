@@ -499,7 +499,7 @@ onMounted(fetchData);
           >打印拣货单</el-button
         >
       </div>
-      <el-table scrollbar-always-on
+      <el-table native-scrollbar
         v-loading="loading"
         :data="tableData"
         border
@@ -664,7 +664,7 @@ onMounted(fetchData);
 
           <section class="detail-section">
             <h4>商品明细</h4>
-            <el-table scrollbar-always-on :data="detailGoods" border>
+            <el-table native-scrollbar :data="detailGoods" border>
               <el-table-column label="商品" min-width="260">
                 <template #default="{ row }">
                   <div class="goods-cell">
@@ -903,7 +903,7 @@ onMounted(fetchData);
           >确认导入发货</el-button
         >
       </div>
-      <el-table scrollbar-always-on
+      <el-table native-scrollbar
         v-if="batchResult"
         :data="batchResult.rows"
         border

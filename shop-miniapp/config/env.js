@@ -1,5 +1,6 @@
+const buildTarget = require('./build-target.js');
 const runtimeEnv = typeof process !== 'undefined' && process.env ? process.env : {};
-const appEnv = runtimeEnv.VUE_APP_ENV || runtimeEnv.UNI_APP_ENV || runtimeEnv.NODE_ENV || 'development';
+const appEnv = buildTarget.appEnv || runtimeEnv.VUE_APP_ENV || runtimeEnv.UNI_APP_ENV || runtimeEnv.NODE_ENV || 'development';
 const isProduction = appEnv === 'production';
 const isStaging = appEnv === 'staging';
 const injectedApiBaseUrl = isProduction
@@ -13,11 +14,12 @@ function normalizeBaseUrl(value) {
 	if (!text) {
 		return '';
 	}
-	return text.endsWith('/') ? text : text + '/';
+	const root = text.replace(/\/app-api\/?$/, '');
+	return root.endsWith('/') ? root : root + '/';
 }
 
 const apiBaseUrl = normalizeBaseUrl(
-	injectedApiBaseUrl || (isProduction ? '' : 'http://127.0.0.1:8085/')
+	buildTarget.apiBaseUrl || injectedApiBaseUrl || (isProduction ? '' : 'http://127.0.0.1:8085/')
 );
 
 module.exports = {

@@ -5,6 +5,9 @@
 CREATE DATABASE IF NOT EXISTS `shop` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `shop`;
 
+-- 明确客户端字符集，避免首次导入的中文被按 Latin-1 存成乱码。
+SET NAMES utf8mb4;
+
 -- ============ 会员相关 ============
 
 CREATE TABLE `member_user` (

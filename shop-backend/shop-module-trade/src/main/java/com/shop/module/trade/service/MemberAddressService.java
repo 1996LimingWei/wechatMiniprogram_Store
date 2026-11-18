@@ -82,6 +82,13 @@ public class MemberAddressService {
         address.setCityName(TradeRequestUtils.getString(body, "cityName", "").trim());
         address.setDistrictName(TradeRequestUtils.getString(body, "countyName",
                 TradeRequestUtils.getString(body, "districtName", "")).trim());
+        var regions = RegionCatalog.validateChain(address.getProvinceId(), address.getCityId(), address.getDistrictId());
+        address.setProvinceId(regions.get(0).id());
+        address.setCityId(regions.get(1).id());
+        address.setDistrictId(regions.get(2).id());
+        address.setProvinceName(regions.get(0).name());
+        address.setCityName(regions.get(1).name());
+        address.setDistrictName(regions.get(2).name());
         address.setFullRegion(address.getProvinceName() + address.getCityName() + address.getDistrictName());
         address.setDetailInfo(TradeRequestUtils.getString(body, "detailInfo", "").trim());
         address.setIsDefault(isDefault);

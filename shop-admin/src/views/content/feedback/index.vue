@@ -52,7 +52,7 @@ onMounted(fetchData);
             </el-form>
         </el-card>
         <el-card shadow="never">
-            <el-table scrollbar-always-on v-loading="loading" :data="tableData" border>
+            <el-table native-scrollbar v-loading="loading" :data="tableData" border>
                 <el-table-column prop="typeName" label="类型" width="110" /><el-table-column prop="content" label="反馈内容" min-width="260" show-overflow-tooltip /><el-table-column prop="userNickname" label="提交用户" width="130" show-overflow-tooltip /><el-table-column prop="mobile" label="联系电话" width="130" />
                 <el-table-column label="状态" width="100" align="center"><template #default="{ row }"><el-tag :type="statusType(row.status)">{{ row.statusName }}</el-tag></template></el-table-column>
                 <el-table-column prop="handleRemark" label="处理备注" min-width="180" show-overflow-tooltip /><el-table-column prop="createTime" label="提交时间" width="170" />

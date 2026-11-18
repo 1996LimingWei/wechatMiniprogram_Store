@@ -7,6 +7,8 @@ $ErrorActionPreference = "Stop"
 $excludedDirectories = @(
     ".git",
     "node_modules",
+    ".venv-delivery",
+    "__pycache__",
     "dist",
     "target",
     "unpackage",

@@ -189,7 +189,15 @@ public class MaterialAssetService {
         }
     }
 
-    private String detectImageType(byte[] content) {
+    public static String validateImageContent(byte[] content, String contentType) {
+        String detected = detectImageType(content);
+        if (!("image/" + detected).equals(contentType)) {
+            throw new ServerException(400, "图片类型与实际内容不一致");
+        }
+        return detected;
+    }
+
+    private static String detectImageType(byte[] content) {
         if (content.length < 12) {
             throw new ServerException(400, "图片文件不完整");
         }

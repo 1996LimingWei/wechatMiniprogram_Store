@@ -81,6 +81,12 @@ function isOneOfArray(a: Array<string>, b: Array<string>) {
     : true;
 }
 
+function hasRoutePermissions(meta: Partial<CustomizeRouteMeta>, permissions: string[] = []) {
+  const matches = (group: string[]) => group.some(permission => permissions.includes(permission));
+  return (!meta.permissions?.length || matches(meta.permissions))
+    && (meta.permissionGroups?.every(matches) ?? true);
+}
+
 /** 从 localStorage 取出当前登录用户的角色和接口权限，过滤无权限菜单。 */
 function filterNoPermissionTree(data: RouteComponent[]) {
   const currentUser = storageLocal().getItem<DataInfo<number>>(userKey);
@@ -88,10 +94,7 @@ function filterNoPermissionTree(data: RouteComponent[]) {
   const currentPermissions = currentUser?.permissions ?? [];
   const newTree = cloneDeep(data).filter((v: any) => {
     const hasRole = isOneOfArray(v.meta?.roles, currentRoles);
-    const requiredPermissions = v.meta?.permissions;
-    const hasPermission = !Array.isArray(requiredPermissions) || requiredPermissions.length === 0
-      || requiredPermissions.some(permission => currentPermissions.includes(permission));
-    return hasRole && hasPermission;
+    return hasRole && hasRoutePermissions(v.meta ?? {}, currentPermissions);
   });
   newTree.forEach(
     (v: any) => v.children && (v.children = filterNoPermissionTree(v.children))
@@ -392,12 +395,23 @@ function handleTopMenu(route) {
 }
 
 /** 获取所有菜单中的第一个菜单（顶级菜单）*/
-function getTopMenu(tag = false): menuType {
+function getTopMenu(tag = false): menuType | undefined {
   const topMenu = handleTopMenu(
-    usePermissionStoreHook().wholeMenus[0]?.children[0]
+    usePermissionStoreHook().wholeMenus[0]?.children?.[0]
   );
-  tag && useMultiTagsStoreHook().handleTags("push", topMenu);
+  if (tag && topMenu) useMultiTagsStoreHook().handleTags("push", topMenu);
   return topMenu;
+}
+
+async function getWorkbenchPath(preferredPath?: string) {
+  await initRouter();
+  if (
+    preferredPath &&
+    findRouteByPath(preferredPath, usePermissionStoreHook().wholeMenus)
+  ) {
+    return preferredPath;
+  }
+  return getTopMenu()?.path;
 }
 
 export {
@@ -407,6 +421,8 @@ export {
   filterTree,
   initRouter,
   getTopMenu,
+  getWorkbenchPath,
+  hasRoutePermissions,
   addPathMatch,
   isOneOfArray,
   getHistoryMode,

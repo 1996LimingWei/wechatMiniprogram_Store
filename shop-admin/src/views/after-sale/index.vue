@@ -276,7 +276,7 @@ function refundDescription(row: AfterSale) {
       </el-tabs>
 
       <div class="table-toolbar">共 {{ total }} 笔售后申请</div>
-      <el-table scrollbar-always-on
+      <el-table native-scrollbar
         v-loading="loading"
         :data="tableData"
         border
@@ -416,7 +416,7 @@ function refundDescription(row: AfterSale) {
 
         <section v-if="detail.items?.length" class="detail-section">
           <h4>售后商品</h4>
-          <el-table scrollbar-always-on :data="detail.items" border size="small">
+          <el-table native-scrollbar :data="detail.items" border size="small">
             <el-table-column prop="goodsName" label="商品" min-width="160" />
             <el-table-column prop="specName" label="规格" min-width="100" />
             <el-table-column prop="applyCount" label="数量" width="70" align="center" />

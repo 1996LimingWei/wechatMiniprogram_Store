@@ -151,7 +151,7 @@
 		<view class="brand-footer">
 			<view class="brand-footer-card">
 				<view class="brand-footer-line"></view>
-				<text class="brand-footer-title">陕铺</text>
+				<text class="brand-footer-title">{{ $store.state.shop.displayName }}</text>
 				<text class="brand-footer-desc">甄选原料，安心到家，让健康触手可及</text>
 			</view>
 		</view>

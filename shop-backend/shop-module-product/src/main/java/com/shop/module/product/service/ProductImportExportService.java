@@ -60,7 +60,7 @@ public class ProductImportExportService {
     private static final int TEMPLATE_ROW_LIMIT = 1000;
     private static final String CREATE_STOCK_REASON = "商品导入初始化库存";
     private static final String UPDATE_STOCK_REASON = "商品导入批量更新";
-    private static final List<String> TYPE_OPTIONS = List.of("实物", "虚拟");
+    private static final List<String> TYPE_OPTIONS = List.of("实物");
     private static final List<String> STATUS_OPTIONS = List.of("下架", "上架");
     private static final List<String> SPEC_NAME_OPTIONS = List.of("规格", "净含量", "包装", "口味", "套餐");
     private static final List<String> HEADERS = List.of(
@@ -521,10 +521,7 @@ public class ProductImportExportService {
         if (!hasText(value) || "实物".equals(value) || "1".equals(value)) {
             return 1;
         }
-        if ("虚拟".equals(value) || "2".equals(value)) {
-            return 2;
-        }
-        row.error("商品类型", "商品类型只能填写实物、虚拟、1 或 2");
+        row.error("商品类型", "当前版本仅支持实物商品，请填写实物或 1；历史非实物数据请联系维护人员处理");
         return null;
     }
 

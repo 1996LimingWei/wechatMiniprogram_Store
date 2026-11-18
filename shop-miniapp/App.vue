@@ -21,7 +21,10 @@
 				})
 				return
 			}
-			//获取小程序更新机制兼容
+			util.request('index/shop-config', {}, 'GET', 'application/json', false, true)
+                .then(res => { if (res.code === 0 && res.data) this.$store.commit('setShop', res.data) })
+                .catch(() => {})
+            //获取小程序更新机制兼容
 			if (uni.canIUse('getUpdateManager')) {
 				const updateManager = uni.getUpdateManager()
 				updateManager.onCheckForUpdate(function(res) {

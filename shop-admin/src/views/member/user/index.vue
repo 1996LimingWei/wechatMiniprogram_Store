@@ -119,7 +119,7 @@ onMounted(fetchData);
         <span class="total-label">共 {{ total }} 位会员</span>
       </div>
 
-      <el-table scrollbar-always-on
+      <el-table native-scrollbar
         :data="tableData"
         v-loading="loading"
         border

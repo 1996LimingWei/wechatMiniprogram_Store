@@ -13,7 +13,8 @@ public interface MaterialAssetMapper extends BaseMapperX<MaterialAssetDO> {
 
     @Select("""
             SELECT
-              (SELECT COUNT(*) FROM product_category WHERE deleted = b'0' AND icon = #{url})
+              (SELECT COUNT(*) FROM shop_display_config WHERE logo_url = #{url})
+            + (SELECT COUNT(*) FROM product_category WHERE deleted = b'0' AND icon = #{url})
             + (SELECT COUNT(*) FROM product_spu WHERE deleted = b'0' AND (pic_url = #{url} OR slider_pic_urls LIKE CONCAT('%', #{url}, '%') OR description LIKE CONCAT('%', #{url}, '%')))
             + (SELECT COUNT(*) FROM product_sku WHERE deleted = b'0' AND pic_url = #{url})
             + (SELECT COUNT(*) FROM content_banner WHERE deleted = b'0' AND pic_url = #{url})
@@ -24,6 +25,8 @@ public interface MaterialAssetMapper extends BaseMapperX<MaterialAssetDO> {
     int countReferences(@Param("url") String url);
 
     @Select("""
+            SELECT '店铺设置：Logo' FROM shop_display_config WHERE logo_url = #{url}
+            UNION ALL
             SELECT CONCAT('商品分类 #', id, ' ', name, '：分类图标') FROM product_category WHERE deleted = b'0' AND icon = #{url}
             UNION ALL
             SELECT CONCAT('商品 #', id, ' ', name, '：主图') FROM product_spu WHERE deleted = b'0' AND pic_url = #{url}

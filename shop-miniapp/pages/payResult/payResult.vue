@@ -26,7 +26,7 @@
 		<view class="result-card" v-else>
 			<view class="result-icon fail-icon">!</view>
 			<text class="result-title fail-title">支付未完成</text>
-			<text class="result-desc">请在 <text class="highlight">1小时</text> 内完成付款，否则订单将被取消</text>
+			<text class="result-desc">请在订单显示的截止时间前完成付款，超时订单将自动取消</text>
 			<view class="result-btns">
 				<view class="btn-primary" @tap="payOrder">重新付款</view>
 				<navigator class="btn-outline" url="/pages/ucenter/order/order" open-type="redirect">查看订单</navigator>
@@ -61,13 +61,18 @@ export default {
 				this.status = 'success';
 			}).catch((error) => {
 				this.status = error && error.pending ? 'pending' : 'failed';
-				util.toast(error && error.pending ? '支付结果确认中' : '支付失败');
+				util.toast(util.paymentErrorMessage(error));
 			});
 		}
 	},
 	onLoad(options) {
 		this.orderId = Number(options.orderId || 0);
-		this.status = options.status === '1' ? 'success' : options.status === '2' ? 'pending' : 'failed';
+		if (!Number.isSafeInteger(this.orderId) || this.orderId <= 0) {
+			this.status = 'failed';
+			util.toast('订单信息无效，请从订单列表进入');
+			return;
+		}
+		this.status = options.status === '1' || options.status === '2' ? 'pending' : 'failed';
 		if (this.status !== 'failed') this.confirmPaymentResult();
 	}
 }

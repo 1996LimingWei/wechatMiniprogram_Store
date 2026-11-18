@@ -1,4 +1,4 @@
-﻿param(
+param(
     [switch]$SkipBackendTests,
     [switch]$SkipAdminBuild,
     [switch]$SkipDbMigration,
@@ -27,6 +27,7 @@ if (-not $SkipBackendTests) {
     Push-Location (Join-Path $root "shop-backend")
     try {
         mvn -B test
+        if ($LASTEXITCODE -ne 0) { throw "外部检查命令失败，禁止放行" }
     } finally {
         Pop-Location
     }
@@ -36,10 +37,14 @@ if (-not $SkipAdminBuild) {
     Push-Location (Join-Path $root "shop-admin")
     try {
         corepack pnpm install --frozen-lockfile
+        if ($LASTEXITCODE -ne 0) { throw "外部检查命令失败，禁止放行" }
         corepack pnpm typecheck
+        if ($LASTEXITCODE -ne 0) { throw "外部检查命令失败，禁止放行" }
         corepack pnpm build
+        if ($LASTEXITCODE -ne 0) { throw "外部检查命令失败，禁止放行" }
         if ($RunAdminLint) {
             corepack pnpm lint:check
+        if ($LASTEXITCODE -ne 0) { throw "外部检查命令失败，禁止放行" }
         }
     } finally {
         Pop-Location

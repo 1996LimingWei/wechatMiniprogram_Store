@@ -126,7 +126,7 @@ onMounted(fetchOperation);
             </el-form-item>
           </el-form>
 
-          <el-table scrollbar-always-on v-loading="loading" :data="operationRows" border>
+          <el-table native-scrollbar v-loading="loading" :data="operationRows" border>
             <el-table-column type="expand">
               <template #default="{ row }">
                 <div class="snapshot-grid">
@@ -195,7 +195,7 @@ onMounted(fetchOperation);
               <el-button :icon="Refresh" @click="resetLogin">重置</el-button>
             </el-form-item>
           </el-form>
-          <el-table scrollbar-always-on v-loading="loading" :data="loginRows" border>
+          <el-table native-scrollbar v-loading="loading" :data="loginRows" border>
             <el-table-column prop="createTime" label="时间" width="170" />
             <el-table-column prop="username" label="账号" min-width="130" />
             <el-table-column prop="nickname" label="姓名" min-width="120" />

@@ -100,7 +100,7 @@ const utils = {
 					if (res.statusCode < 200 || res.statusCode >= 300) {
 						if (data.code !== 401) {
 							utils.toast(data.msg || '服务暂时不可用，请稍后再试')
-							resolve(data)
+							reject({ code: res.statusCode, msg: '服务暂时不可用，请稍后再试' })
 							return
 						}
 					}
@@ -145,21 +145,30 @@ const utils = {
 	 * @param string src 文件路径
 	 */
 	uploadFile: function (url, src) {
-		uni.showLoading({
-			title: '请稍候...'
-		})
+		utils._beginLoading(false);
 		return new Promise((resolve, reject) => {
 			const uploadTask = uni.uploadFile({
 				url: utils.interfaceUrl() + url,
 				filePath: src,
 				name: 'file',
+				timeout: 15000,
 				header: {
-					'content-type': 'multipart/form-data',
 					'Authorization': 'Bearer ' + utils.getToken()
 				},
 				success: function (res) {
-					uni.hideLoading()
-					let data = JSON.parse(res.data.replace(/\ufeff/g, "") || "{}")
+					let data;
+					try {
+						data = typeof res.data === 'string' ? JSON.parse(res.data.replace(/\ufeff/g, '')) : res.data;
+						if (!data || typeof data !== 'object') throw new Error('上传响应格式错误');
+					} catch (_) {
+						utils.toast('上传失败，请稍后重试');
+						reject({ code: 500, msg: '上传响应格式错误' });
+						return;
+					}
+					if (res.statusCode < 200 || res.statusCode >= 300) {
+						reject({ code: res.statusCode, msg: '上传失败' });
+						return;
+					}
 					if (data.code == 0) {
 						//返回图片地址
 						resolve(data)
@@ -171,7 +180,8 @@ const utils = {
 				fail: function (res) {
 					utils.toast("网络不给力，请稍后再试~")
 					reject(res)
-				}
+				},
+				complete: function () { utils._endLoading(); }
 			})
 		})
 	},
@@ -412,6 +422,11 @@ const utils = {
 	/**
 	 * 统一下单请求
 	 */
+	paymentErrorMessage: function (error) {
+		if (error && error.pending) return '支付结果确认中';
+		if (error && /cancel/i.test(String(error.errMsg || ''))) return '已取消支付，可在订单中继续付款';
+		return '支付未完成，请在订单中查看';
+	},
 	payOrder: function (orderId) {
 		return new Promise(function (resolve, reject) {
 			utils.request('pay/prepay', {
@@ -464,7 +479,7 @@ const utils = {
 				} else {
 					reject(res);
 				}
-			});
+			}).catch(reject);
 		});
 	},
 
@@ -576,6 +591,8 @@ module.exports = {
 	isEmpty: utils.isEmpty,
 	expireTime: utils.expireTime,
 	payOrder: utils.payOrder,
+	paymentErrorMessage: utils.paymentErrorMessage,
+	waitForPaymentResult: utils.waitForPaymentResult,
 	login: utils.login,
 	safeMessage: utils.safeMessage
 }

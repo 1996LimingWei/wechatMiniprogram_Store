@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.m2/repository \
 
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
-RUN addgroup -S shop && adduser -S shop -G shop
+RUN addgroup -S -g 10001 shop && adduser -S -u 10001 shop -G shop
 COPY --from=build /app/shop-server/target/*.jar app.jar
 RUN chown -R shop:shop /app
 USER shop

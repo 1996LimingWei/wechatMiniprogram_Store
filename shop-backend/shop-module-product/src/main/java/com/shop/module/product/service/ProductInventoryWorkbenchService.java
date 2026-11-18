@@ -46,7 +46,7 @@ public class ProductInventoryWorkbenchService {
                        s.warning_stock, s.pic_url sku_pic_url, s.create_time,
                        p.name product_name, p.pic_url spu_pic_url, p.category_id,
                        c.name category_name
-                """ + query.fromAndWhere() + """
+                """ + query.fromAndWhere() + "\n" + """
                 ORDER BY
                   CASE
                     WHEN s.stock = 0 THEN 0
@@ -151,7 +151,7 @@ public class ProductInventoryWorkbenchService {
                 SELECT l.id, l.sku_id, l.spu_id, s.sku_code, p.name product_name,
                        l.biz_type, l.biz_no, l.change_quantity, l.before_stock, l.after_stock,
                        l.operator_type, l.operator_id, l.remark, l.create_time
-                """ + where + """
+                """ + where + "\n" + """
                 ORDER BY l.create_time DESC, l.id DESC
                 LIMIT ?, ?
                 """, (rs, index) -> {

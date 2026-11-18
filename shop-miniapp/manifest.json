@@ -1,5 +1,5 @@
 {
-	"name": "陕铺商城",
+	"name": "陕铺",
 	"appid": "__UNI__EAADE10",
 	"description": "陕铺微信小程序商城",
 	"versionName": "1.0.0",
@@ -204,7 +204,7 @@
 		"enable": false
 	},
 	"h5": {
-		"title": "陕铺商城",
+		"title": "陕铺",
 		"sdkConfigs": {
 			"maps": {
 				"qqmap": {

@@ -254,7 +254,7 @@ onMounted(fetchData);
       </el-form-item>
     </el-form>
 
-    <el-table scrollbar-always-on
+    <el-table native-scrollbar
       v-if="activeTab === 'exceptions'"
       v-loading="loading"
       :data="exceptionRows"
@@ -321,7 +321,7 @@ onMounted(fetchData);
       </el-table-column>
     </el-table>
 
-    <el-table scrollbar-always-on v-else v-loading="loading" :data="orderRows" border>
+    <el-table native-scrollbar v-else v-loading="loading" :data="orderRows" border>
       <el-table-column prop="paySn" label="支付单号" min-width="190" />
       <el-table-column prop="orderSn" label="订单号" min-width="180" />
       <el-table-column prop="userId" label="用户ID" width="100" />
@@ -414,7 +414,7 @@ onMounted(fetchData);
           </div>
 
           <h4>异常处理记录</h4>
-          <el-table scrollbar-always-on :data="detail.exceptions" border size="small">
+          <el-table native-scrollbar :data="detail.exceptions" border size="small">
             <el-table-column prop="reasonCode" label="异常编码" min-width="180" />
             <el-table-column prop="reason" label="原因" min-width="220" />
             <el-table-column label="状态" width="100">
@@ -429,7 +429,7 @@ onMounted(fetchData);
           </el-table>
 
           <h4>支付回调记录</h4>
-          <el-table scrollbar-always-on :data="detail.notifyLogs" border size="small">
+          <el-table native-scrollbar :data="detail.notifyLogs" border size="small">
             <el-table-column prop="notificationId" label="通知ID" min-width="180" />
             <el-table-column prop="eventType" label="事件" min-width="150" />
             <el-table-column prop="channelTradeNo" label="渠道交易号" min-width="170" />

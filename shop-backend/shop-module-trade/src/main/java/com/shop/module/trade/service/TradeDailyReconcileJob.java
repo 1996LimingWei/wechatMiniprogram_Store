@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "trade.reconcile", name = "job-enabled", havingValue = "true")
+@ConditionalOnExpression("'${app.delivery-mode:commerce}' == 'commerce'")
 public class TradeDailyReconcileJob {
 
     private final ReconciliationWorkbenchService reconciliationWorkbenchService;

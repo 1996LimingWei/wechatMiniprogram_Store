@@ -1,0 +1,3 @@
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">
+  <!-- GitHub 临时运行器直连中央仓库，避免跨境镜像下载阻塞。 -->
+</settings>

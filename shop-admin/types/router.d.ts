@@ -26,6 +26,8 @@ declare global {
     roles?: Array<string>;
     /** 接口权限编码，命中任一项即可访问 `可选` */
     permissions?: Array<string>;
+    /** 需要同时满足的权限组，每组命中任一项即可 */
+    permissionGroups?: string[][];
     /** 按钮级别权限设置 `可选` */
     auths?: Array<string>;
     /** 路由组件缓存（开启 `true`、关闭 `false`）`可选` */

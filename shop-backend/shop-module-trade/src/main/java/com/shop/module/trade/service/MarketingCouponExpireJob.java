@@ -3,11 +3,13 @@ package com.shop.module.trade.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnExpression("'${app.delivery-mode:commerce}' == 'commerce'")
 public class MarketingCouponExpireJob {
 
     private static final int EXPIRE_BATCH_SIZE = 200;

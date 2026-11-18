@@ -4,12 +4,14 @@ import com.shop.module.trade.config.TradeOrderProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnExpression("'${app.delivery-mode:commerce}' == 'commerce'")
 public class TradeOrderExpireJob {
 
     private final TradeOrderProperties tradeOrderProperties;

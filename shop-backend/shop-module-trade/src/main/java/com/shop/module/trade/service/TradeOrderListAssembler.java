@@ -222,6 +222,7 @@ public class TradeOrderListAssembler {
         option.put("ship", order.getStatus() == 1);
         option.put("logistics", order.getStatus() == 2 || order.getStatus() == 3);
         option.put("confirm", order.getStatus() == 2);
+        option.put("comment", order.getStatus() == 3);
         option.put("refund", order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
                 && order.getStatus() != null
                 && (order.getStatus() == 1 || order.getStatus() == 2 || order.getStatus() == 3));

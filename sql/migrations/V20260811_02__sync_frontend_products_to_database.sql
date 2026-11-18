@@ -200,7 +200,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO `content_topic`
     (`id`, `title`, `subtitle`, `pic_url`, `price_info`, `sort`, `status`, `deleted`)
 VALUES
-    (110031, '陕铺养生指南', '滋补、茶饮、药膳食材一站式搭配', 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=900', '24.5元起', 500, 1, b'0'),
+    (110031, '药食同源养生指南', '滋补、茶饮、药膳食材一站式搭配', 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=900', '24.5元起', 500, 1, b'0'),
     (110032, '四季花茶搭配', '玫瑰、胎菊与枸杞的清润组合', 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=900', '28元起', 490, 1, b'0')
 ON DUPLICATE KEY UPDATE
     `title` = VALUES(`title`),

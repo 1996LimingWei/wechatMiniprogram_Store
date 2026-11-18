@@ -1,6 +1,7 @@
 package com.shop.module.system.service;
 
 import com.shop.common.exception.ServerException;
+import com.shop.common.config.DeliveryMode;
 import com.shop.framework.security.LoginUser;
 import com.shop.framework.security.TokenService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,8 +22,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AdminAuthService {
 
+    static final int MAX_PASSWORD_BYTES = 72;
+
     private final JdbcTemplate jdbcTemplate;
     private final TokenService tokenService;
+    private final DeliveryMode deliveryMode;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Value("${admin.auth.max-failed-attempts:5}")
@@ -34,7 +39,7 @@ public class AdminAuthService {
     public Map<String, Object> login(String username, String password, HttpServletRequest request) {
         String normalizedUsername = username == null ? "" : username.trim();
         if (normalizedUsername.isEmpty() || normalizedUsername.length() > 64
-                || password == null || password.isEmpty() || password.length() > 128) {
+                || password == null || password.isEmpty() || exceedsPasswordLimit(password)) {
             recordLogin(null, normalizedUsername, false, request, "账号或密码错误");
             throw new ServerException(401, "管理员账号或密码错误");
         }
@@ -100,6 +105,10 @@ public class AdminAuthService {
         return result;
     }
 
+    static boolean exceedsPasswordLimit(String password) {
+        return password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES;
+    }
+
     public Map<String, Object> profile(Long adminUserId) {
         List<Map<String, Object>> accounts = jdbcTemplate.queryForList("""
                 SELECT id, username, nickname, avatar
@@ -140,7 +149,14 @@ public class AdminAuthService {
         result.put("nickname", nickname == null ? "" : nickname);
         result.put("avatar", avatar == null ? "" : avatar);
         result.put("roles", roles);
+        if (!deliveryMode.isCommerce()) {
+            permissions = permissions.stream().filter(p -> p.startsWith("product:")
+                    || p.startsWith("material:") || p.startsWith("content:")
+                    || p.startsWith("system:") || p.startsWith("auth:")).toList();
+        }
         result.put("permissions", permissions);
+        result.put("deliveryMode", deliveryMode.isCommerce() ? "commerce" : "catalog");
+        result.put("homePath", deliveryMode.isCommerce() ? "/dashboard" : "/product/spu");
         return result;
     }
 

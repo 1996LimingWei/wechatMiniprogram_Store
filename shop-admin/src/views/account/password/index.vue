@@ -4,6 +4,7 @@ import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
 import { changeOwnPassword } from "@/api/system";
 import { useUserStoreHook } from "@/store/modules/user";
+import { adminPasswordHint, isValidNewAdminPassword } from "@/utils/auth";
 
 defineOptions({ name: "AccountPassword" });
 const formRef = ref<FormInstance>();
@@ -11,7 +12,7 @@ const saving = ref(false);
 const form = reactive({ oldPassword: "", newPassword: "", confirmPassword: "" });
 const rules: FormRules = {
   oldPassword: [{ required: true, message: "请输入原密码", trigger: "blur" }],
-  newPassword: [{ required: true, validator: (_rule, value, callback) => value && value.length >= 10 && /[A-Za-z]/.test(value) && /\d/.test(value) ? callback() : callback(new Error("密码至少 10 位且包含字母和数字")), trigger: "blur" }],
+  newPassword: [{ required: true, validator: (_rule, value) => isValidNewAdminPassword(value) || new Error(adminPasswordHint), trigger: "blur" }],
   confirmPassword: [{ required: true, validator: (_rule, value, callback) => value === form.newPassword ? callback() : callback(new Error("两次输入的新密码不一致")), trigger: "blur" }]
 };
 async function submit() { await formRef.value?.validate(); saving.value = true; try { await changeOwnPassword(form.oldPassword, form.newPassword); ElMessage.success("密码已修改，请重新登录"); await useUserStoreHook().logOut(); } finally { saving.value = false; } }

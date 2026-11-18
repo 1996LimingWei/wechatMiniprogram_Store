@@ -175,7 +175,7 @@ onMounted(fetchData);
 
         <!-- 树形表格 -->
         <el-card shadow="never">
-            <el-table scrollbar-always-on
+            <el-table native-scrollbar
                 :data="treeData"
                 row-key="id"
                 v-loading="loading"

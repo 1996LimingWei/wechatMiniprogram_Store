@@ -12,7 +12,7 @@ import {
 } from "@/api/content";
 import LinkSelector from "@/components/LinkSelector/index.vue";
 import type { ContentChannel } from "@/api/types";
-import { hasAnyPerms } from "@/utils/auth";
+import { hasAnyPerms, hasVisualEditorAccess } from "@/utils/auth";
 import { clearPreviewDraft, notifyPreviewDataCommitted, setPreviewDraft } from "@/utils/preview-center";
 
 defineOptions({ name: "ContentChannel" });
@@ -173,12 +173,12 @@ onBeforeUnmount(() => {
                 <el-icon class="mr-1"><i class="ep-icon-plus" /></el-icon>
                 新增频道
             </el-button>
-            <el-button plain @click="openPreviewCenter">打开可视化装修</el-button>
+            <el-button v-if="hasVisualEditorAccess()" plain @click="openPreviewCenter">打开可视化装修</el-button>
         </el-card>
 
         <!-- 表格 -->
         <el-card shadow="never">
-            <el-table scrollbar-always-on :data="list" v-loading="loading" border>
+            <el-table native-scrollbar :data="list" v-loading="loading" border>
                 <el-table-column prop="id" label="ID" width="70" align="center" />
                 <el-table-column label="图标" width="100" align="center">
                     <template #default="{ row }">

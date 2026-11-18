@@ -16,6 +16,7 @@ import {
 import {
   ascending,
   getTopMenu,
+  hasRoutePermissions,
   initRouter,
   isOneOfArray,
   getHistoryMode,
@@ -153,11 +154,16 @@ router.beforeEach((to: ToRouteType, _from, next) => {
       next({ path: "/error/403" });
       return;
     }
+    const permissions = userInfo.permissions;
     if (
-      Array.isArray(to.meta?.permissions) &&
-      to.meta.permissions.length > 0 &&
-      !to.meta.permissions.some(permission => userInfo?.permissions?.includes(permission))
+      to.path === "/dashboard" &&
+      !hasRoutePermissions(to.meta, permissions) &&
+      permissions?.some(p => p === "product:manage" || p === "product:read")
     ) {
+      next({ path: "/product/spu" });
+      return;
+    }
+    if (!hasRoutePermissions(to.meta, permissions)) {
       next({ path: "/access-denied" });
       return;
     }

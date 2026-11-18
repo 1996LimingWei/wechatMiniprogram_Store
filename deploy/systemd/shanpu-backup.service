@@ -1,0 +1,12 @@
+[Unit]
+Description=陕铺加密异机备份
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/shanpu
+UMask=0077
+ExecStart=/opt/shanpu/.venv/bin/python scripts/run_backup_cycle.py --env /opt/shanpu/.env.prod --offsite-dir /mnt/shanpu-backup
+TimeoutStartSec=1800

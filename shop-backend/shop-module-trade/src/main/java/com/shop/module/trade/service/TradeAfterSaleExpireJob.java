@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -11,6 +12,7 @@ import java.time.Duration;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnExpression("'${app.delivery-mode:commerce}' == 'commerce'")
 public class TradeAfterSaleExpireJob {
 
     private final TradeAfterSaleExpireService tradeAfterSaleExpireService;

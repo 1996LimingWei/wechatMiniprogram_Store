@@ -200,7 +200,7 @@ onMounted(fetchData);
         </el-card>
 
         <el-card shadow="never">
-            <el-table scrollbar-always-on :data="list" v-loading="loading" border>
+            <el-table native-scrollbar :data="list" v-loading="loading" border>
                 <el-table-column prop="id" label="ID" width="60" align="center" />
                 <el-table-column prop="name" label="券名称" min-width="120" show-overflow-tooltip />
                 <el-table-column label="类型" width="80" align="center">
@@ -322,7 +322,7 @@ onMounted(fetchData);
 
         <!-- 券实例抽屉 -->
         <el-dialog v-model="instanceVisible" title="领取记录" width="700px">
-            <el-table scrollbar-always-on :data="instances" v-loading="instanceLoading" border size="small">
+            <el-table native-scrollbar :data="instances" v-loading="instanceLoading" border size="small">
                 <el-table-column prop="id" label="ID" width="60" />
                 <el-table-column prop="userId" label="用户ID" width="80" />
                 <el-table-column label="优惠" width="80">

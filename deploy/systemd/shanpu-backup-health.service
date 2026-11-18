@@ -1,0 +1,11 @@
+[Unit]
+Description=陕铺备份新鲜度检查
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/shanpu
+UMask=0077
+ExecStart=/opt/shanpu/.venv/bin/python scripts/check_backup_health.py --env /opt/shanpu/.env.prod
+TimeoutStartSec=30

@@ -115,7 +115,7 @@ public class HomeContentQueryService {
         if (!associations.isEmpty()) {
             Set<Long> spuIds = associations.stream().map(ContentTopicProductDO::getSpuId).collect(Collectors.toSet());
             List<ProductSpuDO> products = productSpuMapper.selectList(
-                    new LambdaQueryWrapper<ProductSpuDO>().in(ProductSpuDO::getId, spuIds).eq(ProductSpuDO::getStatus, 1));
+                    new LambdaQueryWrapper<ProductSpuDO>().in(ProductSpuDO::getId, spuIds).eq(ProductSpuDO::getStatus, 1).eq(ProductSpuDO::getType, 1));
             // 保持关联表排序
             Map<Long, ProductSpuDO> productMap = products.stream().collect(Collectors.toMap(ProductSpuDO::getId, p -> p));
             List<Map<String, Object>> goodsList = associations.stream()
@@ -161,7 +161,7 @@ public class HomeContentQueryService {
         return new QueryWrapper<T>().eq("status", 1).orderByDesc("sort").orderByAsc("id");
     }
     private List<CategoryDO> enabledCategories() { return categoryMapper.selectList(new LambdaQueryWrapper<CategoryDO>().eq(CategoryDO::getStatus, 1).orderByDesc(CategoryDO::getSort).orderByAsc(CategoryDO::getId)).stream().filter(item -> item.getStatus() == 1).toList(); }
-    private List<ProductSpuDO> availableGoods() { return productSpuMapper.selectList(new LambdaQueryWrapper<ProductSpuDO>().eq(ProductSpuDO::getStatus, 1)).stream().filter(item -> item.getStatus() == 1).toList(); }
+    private List<ProductSpuDO> availableGoods() { return productSpuMapper.selectList(new LambdaQueryWrapper<ProductSpuDO>().eq(ProductSpuDO::getStatus, 1).eq(ProductSpuDO::getType, 1)).stream().filter(item -> item.getStatus() == 1 && (item.getType() == null || item.getType() == 1)).toList(); }
     private <T> List<T> enabledAndSorted(List<T> source, java.util.function.Function<T, Integer> status, java.util.function.Function<T, Integer> sort, java.util.function.Function<T, Long> id) {
         return source.stream().filter(item -> status.apply(item) == 1).sorted(Comparator.comparing(sort, Comparator.nullsLast(Comparator.reverseOrder())).thenComparing(id)).toList();
     }

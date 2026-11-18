@@ -12,7 +12,7 @@
 			</view>
 			<view class="guarantee-item">
 				<text class="guarantee-dot">✓</text>
-				<text>满{{freeShippingThreshold}}包邮</text>
+				<text>{{freeShippingThreshold > 0 ? '满' + freeShippingThreshold + '包邮' : '包邮'}}</text>
 			</view>
 		</view>
 
@@ -165,6 +165,7 @@ export default {
 		},
 		shippingPercent() {
 			const threshold = this.freeShippingThreshold;
+			if (threshold <= 0) return 100;
 			const amount = parseFloat(this.cartTotal.checkedGoodsAmount) || 0;
 			return Math.min(100, (amount / threshold) * 100);
 		}
@@ -178,7 +179,8 @@ export default {
 						swipeOffset: 0
 					}));
 					this.cartTotal = res.data.cartTotal;
-					this.freeShippingThreshold = parseFloat(res.data.freeFreightThreshold) || 199;
+					const threshold = parseFloat(res.data.freeFreightThreshold);
+					this.freeShippingThreshold = Number.isFinite(threshold) && threshold >= 0 ? threshold : 199;
 				}
 				this.checkedAllStatus = this.isCheckedAll();
 			});
@@ -191,7 +193,7 @@ export default {
 			});
 		},
 		isCheckedAll() {
-			const availableGoods = this.cartGoods.filter(item => item.available);
+			const availableGoods = this.isEditCart ? this.cartGoods : this.cartGoods.filter(item => item.available);
 			return availableGoods.length > 0 && availableGoods.every(item => item.checked === true);
 		},
 		guideUnavailableGoods() {

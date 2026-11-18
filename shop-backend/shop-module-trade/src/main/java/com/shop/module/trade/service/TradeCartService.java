@@ -10,7 +10,6 @@ import com.shop.module.trade.dal.mysql.TradeCartMapper;
 import com.shop.module.trade.util.TradeMoneyUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +28,7 @@ public class TradeCartService {
 
     private final TradeCartMapper tradeCartMapper;
     private final TradeProductService tradeProductService;
-
-    @Value("${trade.freight.free-threshold:19900}")
-    private int freeFreightThreshold = 19900;
+    private final MarketingShippingService marketingShippingService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> addCart(Long userId, Long goodsId, Long productId, int number) {
@@ -130,7 +127,7 @@ public class TradeCartService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("cartList", cartItems);
         result.put("cartTotal", buildCartTotal(list));
-        result.put("freeFreightThreshold", TradeMoneyUtils.formatYuan(freeFreightThreshold));
+        result.put("freeFreightThreshold", TradeMoneyUtils.formatYuan(marketingShippingService.getFreeThreshold()));
         return result;
     }
 
