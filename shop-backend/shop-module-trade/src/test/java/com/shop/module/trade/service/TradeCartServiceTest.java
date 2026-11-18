@@ -33,6 +33,8 @@ class TradeCartServiceTest {
     private TradeCartMapper tradeCartMapper;
     @Mock
     private TradeProductService tradeProductService;
+    @Mock
+    private MarketingShippingService marketingShippingService;
     @InjectMocks
     private TradeCartService tradeCartService;
 

@@ -9,6 +9,8 @@ export type LoginParams = {
 /** 登录响应数据 */
 export type LoginResult = {
   token: string;
+  homePath?: string;
+  deliveryMode?: "catalog" | "commerce";
   userId: number;
   username: string;
   nickname: string;

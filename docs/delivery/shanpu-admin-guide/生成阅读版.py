@@ -70,7 +70,7 @@ footer{margin-top:45px;border-top:1px solid #dce5d9;padding-top:16px;color:#6071
 <body>
 <div class="layout">
 <aside aria-label="教程目录">
-<p class="brand">陕铺</p><p class="aside-label">后台操作教程 · 2026年11月10日</p>
+<p class="brand">陕铺</p><p class="aside-label">后台操作教程 · 2026年11月18日</p>
 <details open><summary>按任务查找操作步骤</summary><nav><ol>__TOC__</ol></nav></details>
 <div class="tools"><button type="button" onclick="window.print()">打印 / 保存为 PDF</button><a class="source-link" href="操作教程.md">可编辑正文</a></div>
 <p class="tools-note">本页可离线阅读。按 Ctrl+F 查找文字；点击截图打开原图，查看小字和操作编号。</p>
@@ -89,5 +89,25 @@ adaptDirectory();
 """.replace("__TOC__", toc).replace("__BODY__", body)
 
 target = GUIDE_DIR / "操作教程.html"
-target.write_text(document, encoding="utf-8")
+target.write_text(document, encoding="utf-8", newline="\n")
 print(f"已生成：{target}，共 {len(contents)} 个章节")
+
+# 阅读版与压缩包由同一入口生成，并逐文件核对，避免转发旧正文或缺图。
+import zipfile
+package = GUIDE_DIR.parent / "陕铺后台操作教程-2026-11-18.zip"
+files = [GUIDE_DIR / "操作教程.md", target, *sorted((GUIDE_DIR / "images").glob("*.png"))]
+entries = {
+    source.relative_to(GUIDE_DIR).as_posix(): (
+        source.read_text(encoding="utf-8").encode("utf-8")
+        if source.suffix in {".md", ".html"}
+        else source.read_bytes()
+    )
+    for source in files
+}
+with zipfile.ZipFile(package, "w", zipfile.ZIP_DEFLATED) as archive:
+    for name, content in entries.items():
+        archive.writestr(name, content)
+with zipfile.ZipFile(package) as archive:
+    for name, content in entries.items():
+        assert archive.read(name) == content
+print(f"已生成并核对：{package}，共 {len(files)} 个文件")

@@ -51,9 +51,9 @@ const onLogin = async (formEl: FormInstance | undefined) => {
           username: ruleForm.username,
           password: ruleForm.password
         })
-        .then(async () => {
+        .then(async result => {
           disabled.value = true;
-          await router.replace((await getWorkbenchPath()) ?? "/access-denied");
+          await router.replace((await getWorkbenchPath(result.homePath)) ?? "/access-denied");
           message("登录成功", { type: "success" });
         })
         .catch(() => {

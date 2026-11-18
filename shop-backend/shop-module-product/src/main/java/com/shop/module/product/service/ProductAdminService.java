@@ -59,22 +59,32 @@ public class ProductAdminService {
         boolean creating = spu.getId() == null;
         boolean addingDefaultSku = requestedSkus == null || requestedSkus.isEmpty();
         String reason = stockAdjustReason;
+        ProductSpuDO previous = null;
         if (!creating && addingDefaultSku) {
             // 串行处理没有 SKU 的旧商品，避免两个空规格请求同时补建默认规格。
-            ProductSpuDO current = productSpuMapper.selectOne(new LambdaQueryWrapper<ProductSpuDO>()
+            previous = productSpuMapper.selectOne(new LambdaQueryWrapper<ProductSpuDO>()
                     .eq(ProductSpuDO::getId, spu.getId()).last("FOR UPDATE"));
-            if (current == null) {
+            if (previous == null) {
                 throw new ServerException(1101, "商品不存在");
             }
             if (!productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>()
                     .eq(ProductSkuDO::getSpuId, spu.getId())).isEmpty()) {
                 throw new ServerException(409, "商品已有规格，请刷新后重新保存");
             }
-            if (!Objects.equals(current.getStock(), spu.getStock())) {
+            if (!Objects.equals(previous.getStock(), spu.getStock())) {
                 requireStockAdjustReason(reason);
             } else if (reason == null || reason.isBlank()) {
                 reason = "旧商品补齐默认规格";
             }
+        } else if (!creating) {
+            previous = requireSpu(spu.getId());
+        }
+        if (spu.getType() == null) {
+            spu.setType(previous == null || previous.getType() == null ? 1 : previous.getType());
+        }
+        if (!Integer.valueOf(1).equals(spu.getType())
+                && (previous == null || !spu.getType().equals(previous.getType()))) {
+            throw new ServerException(400, "当前版本仅支持新增实物商品，历史非实物商品请保持下架并联系维护人员");
         }
         List<ProductSkuDO> skus = normalizeRequestedSkus(spu,
                 addingDefaultSku ? List.of(defaultSku(spu)) : requestedSkus);
@@ -84,8 +94,6 @@ public class ProductAdminService {
         if (creating) {
             spu.setSalesCount(0);
             productSpuMapper.insert(spu);
-        } else if (!addingDefaultSku && productSpuMapper.selectById(spu.getId()) == null) {
-            throw new ServerException(1101, "商品不存在");
         } else {
             spu.setSalesCount(null);
             if (productSpuMapper.updateById(spu) != 1) {
@@ -129,6 +137,10 @@ public class ProductAdminService {
             throw new ServerException(400, "商品 ID 不能为空");
         }
         ProductSpuDO current = requireSpu(request.getId());
+        if (request.getType() != null && !Integer.valueOf(1).equals(request.getType())
+                && !request.getType().equals(current.getType())) {
+            throw new ServerException(400, "当前版本仅支持实物商品，不能改为其他类型");
+        }
         if (requiresMergedValidation(request)) {
             ProductSpuDO merged = mergeForValidation(current, request);
             validateSpu(merged);
@@ -195,27 +207,35 @@ public class ProductAdminService {
             throw new ServerException(400, "商品回退快照不存在");
         }
         ProductSpuDO current = productSpuMapper.selectById(snapshotSpu.getId());
+        if (current == null) throw new ServerException(409, "商品已删除，请通过商品管理重新创建，不能恢复历史库存");
         ProductSpuDO target = copySpuForRestore(snapshotSpu);
-        if (current == null) {
-            if (target.getSalesCount() == null) {
-                target.setSalesCount(0);
-            }
-            productSpuMapper.insert(target);
-        } else {
-            target.setSalesCount(current.getSalesCount());
-            if (productSpuMapper.updateById(target) != 1) {
-                throw new ServerException(409, "商品信息已变化，请刷新后重试");
+        if (Integer.valueOf(1).equals(target.getStatus()) && target.getType() != null && target.getType() != 1) {
+            throw new ServerException(400, "历史非实物商品不能通过回退重新上架");
+        }
+        // 快照回退仅修改展示信息，绝不回写历史库存、销量或价格汇总。
+        target.setStock(null);
+        target.setSalesCount(null);
+        target.setPrice(null);
+        target.setMarketPrice(null);
+        if (productSpuMapper.updateById(target) != 1) {
+            throw new ServerException(409, "商品已变化，请刷新后重试");
+        }
+        List<ProductSkuDO> existing = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>()
+                .eq(ProductSkuDO::getSpuId, target.getId()));
+        Set<Long> currentIds = new HashSet<>();
+        for (ProductSkuDO sku : existing) currentIds.add(sku.getId());
+        Set<Long> snapshotIds = new HashSet<>();
+        if (snapshotSkus != null) for (ProductSkuDO sku : snapshotSkus) snapshotIds.add(sku.getId());
+        if (!currentIds.equals(snapshotIds)) {
+            throw new ServerException(409, "规格集合已变化，请手动编辑，不能通过历史快照恢复规格和库存");
+        }
+        for (ProductSkuDO sku : snapshotSkus == null ? List.<ProductSkuDO>of() : snapshotSkus) {
+            if (productSkuMapper.update(null, new LambdaUpdateWrapper<ProductSkuDO>()
+                    .eq(ProductSkuDO::getId, sku.getId()).eq(ProductSkuDO::getSpuId, target.getId())
+                    .set(ProductSkuDO::getPicUrl, sku.getPicUrl())) != 1) {
+                throw new ServerException(409, "规格已变化，请刷新后重试");
             }
         }
-        List<ProductSkuDO> requestedSkus = snapshotSkus == null ? List.of() : snapshotSkus.stream()
-                .map(this::copySkuForRestore)
-                .toList();
-        if (requestedSkus.isEmpty()) {
-            requestedSkus = List.of(defaultSku(target));
-        }
-        saveSkusInternal(target.getId(), normalizeRequestedSkus(target, requestedSkus), adminStockBizNo(),
-                adminId == null ? 0L : adminId, stockAdjustReason);
-        syncSpuSummary(target.getId());
         materialAssetService.refreshAllReferenceCounts();
     }
 
@@ -319,6 +339,9 @@ public class ProductAdminService {
     }
 
     private void validateSpu(ProductSpuDO spu) {
+        if (Integer.valueOf(1).equals(spu.getStatus()) && spu.getType() != null && spu.getType() != 1) {
+            throw new ServerException(400, "当前版本仅支持实物商品上架，历史非实物商品请保持下架");
+        }
         String name = spu.getName() == null ? "" : spu.getName().trim();
         if (name.isEmpty() || name.length() > 128) {
             throw new ServerException(400, "商品名称长度应为 1 至 128 个字符");
@@ -457,6 +480,7 @@ public class ProductAdminService {
 
     private boolean requiresMergedValidation(ProductSpuDO request) {
         return request.getStatus() != null
+                || request.getType() != null
                 || request.getCategoryId() != null
                 || request.getName() != null
                 || request.getPicUrl() != null
@@ -467,6 +491,7 @@ public class ProductAdminService {
     private ProductSpuDO mergeForValidation(ProductSpuDO current, ProductSpuDO request) {
         ProductSpuDO merged = new ProductSpuDO();
         merged.setId(current.getId());
+        merged.setType(request.getType() != null ? request.getType() : current.getType());
         merged.setName(request.getName() != null ? request.getName() : current.getName());
         merged.setCategoryId(request.getCategoryId() != null ? request.getCategoryId() : current.getCategoryId());
         merged.setKeyword(request.getKeyword() != null ? request.getKeyword() : current.getKeyword());
@@ -632,20 +657,4 @@ public class ProductAdminService {
         return target;
     }
 
-    private ProductSkuDO copySkuForRestore(ProductSkuDO source) {
-        ProductSkuDO target = new ProductSkuDO();
-        target.setId(source.getId());
-        target.setSpuId(source.getSpuId());
-        target.setSkuCode(source.getSkuCode());
-        target.setProperties(source.getProperties());
-        target.setPrice(source.getPrice());
-        target.setMarketPrice(source.getMarketPrice());
-        target.setStock(source.getStock());
-        target.setWarningStock(source.getWarningStock());
-        target.setPicUrl(source.getPicUrl());
-        target.setWeight(source.getWeight());
-        target.setVolume(source.getVolume());
-        target.setDeleted(Boolean.FALSE);
-        return target;
-    }
 }

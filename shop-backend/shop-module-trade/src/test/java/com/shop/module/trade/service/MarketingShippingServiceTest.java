@@ -101,6 +101,20 @@ class MarketingShippingServiceTest {
         assertEquals(1000, freight);
     }
 
+    @Test
+    void cartThresholdMatchesActiveRuleInsteadOfFallback() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(9900, 1000));
+        assertEquals(9900, marketingShippingService.getFreeThreshold());
+        assertEquals(0, marketingShippingService.calculateFreight(9900));
+    }
+
+    @Test
+    void zeroBaseFeeDoesNotRequireMorePurchases() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 0));
+        assertEquals(0, marketingShippingService.getFreeThreshold());
+        assertEquals(0, marketingShippingService.calculateFreight(100));
+    }
+
     private MarketingShippingRuleDO createRule(int freeThreshold, int baseFee) {
         MarketingShippingRuleDO rule = new MarketingShippingRuleDO();
         rule.setId(1L);

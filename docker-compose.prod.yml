@@ -10,7 +10,6 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - ./deploy/data/mysql:/var/lib/mysql
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./deploy/backups/mysql:/backups
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
@@ -34,12 +33,14 @@ services:
       retries: 30
 
   backend:
+    image: ${SHOP_BACKEND_IMAGE:-shanpu/backend:local}
     build:
       context: ./shop-backend
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      APP_DELIVERY_MODE: ${APP_DELIVERY_MODE:?必须配置交付模式}
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
       DB_USERNAME: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
@@ -56,6 +57,9 @@ services:
       WECHAT_PAY_MERCHANT_SERIAL_NO: ${WECHAT_PAY_MERCHANT_SERIAL_NO}
       WECHAT_PAY_PRIVATE_KEY_PATH: ${WECHAT_PAY_PRIVATE_KEY_PATH}
       WECHAT_PAY_API_V3_KEY: ${WECHAT_PAY_API_V3_KEY}
+      WECHAT_PAY_PUBLIC_KEY_ID: ${WECHAT_PAY_PUBLIC_KEY_ID:-}
+      WECHAT_PAY_PUBLIC_KEY_PATH: ${WECHAT_PAY_PUBLIC_KEY_PATH:-}
+      WECHAT_PAY_PLATFORM_CERTIFICATE_PATHS: ${WECHAT_PAY_PLATFORM_CERTIFICATE_PATHS:-}
       WECHAT_PAY_PLATFORM_CERTIFICATE_PATH: ${WECHAT_PAY_PLATFORM_CERTIFICATE_PATH}
       WECHAT_PAY_NOTIFY_URL: ${WECHAT_PAY_NOTIFY_URL}
       WECHAT_PAY_REFUND_NOTIFY_URL: ${WECHAT_PAY_REFUND_NOTIFY_URL}
@@ -82,6 +86,7 @@ services:
         condition: service_healthy
 
   admin:
+    image: ${SHOP_ADMIN_IMAGE:-shanpu/admin:local}
     build:
       context: ./shop-admin
       dockerfile: Dockerfile
@@ -90,7 +95,7 @@ services:
       BACKEND_URL: http://backend:8085
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
 
   nginx:
     image: nginx:stable-alpine
@@ -109,4 +114,4 @@ services:
       admin:
         condition: service_started
       backend:
-        condition: service_started
+        condition: service_healthy

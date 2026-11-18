@@ -63,8 +63,8 @@ SELECT '同仁堂', 'https://images.unsplash.com/photo-1597481499750-3e6b22637e1
 WHERE NOT EXISTS (SELECT 1 FROM `content_brand` WHERE `name` = '同仁堂');
 
 INSERT INTO `content_topic` (`title`, `subtitle`, `pic_url`, `price_info`, `sort`, `status`)
-SELECT '陕铺养生指南', '传统中医智慧，现代健康生活', 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=600&auto=format&fit=crop', '49.9', 100, 1
-WHERE NOT EXISTS (SELECT 1 FROM `content_topic` WHERE `title` = '陕铺养生指南');
+SELECT '药食同源养生指南', '传统中医智慧，现代健康生活', 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=600&auto=format&fit=crop', '49.9', 100, 1
+WHERE NOT EXISTS (SELECT 1 FROM `content_topic` WHERE `title` = '药食同源养生指南');
 INSERT INTO `content_topic` (`title`, `subtitle`, `pic_url`, `price_info`, `sort`, `status`)
 SELECT '四季养生茶饮', '顺应时节，调养身心', 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=600&auto=format&fit=crop', '29.9', 90, 1
 WHERE NOT EXISTS (SELECT 1 FROM `content_topic` WHERE `title` = '四季养生茶饮');

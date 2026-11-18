@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DatabaseMigrationValidator implements ApplicationRunner {
 
-    private static final String REQUIRED_VERSION = "20260816_12";
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -24,11 +23,20 @@ public class DatabaseMigrationValidator implements ApplicationRunner {
         if (historyTable == null || historyTable != 1) {
             throw new IllegalStateException("数据库迁移历史不存在，禁止启动生产/预发布服务");
         }
-        Integer applied = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM schema_migration_history WHERE version = ?",
-                Integer.class, REQUIRED_VERSION);
-        if (applied == null || applied != 1) {
-            throw new IllegalStateException("数据库未执行必需迁移 " + REQUIRED_VERSION + "，禁止启动生产/预发布服务");
+        java.util.Properties required = new java.util.Properties();
+        try (var input = getClass().getResourceAsStream("/delivery-migrations.properties")) {
+            if (input == null) throw new IllegalStateException("发布迁移清单缺失，禁止启动");
+            required.load(input);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException("无法读取发布迁移清单", exception);
+        }
+        if (required.isEmpty()) throw new IllegalStateException("发布迁移清单为空，禁止启动");
+        for (String version : new java.util.TreeSet<>(required.stringPropertyNames())) {
+            java.util.List<String> checksums = jdbcTemplate.queryForList(
+                    "SELECT checksum FROM schema_migration_history WHERE version = ?", String.class, version);
+            if (checksums.size() != 1 || !required.getProperty(version).equals(checksums.get(0))) {
+                throw new IllegalStateException("数据库迁移未执行或校验和不符：" + version + "，禁止启动生产/预发布服务");
+            }
         }
     }
 }

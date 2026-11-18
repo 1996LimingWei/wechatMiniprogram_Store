@@ -63,7 +63,7 @@ UPDATE `trade_order`
  WHERE `id` BETWEEN 810001 AND 810013;
 
 UPDATE `trade_order_item`
-   SET `goods_name` = '陕铺养生组合装',
+   SET `goods_name` = '药食同源养生组合装',
        `spec_name` = '标准装',
        `update_time` = NOW()
  WHERE `id` BETWEEN 815001 AND 815013;

@@ -403,8 +403,14 @@ function getTopMenu(tag = false): menuType | undefined {
   return topMenu;
 }
 
-async function getWorkbenchPath() {
+async function getWorkbenchPath(preferredPath?: string) {
   await initRouter();
+  if (
+    preferredPath &&
+    findRouteByPath(preferredPath, usePermissionStoreHook().wholeMenus)
+  ) {
+    return preferredPath;
+  }
   return getTopMenu()?.path;
 }
 

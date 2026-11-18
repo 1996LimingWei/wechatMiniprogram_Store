@@ -1,0 +1,9 @@
+[Unit]
+Description=每日执行陕铺备份保留检查
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

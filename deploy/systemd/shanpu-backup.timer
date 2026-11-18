@@ -1,0 +1,10 @@
+[Unit]
+Description=每30分钟执行陕铺备份
+
+[Timer]
+OnCalendar=*-*-* *:00,30:00
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

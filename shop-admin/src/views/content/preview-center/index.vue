@@ -23,6 +23,7 @@ import {
   saveProduct
 } from "@/api/product";
 import { getCategoryList } from "@/api/category";
+import { http } from "@/utils/http";
 import { getSkuList } from "@/api/sku";
 import MaterialImagePicker from "@/components/MaterialImagePicker/index.vue";
 import LinkSelector from "@/components/LinkSelector/index.vue";
@@ -103,6 +104,7 @@ interface ProductEditorFormState {
   status: number;
 }
 
+const shopDisplay = ref({ displayName: "陕铺", logoUrl: "" });
 const route = useRoute();
 const router = useRouter();
 
@@ -1438,7 +1440,7 @@ function openFullEditor() {
 async function handleRollback(scope: "product" | "content", row: AdminOperationSnapshotItem) {
   const sceneLabel = formatSceneLabel(row.sceneCode);
   await ElMessageBox.confirm(
-    `将回退「${sceneLabel} / ${row.entityName || "未命名对象"}」最近一次操作，恢复到修改前状态。是否继续？`,
+    `将回退「${sceneLabel} / ${row.entityName || "未命名对象"}」最近一次展示修改。商品库存、价格和规格集合不会恢复，请使用专门的价格及库存操作。是否继续？`,
     "确认一键回退",
     {
       type: "warning",
@@ -1619,6 +1621,8 @@ watch(
 );
 
 onMounted(async () => {
+  try { shopDisplay.value = await http.get<{ displayName: string; logoUrl: string }, undefined>("/admin-api/content/shop-config"); } catch { /* 接口错误由统一处理器提示 */ }
+
   if (route.query.fresh === "1") {
     clearAllPreviewDrafts();
     refreshDrafts();
@@ -1694,7 +1698,7 @@ onBeforeUnmount(() => {
               <div class="phone-screen home-screen">
                 <div class="home-hero">
                   <div class="brand-block">
-                    <div class="brand-title">陕铺</div>
+                    <div class="brand-title">{{ shopDisplay.displayName }}</div>
                     <div class="brand-subtitle">实时首页预览</div>
                   </div>
                   <div class="search-pill">搜索药食、花茶、滋补好物</div>

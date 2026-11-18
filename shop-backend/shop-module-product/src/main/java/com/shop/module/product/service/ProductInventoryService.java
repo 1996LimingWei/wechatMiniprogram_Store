@@ -34,6 +34,9 @@ public class ProductInventoryService {
         if (spu.getStatus() == null || spu.getStatus() != 1) {
             throw new ServerException(1102, "商品已下架");
         }
+        if (spu.getType() != null && spu.getType() != 1) {
+            throw new ServerException(1102, "当前版本暂不支持购买该类型商品");
+        }
         ProductSkuDO sku = productSkuMapper.selectById(skuId);
         if (sku == null || !spuId.equals(sku.getSpuId())) {
             throw new ServerException(1101, "商品规格不存在");

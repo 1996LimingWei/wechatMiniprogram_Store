@@ -16,6 +16,9 @@ public class WechatPayProperties {
     private String privateKeyPath;
     private String apiV3Key;
     private String platformCertificatePath;
+    private String publicKeyId;
+    private String publicKeyPath;
+    private java.util.List<String> platformCertificatePaths = new java.util.ArrayList<>();
     private String notifyUrl;
     private String refundNotifyUrl;
 }

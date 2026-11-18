@@ -37,6 +37,19 @@ public class MarketingShippingService {
                 ? rule.getBaseFee() : 0;
     }
 
+    /** 购物车展示与结算使用同一生效规则，基础运费为零时不再提示凑单。 */
+    public int getFreeThreshold() {
+        MarketingShippingRuleDO rule = getCurrentRule();
+        if (rule != null && rule.getFreeThreshold() != null && rule.getBaseFee() != null
+                && rule.getFreeThreshold() >= 0 && rule.getBaseFee() >= 0) {
+            return rule.getBaseFee() == 0 ? 0 : rule.getFreeThreshold();
+        }
+        if (fallbackFreeThreshold < 0 || fallbackBaseFee < 0) {
+            throw new com.shop.common.exception.ServerException(500, "运费配置不正确");
+        }
+        return fallbackBaseFee == 0 ? 0 : fallbackFreeThreshold;
+    }
+
     /**
      * 全局运费规则优先级：在有效期内且启用的数据库规则优先，按生效时间和 ID 最新规则胜出；没有规则时才使用配置兜底。
      * 规则内部优先执行免邮门槛，达到门槛时运费为 0，否则收取基础运费。

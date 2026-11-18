@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 import java.time.Duration;
 
@@ -12,6 +13,7 @@ import java.time.Duration;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "wechat.pay", name = "reconcile-job-enabled", havingValue = "true")
+@ConditionalOnExpression("'${app.delivery-mode:commerce}' == 'commerce'")
 public class WechatPayReconcileJob {
 
     private final PayExceptionWorkbenchService payExceptionWorkbenchService;

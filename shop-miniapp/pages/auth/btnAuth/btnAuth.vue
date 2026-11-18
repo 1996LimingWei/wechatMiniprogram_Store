@@ -5,7 +5,7 @@
 		<view class="content">
 			<view class="brand-area">
 				<image class="logo" src="/static/images/logo.png" mode="aspectFit"></image>
-				<view class="brand-name">陕铺</view>
+				<view class="brand-name">{{ $store.state.shop.displayName }}</view>
 				<view class="brand-slogan">传承经典 · 健康生活</view>
 			</view>
 			<view class="auth-card">

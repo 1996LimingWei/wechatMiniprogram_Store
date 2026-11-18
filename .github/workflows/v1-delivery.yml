@@ -8,10 +8,24 @@ on:
     branches:
       - main
 
+concurrency:
+  group: delivery-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   delivery-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
       mysql:
         image: mysql:8.0
         env:
@@ -27,6 +41,8 @@ jobs:
     steps:
       - name: 拉取代码
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: 安装 Java 25
         uses: actions/setup-java@v4
@@ -35,15 +51,34 @@ jobs:
           java-version: "25"
           cache: maven
 
+      - name: 安装固定 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+
       - name: 安装 Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.17.0"
           cache: pnpm
           cache-dependency-path: shop-admin/pnpm-lock.yaml
 
       - name: 启用 pnpm
         run: corepack enable
+
+      - name: 安装交付工具依赖
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 交付工具回归测试
+        run: |
+          python -m pip install -r scripts/requirements-delivery.txt
+          python -m unittest discover -s scripts -p 'test_*.py'
+          node scripts/verify-miniapp-env.js
+          node --test scripts/test-miniapp-behavior.cjs
+          python scripts/generate_migration_manifest.py --check
+          python scripts/verify_security_feature_boundary.py
 
       - name: Secret 与配置门禁
         shell: pwsh
@@ -59,7 +94,7 @@ jobs:
 
       - name: 后端测试
         working-directory: shop-backend
-        run: mvn -B test
+        run: mvn -B -s .mvn/settings-ci.xml "-Dmaven.repo.local=$HOME/.m2/repository" verify
 
       - name: 管理后台类型检查与构建
         working-directory: shop-admin
@@ -67,6 +102,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm typecheck
           pnpm build
+          pnpm audit --prod --audit-level high
 
       - name: 数据库迁移门禁
         shell: pwsh
@@ -76,3 +112,59 @@ jobs:
             throw "未找到 MySQL 服务容器"
           }
           ./scripts/verify-db-migration.ps1 -MysqlContainer $mysqlContainer
+
+      - name: 隔离交易流程与数据一致性演练
+        shell: pwsh
+        run: |
+          $mysqlContainer = docker ps --filter "ancestor=mysql:8.0" --format "{{.Names}}" | Select-Object -First 1
+          ./scripts/verify_trade_runtime_ci.ps1 -MysqlContainer $mysqlContainer
+
+      - name: 归档交付验证报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-test-reports
+          path: |
+            shop-backend/**/target/surefire-reports/
+          retention-days: 14
+
+  catalog-runtime:
+    needs: delivery-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 演练生产容器部署、录入及备份恢复
+        run: |
+          python -m pip install -r scripts/requirements-ci.txt
+          python -m playwright install --with-deps chromium
+          echo '127.0.0.1 shop.delivery.test' | sudo tee -a /etc/hosts
+          python scripts/verify_catalog_runtime.py
+      - name: 保存通过验收的精确镜像包
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-verified-images-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            deploy/releases/runtime-bundle/images.tar
+            deploy/releases/runtime-bundle/manifest.json
+          if-no-files-found: error
+          compression-level: 1
+          retention-days: 7
+      - name: 归档容器演练结论
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-runtime-reports
+          path: |
+            deploy/reviews/catalog-runtime.json
+            deploy/reviews/screenshots/*.png
+            deploy/reviews/screenshots/*.json
+            deploy/releases/*.json
+          retention-days: 14

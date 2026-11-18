@@ -1,6 +1,7 @@
 package com.shop.server.config;
 
 import com.shop.module.member.config.WxMaProperties;
+import com.shop.common.config.DeliveryMode;
 import com.shop.module.trade.config.TradeMockActionProperties;
 import com.shop.module.trade.config.WechatPayProperties;
 import com.shop.module.trade.service.WechatPayService;
@@ -22,6 +23,7 @@ import java.util.List;
 public class ProductionConfigurationValidator implements ApplicationRunner {
 
     private final Environment environment;
+    private final DeliveryMode deliveryMode;
     private final WxMaProperties wxMaProperties;
     private final TradeMockActionProperties tradeMockActionProperties;
     private final WechatPayProperties wechatPayProperties;
@@ -37,6 +39,7 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         requireText("spring.data.redis.host", missing);
         requireText("spring.data.redis.password", missing);
 
+        if (deliveryMode.isCommerce()) {
         if (isBlank(wxMaProperties.getAppid())) {
             missing.add("wx.ma.appid");
         }
@@ -50,6 +53,8 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
                 && !wxMaProperties.getAppid().equals(wechatPayProperties.getAppId())) {
             missing.add("wx.ma.appid 与 wechat.pay.app-id 必须一致");
         }
+        }
+        if (wxMaProperties.isMockEnabled()) missing.add("微信登录 Mock 必须关闭");
         if (tradeMockActionProperties.isMockActionsEnabled()) {
             missing.add("trade.mock-actions-enabled 必须为 false");
         }
@@ -62,7 +67,7 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         if (environment.getProperty("member.features.profile-edit-enabled", Boolean.class, false)) {
             missing.add("member.features.profile-edit-enabled 当前版本必须为 false");
         }
-        if (!"wechat".equals(environment.getProperty("trade.refund.provider"))) {
+        if (deliveryMode.isCommerce() && !"wechat".equals(environment.getProperty("trade.refund.provider"))) {
             missing.add("trade.refund.provider 必须为 wechat");
         }
         String corsOrigins = environment.getProperty("web.cors.allowed-origin-patterns");
@@ -70,8 +75,8 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
             missing.add("web.cors.allowed-origin-patterns 必须配置明确来源且不能包含通配符");
         }
         requireHttpsUrl("app.external-base-url", missing);
-        requireHttpsUrl("wechat.pay.notify-url", missing);
-        requireHttpsUrl("wechat.pay.refund-notify-url", missing);
+        if (deliveryMode.isCommerce()) requireHttpsUrl("wechat.pay.notify-url", missing);
+        if (deliveryMode.isCommerce()) requireHttpsUrl("wechat.pay.refund-notify-url", missing);
         String materialProvider = environment.getProperty("material.storage.provider");
         if (!"mounted".equals(materialProvider)) {
             missing.add("material.storage.provider 生产/预发布必须配置为 mounted");
@@ -82,12 +87,14 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         if (materialMaxSize == null || materialMaxSize <= 0 || materialMaxSize > 20 * 1024 * 1024L) {
             missing.add("material.storage.max-size 必须在 1 到 20MB 之间");
         }
+        if (deliveryMode.isCommerce()) {
         String logisticsProvider = environment.getProperty("trade.logistics.provider");
         if (!"kuaidi100".equals(logisticsProvider)) {
             missing.add("trade.logistics.provider 必须配置为 kuaidi100");
         } else {
             requireText("trade.logistics.kuaidi100.customer", missing);
             requireText("trade.logistics.kuaidi100.key", missing);
+        }
         }
         Integer freeThreshold = environment.getProperty("trade.freight.free-threshold", Integer.class);
         Integer baseFee = environment.getProperty("trade.freight.base-fee", Integer.class);
@@ -104,7 +111,7 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
         if (!missing.isEmpty()) {
             throw new IllegalStateException("生产/预发布配置不完整: " + String.join(", ", missing));
         }
-        wechatPayService.validateCredentialFiles();
+        if (deliveryMode.isCommerce()) wechatPayService.validateCredentialFiles();
     }
 
     private void requireText(String key, List<String> missing) {

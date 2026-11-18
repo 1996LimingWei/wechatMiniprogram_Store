@@ -1,6 +1,7 @@
 package com.shop.framework.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shop.common.config.DeliveryMode;
 import com.shop.common.pojo.CommonResult;
 import com.shop.common.exception.ErrorCode;
 import org.springframework.context.annotation.Bean;
@@ -21,7 +22,7 @@ public class SecurityAutoConfiguration {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, TokenService tokenService,
-                                           JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) throws Exception {
+                                           JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, DeliveryMode deliveryMode) throws Exception {
         TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(tokenService);
         http
             .csrf(AbstractHttpConfigurer::disable)
@@ -31,6 +32,8 @@ public class SecurityAutoConfiguration {
                 .requestMatchers(
                         "/app-api/auth/LoginByMa",
                         "/app-api/auth/refresh-token",
+                        "/app-api/auth/phone-login",
+                        "/app-api/pay/wechat/refund-notify",
                         "/app-api/pay/wechat/notify"
                 ).permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
@@ -75,6 +78,7 @@ public class SecurityAutoConfiguration {
                 })
             )
             .addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new DeliveryModeFilter(deliveryMode), TokenAuthenticationFilter.class)
             .addFilterAfter(new AdminSecurityFilter(jdbcTemplate, objectMapper), TokenAuthenticationFilter.class);
         return http.build();
     }

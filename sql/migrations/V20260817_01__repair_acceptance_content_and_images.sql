@@ -29,7 +29,7 @@ UPDATE `content_brand`
 
 UPDATE `content_topic`
    SET `title` = CASE `id`
-       WHEN 3 THEN '陕铺养生指南'
+       WHEN 3 THEN '药食同源养生指南'
        WHEN 4 THEN '四季养生茶饮'
        ELSE `title`
    END,

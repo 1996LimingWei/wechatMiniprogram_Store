@@ -154,7 +154,16 @@ router.beforeEach((to: ToRouteType, _from, next) => {
       next({ path: "/error/403" });
       return;
     }
-    if (!hasRoutePermissions(to.meta, userInfo.permissions)) {
+    const permissions = userInfo.permissions;
+    if (
+      to.path === "/dashboard" &&
+      !hasRoutePermissions(to.meta, permissions) &&
+      permissions?.some(p => p === "product:manage" || p === "product:read")
+    ) {
+      next({ path: "/product/spu" });
+      return;
+    }
+    if (!hasRoutePermissions(to.meta, permissions)) {
       next({ path: "/access-denied" });
       return;
     }
