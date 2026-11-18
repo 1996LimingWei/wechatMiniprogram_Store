@@ -1125,6 +1125,10 @@ async function confirmDiscardChanges(actionLabel: string) {
 
 async function openVisualEditor(scene: VisualEditorScene, entityId?: number, targetTab?: string) {
   if (!entityId) return;
+  if (scene === "product" ? !canManageProduct : !canManageContent) {
+    ElMessage.warning("当前账号仅可查看此内容");
+    return;
+  }
   const changingSelection = visualEditorScene.value !== scene || visualEditorEntityId.value !== entityId;
   if (changingSelection && !await confirmDiscardChanges("切换到其他内容")) return;
   if (targetTab) activeTab.value = targetTab;

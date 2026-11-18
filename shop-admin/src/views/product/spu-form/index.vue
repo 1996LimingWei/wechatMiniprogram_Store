@@ -6,6 +6,7 @@ import { QuestionFilled } from "@element-plus/icons-vue";
 import { getProductDetail, saveProduct } from "@/api/product";
 import { getCategoryList } from "@/api/category";
 import { getSkuList } from "@/api/sku";
+import { hasVisualEditorAccess } from "@/utils/auth";
 import MaterialImagePicker from "@/components/MaterialImagePicker/index.vue";
 import type { ProductSpu, Category, ProductSku } from "@/api/types";
 import { clearPreviewDraft, notifyPreviewDataCommitted, setPreviewDraft } from "@/utils/preview-center";
@@ -112,7 +113,7 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
-const loading = ref(false);
+const loading = ref(true);
 const submitting = ref(false);
 const multiSpecEnabled = ref(false);
 const keywordTags = ref<string[]>([]);
@@ -122,12 +123,15 @@ const specs = ref<SpecDimension[]>([]);
 const skuMatrix = ref<ProductSku[]>([]);
 const originalSkuStocks = ref(new Map<number, number>());
 const stockAdjustReason = ref("");
-const showSkuSection = computed(() => isEdit.value || multiSpecEnabled.value);
+const hasStoredSkus = ref(false);
+const showSkuSection = computed(() => hasStoredSkus.value || multiSpecEnabled.value);
 const form = reactive(createEmptyFormState());
 
 const stockChanged = computed(() => {
-  if (!showSkuSection.value) return false;
   if (!isEdit.value) return false;
+  if (!showSkuSection.value) {
+    return savedSnapshot.value !== null && form.stock !== savedSnapshot.value.form.stock;
+  }
   const currentIds = new Set<number>();
   for (const sku of skuMatrix.value) {
     if (!sku.id || !originalSkuStocks.value.has(sku.id)) return true;
@@ -260,6 +264,7 @@ async function loadProduct() {
     keywordTags.value = parseKeywordTags(detail.keyword || "");
 
     const skus = (await getSkuList(spuId.value)) as ProductSku[];
+    hasStoredSkus.value = skus.length > 0;
     if (skus.length > 0) {
       const parsed = parseSpecsFromSkus(skus);
       specs.value = parsed.dims;
@@ -425,6 +430,7 @@ function buildSpuPayload(): ProductSpu {
 }
 
 async function handleSave() {
+  if (loading.value || submitting.value) return;
   if (!form.name.trim()) {
     ElMessage.warning("请输入商品名称");
     return;
@@ -612,11 +618,15 @@ watch(
 );
 
 onMounted(async () => {
-  categoryList.value = (await getCategoryList()) as Category[];
-  if (isEdit.value) {
-    await loadProduct();
-  } else {
-    captureSavedSnapshot();
+  try {
+    categoryList.value = (await getCategoryList()) as Category[];
+    if (isEdit.value) {
+      await loadProduct();
+    } else {
+      captureSavedSnapshot();
+    }
+  } finally {
+    loading.value = false;
   }
 });
 
@@ -633,7 +643,7 @@ onBeforeUnmount(() => {
         <h3 class="page-title">{{ isEdit ? "编辑商品" : "新增商品" }}</h3>
       </div>
       <div class="header-actions">
-        <el-button plain @click="openPreviewCenter">打开可视化装修</el-button>
+        <el-button v-if="hasVisualEditorAccess()" plain @click="openPreviewCenter">打开可视化装修</el-button>
         <el-tag :type="hasUnsavedChanges ? 'warning' : 'success'" effect="plain">
           {{ hasUnsavedChanges ? "有未保存修改" : "已与已保存内容一致" }}
         </el-tag>
@@ -732,7 +742,7 @@ onBeforeUnmount(() => {
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col v-if="!isEdit" :span="8">
+              <el-col v-if="!hasStoredSkus" :span="8">
                 <el-form-item label="规格模式">
                   <el-switch
                     v-model="multiSpecEnabled"
@@ -821,6 +831,21 @@ onBeforeUnmount(() => {
               </el-form-item>
             </el-col>
           </el-row>
+          <el-form-item
+            v-if="!showSkuSection && stockChanged"
+            label="调整原因"
+            required
+            label-width="100px"
+          >
+            <el-input
+              v-model="stockAdjustReason"
+              type="textarea"
+              :rows="3"
+              maxlength="200"
+              show-word-limit
+              placeholder="填写盘点入库、损耗修正等具体原因"
+            />
+          </el-form-item>
         </el-card>
 
         <el-card shadow="never" class="section">
@@ -908,9 +933,10 @@ onBeforeUnmount(() => {
             生成 SKU 矩阵
           </el-button>
 
-          <el-table scrollbar-always-on
+          <el-table
             v-if="skuMatrix.length > 0"
             :data="skuMatrix"
+            native-scrollbar
             border
             style="width: 100%; margin-top: 16px"
             size="small"
@@ -1139,7 +1165,7 @@ onBeforeUnmount(() => {
       <el-button plain :disabled="!hasUnsavedChanges" @click="handleRestoreSnapshot">
         {{ restoreButtonText }}
       </el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSave">
+      <el-button type="primary" :disabled="!savedSnapshot" :loading="submitting" @click="handleSave">
         {{ isEdit ? "保存修改" : "创建商品" }}
       </el-button>
     </div>

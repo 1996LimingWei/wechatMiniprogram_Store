@@ -12,6 +12,7 @@ import { useLayout } from "@/layout/hooks/useLayout";
 import { useUserStoreHook } from "@/store/modules/user";
 import { bg, illustration } from "./utils/static";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
+import { getWorkbenchPath } from "@/router/utils";
 import { useDataThemeChange } from "@/layout/hooks/useDataThemeChange";
 
 import dayIcon from "@/assets/svg/day.svg?component";
@@ -51,9 +52,8 @@ const onLogin = async (formEl: FormInstance | undefined) => {
           password: ruleForm.password
         })
         .then(async () => {
-          // 动态菜单由路由守卫异步初始化；这里固定进入看板，避免菜单尚未就绪时取首页路径报错。
           disabled.value = true;
-          await router.replace("/dashboard");
+          await router.replace((await getWorkbenchPath()) ?? "/access-denied");
           message("登录成功", { type: "success" });
         })
         .catch(() => {

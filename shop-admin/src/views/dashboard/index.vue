@@ -431,7 +431,7 @@ onBeforeUnmount(() => {
           <template #header>
             <span class="card-title">最近订单</span>
           </template>
-          <el-table scrollbar-always-on
+          <el-table native-scrollbar
             :data="recentOrders"
             stripe
             size="small"

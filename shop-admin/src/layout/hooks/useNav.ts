@@ -89,7 +89,8 @@ export function useNav() {
   }
 
   function backTopMenu() {
-    router.push(getTopMenu()?.path);
+    const path = getTopMenu()?.path;
+    if (path) router.push(path);
   }
 
   function onPanel() {

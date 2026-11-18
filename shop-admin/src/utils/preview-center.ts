@@ -1,3 +1,8 @@
+export const visualEditorPermissionGroups = [
+  ["content:manage", "content:read"],
+  ["product:manage", "product:read"]
+];
+
 export type PreviewCenterScene =
   | "home"
   | "product"

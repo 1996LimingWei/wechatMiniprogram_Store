@@ -16,6 +16,7 @@ import {
 import {
   ascending,
   getTopMenu,
+  hasRoutePermissions,
   initRouter,
   isOneOfArray,
   getHistoryMode,
@@ -153,11 +154,7 @@ router.beforeEach((to: ToRouteType, _from, next) => {
       next({ path: "/error/403" });
       return;
     }
-    if (
-      Array.isArray(to.meta?.permissions) &&
-      to.meta.permissions.length > 0 &&
-      !to.meta.permissions.some(permission => userInfo?.permissions?.includes(permission))
-    ) {
+    if (!hasRoutePermissions(to.meta, userInfo.permissions)) {
       next({ path: "/access-denied" });
       return;
     }

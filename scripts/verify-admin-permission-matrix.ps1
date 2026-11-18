@@ -72,8 +72,9 @@ Assert-Contains $rbacV1 "trade:order-ship" "财务角色必须剥离发货权限
 Assert-Contains $rbacV1 "PRODUCT_OPERATOR" "商品运营角色必须有权限收紧规则"
 Assert-Contains $rbacV1 "trade:reconcile-export" "商品运营必须剥离财务对账导出权限"
 
-Assert-Contains $routerUtils 'requiredPermissions' "前端动态路由必须支持 permissions 元信息"
-Assert-Contains $routerIndex 'to\.meta\?\.permissions' "前端路由守卫必须校验页面权限"
+Assert-Contains $routerUtils 'hasRoutePermissions\(v\.meta' "前端菜单必须校验路由权限"
+Assert-Contains $routerUtils 'permissionGroups\?\.every' "前端路由必须同时校验每组权限"
+Assert-Contains $routerIndex 'hasRoutePermissions\(to\.meta' "前端路由守卫必须校验页面权限"
 Assert-Contains $authUtils 'hasAnyPerms' "前端必须提供任一权限按钮判断"
 
 foreach ($keyword in @(

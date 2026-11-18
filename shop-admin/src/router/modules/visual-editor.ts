@@ -1,3 +1,5 @@
+import { visualEditorPermissionGroups } from "@/utils/preview-center";
+
 const Layout = () => import("@/layout/index.vue");
 
 export default {
@@ -17,7 +19,7 @@ export default {
             component: () => import("@/views/content/preview-center/index.vue"),
             meta: {
                 title: "实时预览与编辑",
-                permissions: ["content:manage", "content:read", "product:manage", "product:read"]
+                permissionGroups: visualEditorPermissionGroups
             }
         }
     ]

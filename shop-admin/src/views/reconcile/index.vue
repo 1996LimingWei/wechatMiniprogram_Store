@@ -286,7 +286,7 @@ onMounted(fetchData);
       </el-form-item>
     </el-form>
 
-    <el-table scrollbar-always-on
+    <el-table native-scrollbar
       v-loading="loading"
       :data="rows"
       border
@@ -405,7 +405,7 @@ onMounted(fetchData);
         </el-select>
       </div>
 
-      <el-table scrollbar-always-on v-loading="diffLoading" :data="differences" border>
+      <el-table native-scrollbar v-loading="diffLoading" :data="differences" border>
         <el-table-column label="差异类型" width="130">
           <template #default="{ row }">
             <el-tag :type="diffTypeColor(row.diffType)">{{ row.diffTypeText }}</el-tag>

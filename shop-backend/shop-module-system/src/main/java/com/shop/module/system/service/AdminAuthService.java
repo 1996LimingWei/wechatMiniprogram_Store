@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +20,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class AdminAuthService {
+
+    static final int MAX_PASSWORD_BYTES = 72;
 
     private final JdbcTemplate jdbcTemplate;
     private final TokenService tokenService;
@@ -34,7 +37,7 @@ public class AdminAuthService {
     public Map<String, Object> login(String username, String password, HttpServletRequest request) {
         String normalizedUsername = username == null ? "" : username.trim();
         if (normalizedUsername.isEmpty() || normalizedUsername.length() > 64
-                || password == null || password.isEmpty() || password.length() > 128) {
+                || password == null || password.isEmpty() || exceedsPasswordLimit(password)) {
             recordLogin(null, normalizedUsername, false, request, "账号或密码错误");
             throw new ServerException(401, "管理员账号或密码错误");
         }
@@ -98,6 +101,10 @@ public class AdminAuthService {
                 account.id(), account.username(), account.nickname(), "");
         result.put("token", tokenService.createToken(loginUser));
         return result;
+    }
+
+    static boolean exceedsPasswordLimit(String password) {
+        return password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES;
     }
 
     public Map<String, Object> profile(Long adminUserId) {

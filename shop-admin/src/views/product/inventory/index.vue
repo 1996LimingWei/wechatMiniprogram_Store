@@ -237,7 +237,7 @@ onMounted(fetchData);
 
     <el-card shadow="never">
       <div class="table-toolbar">共 {{ total }} 个 SKU</div>
-      <el-table scrollbar-always-on v-loading="loading" :data="rows" border style="width: 100%">
+      <el-table native-scrollbar v-loading="loading" :data="rows" border style="width: 100%">
         <el-table-column label="商品" min-width="220" fixed="left">
           <template #default="{ row }">
             <div class="product-cell">
@@ -349,7 +349,7 @@ onMounted(fetchData);
           <el-button type="primary" :icon="Search" @click="fetchLogs">搜索</el-button>
         </el-form-item>
       </el-form>
-      <el-table scrollbar-always-on v-loading="logLoading" :data="logRows" border>
+      <el-table native-scrollbar v-loading="logLoading" :data="logRows" border>
         <el-table-column prop="bizType" label="类型" width="120" />
         <el-table-column prop="bizNo" label="业务单号" min-width="180" show-overflow-tooltip />
         <el-table-column prop="changeQuantity" label="变化" width="80" align="center" />
@@ -378,7 +378,7 @@ onMounted(fetchData);
           差异 {{ reconcileResult.mismatchCount }}
         </el-tag>
       </div>
-      <el-table scrollbar-always-on
+      <el-table native-scrollbar
         v-if="reconcileResult"
         :data="reconcileResult.rows"
         border

@@ -1,6 +1,7 @@
 import Cookies from "js-cookie";
 import { useUserStoreHook } from "@/store/modules/user";
 import { storageLocal } from "@pureadmin/utils";
+import { visualEditorPermissionGroups } from "./preview-center";
 
 export interface DataInfo<T> {
   /** 后端签发的 JWT token */
@@ -123,3 +124,10 @@ export const hasAnyPerms = (values: Array<string>): boolean => {
   const { permissions } = useUserStoreHook();
   return values.some(permission => permissions.includes(permission));
 };
+
+export const hasVisualEditorAccess = () => visualEditorPermissionGroups.every(hasAnyPerms);
+
+export const adminPasswordFits = (value: string) => new TextEncoder().encode(value).length <= 72;
+export const adminPasswordHint = "密码须至少 10 位、最多 72 字节，且包含英文字母和数字";
+export const isValidNewAdminPassword = (value?: string) =>
+  !!value && value.length >= 10 && adminPasswordFits(value) && /[A-Za-z]/.test(value) && /\d/.test(value);

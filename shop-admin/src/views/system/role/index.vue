@@ -34,7 +34,7 @@ onMounted(fetchData);
   <div class="app-container role-page">
     <el-card shadow="never">
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="openCreate">新增角色</el-button><el-button :icon="Refresh" circle title="刷新" @click="fetchData" /></div>
-      <el-table scrollbar-always-on v-loading="loading" :data="roles" border>
+      <el-table native-scrollbar v-loading="loading" :data="roles" border>
         <el-table-column prop="name" label="角色名称" min-width="150" />
         <el-table-column prop="code" label="角色编码" min-width="190" />
         <el-table-column label="已配置权限" min-width="330"><template #default="{ row }"><el-tag v-for="permission in row.permissionCodes" :key="permission" class="permission-tag" effect="plain">{{ permission }}</el-tag></template></el-table-column>

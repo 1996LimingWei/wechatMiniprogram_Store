@@ -164,7 +164,7 @@ onMounted(fetchData);
         </el-card>
 
         <el-card shadow="never">
-            <el-table scrollbar-always-on :data="list" v-loading="loading" border>
+            <el-table native-scrollbar :data="list" v-loading="loading" border>
                 <el-table-column prop="id" label="ID" width="60" align="center" />
                 <el-table-column prop="name" label="活动名称" min-width="140" show-overflow-tooltip />
                 <el-table-column label="满减门槛" width="120" align="right">

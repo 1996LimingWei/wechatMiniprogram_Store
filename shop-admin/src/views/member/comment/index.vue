@@ -109,7 +109,7 @@ onMounted(fetchData);
                 <span class="total-label">共 {{ total }} 条评论</span>
             </div>
 
-            <el-table scrollbar-always-on
+            <el-table native-scrollbar
                 :data="tableData"
                 v-loading="loading"
                 border

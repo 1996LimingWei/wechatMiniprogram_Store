@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
 import { Lock, Plus, Refresh, Search } from "@element-plus/icons-vue";
+import { adminPasswordHint, isValidNewAdminPassword } from "@/utils/auth";
 import {
   forceLogoutAdminUser,
   getAdminUserPage,
@@ -46,7 +47,7 @@ const formRef = ref<FormInstance>();
 const form = reactive({ id: undefined as number | undefined, username: "", password: "", nickname: "", avatar: "", roleIds: [] as number[] });
 const rules: FormRules = {
   username: [{ required: true, message: "请输入账号", trigger: "blur" }, { pattern: /^[A-Za-z][A-Za-z0-9_.-]{2,63}$/, message: "账号须以字母开头，长度 3 至 64 位", trigger: "blur" }],
-  password: [{ validator: (_rule, value, callback) => !form.id && (!value || value.length < 10 || !/[A-Za-z]/.test(value) || !/\d/.test(value)) ? callback(new Error("密码至少 10 位且包含字母和数字")) : callback(), trigger: "blur" }],
+  password: [{ validator: (_rule, value) => !!form.id || isValidNewAdminPassword(value) || new Error(adminPasswordHint), trigger: "blur" }],
   nickname: [{ required: true, message: "请输入姓名", trigger: "blur" }],
   roleIds: [{ type: "array", required: true, min: 1, message: "至少选择一个角色", trigger: "change" }]
 };
@@ -78,7 +79,7 @@ async function toggleStatus(row: AdminUser) {
 }
 async function unlock(row: AdminUser) { await unlockAdminUser(row.id); ElMessage.success("账号已解除锁定"); await fetchData(); }
 async function resetPassword(row: AdminUser) {
-  const { value } = await ElMessageBox.prompt(`为 ${row.username} 设置新密码`, "重置密码", { inputType: "password", inputPlaceholder: "至少 10 位，包含字母和数字", inputValidator: value => value && value.length >= 10 && /[A-Za-z]/.test(value) && /\d/.test(value) || "密码至少 10 位且包含字母和数字" });
+  const { value } = await ElMessageBox.prompt(`为 ${row.username} 设置新密码`, "重置密码", { inputType: "password", inputPlaceholder: "至少 10 位，包含字母和数字", inputValidator: value => isValidNewAdminPassword(value) || adminPasswordHint });
   await resetAdminUserPassword(row.id, value);
   ElMessage.success("密码已重置，原会话已失效");
 }
@@ -99,7 +100,7 @@ onMounted(async () => { roles.value = await getSystemRoles(); await fetchData();
     </el-card>
     <el-card shadow="never">
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="openCreate">新增管理员</el-button><span>共 {{ total }} 个账号</span></div>
-      <el-table scrollbar-always-on v-loading="loading" :data="rows" border>
+      <el-table native-scrollbar v-loading="loading" :data="rows" border>
         <el-table-column prop="username" label="账号" min-width="150" />
         <el-table-column prop="nickname" label="姓名" min-width="130" />
         <el-table-column label="角色" min-width="190"><template #default="{ row }"><el-tag v-for="role in row.roleNames" :key="role" class="role-tag" effect="plain">{{ role }}</el-tag></template></el-table-column>

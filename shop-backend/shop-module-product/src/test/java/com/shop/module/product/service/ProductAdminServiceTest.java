@@ -12,6 +12,7 @@ import com.shop.module.product.dal.mysql.ProductSpuMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -137,6 +139,71 @@ class ProductAdminServiceTest {
                         .saveSkus(10L, List.of(requested), 99L, ""));
 
         assertEquals(400, exception.getCode());
+    }
+
+    @Test
+    void shouldSaveLegacyProductUsingItsExistingPriceAndStock() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        CategoryMapper categoryMapper = mock(CategoryMapper.class);
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        ProductSpuDO saved = legacyProduct();
+        ProductSpuDO edited = legacyProduct();
+        edited.setName("更新后的旧商品");
+        when(spuMapper.selectOne(any())).thenReturn(saved);
+        when(spuMapper.updateById(edited)).thenReturn(1);
+        when(skuMapper.selectList(any())).thenReturn(List.of());
+        CategoryDO category = new CategoryDO();
+        category.setStatus(1);
+        when(categoryMapper.selectById(8L)).thenReturn(category);
+        when(skuMapper.insert(any(ProductSkuDO.class))).thenAnswer(invocation -> {
+            ProductSkuDO created = invocation.getArgument(0);
+            created.setId(21L);
+            return 1;
+        });
+        when(skuMapper.selectOne(any())).thenReturn(sku(21L, 10L, 100));
+
+        ProductAdminService service = new ProductAdminService(
+                spuMapper, skuMapper, categoryMapper, mock(ProductInventoryService.class),
+                jdbcTemplate, mock(MaterialAssetService.class));
+        assertEquals(10L, service.saveProduct(edited, List.of(), 99L, ""));
+
+        ArgumentCaptor<ProductSkuDO> captured = ArgumentCaptor.forClass(ProductSkuDO.class);
+        verify(skuMapper).insert(captured.capture());
+        assertEquals("[]", captured.getValue().getProperties());
+        assertEquals(2900, captured.getValue().getPrice());
+        assertEquals(3900, captured.getValue().getMarketPrice());
+        assertEquals(100, captured.getValue().getStock());
+        verify(jdbcTemplate).update(any(String.class),
+                eq(21L), eq(10L), any(String.class), eq(100), eq(0), eq(100),
+                eq(99L), eq("旧商品补齐默认规格"));
+    }
+
+    @Test
+    void shouldRejectEmptySpecSaveWhenProductAlreadyHasSpecs() {
+        ProductSpuMapper spuMapper = mock(ProductSpuMapper.class);
+        ProductSkuMapper skuMapper = mock(ProductSkuMapper.class);
+        ProductSpuDO edited = legacyProduct();
+        when(spuMapper.selectOne(any())).thenReturn(edited);
+        when(skuMapper.selectList(any())).thenReturn(List.of(sku(20L, 10L, 100)));
+
+        ServerException exception = assertThrows(ServerException.class,
+                () -> service(spuMapper, skuMapper, mock(ProductInventoryService.class))
+                        .saveProduct(edited, List.of(), 99L, ""));
+
+        assertEquals(409, exception.getCode());
+        verify(skuMapper, never()).insert(any(ProductSkuDO.class));
+        verify(spuMapper, never()).updateById(any(ProductSpuDO.class));
+    }
+
+    private ProductSpuDO legacyProduct() {
+        ProductSpuDO product = spu(10L);
+        product.setName("旧商品");
+        product.setCategoryId(8L);
+        product.setPrice(2900);
+        product.setMarketPrice(3900);
+        product.setStock(100);
+        return product;
     }
 
     private ProductAdminService service(ProductSpuMapper spuMapper, ProductSkuMapper skuMapper,

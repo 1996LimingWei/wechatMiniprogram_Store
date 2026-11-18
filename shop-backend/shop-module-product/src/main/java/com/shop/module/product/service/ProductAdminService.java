@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -55,15 +56,35 @@ public class ProductAdminService {
         if (spu == null) {
             throw new ServerException(400, "商品信息不能为空");
         }
-        List<ProductSkuDO> skus = normalizeRequestedSkus(spu, requestedSkus);
+        boolean creating = spu.getId() == null;
+        boolean addingDefaultSku = requestedSkus == null || requestedSkus.isEmpty();
+        String reason = stockAdjustReason;
+        if (!creating && addingDefaultSku) {
+            // 串行处理没有 SKU 的旧商品，避免两个空规格请求同时补建默认规格。
+            ProductSpuDO current = productSpuMapper.selectOne(new LambdaQueryWrapper<ProductSpuDO>()
+                    .eq(ProductSpuDO::getId, spu.getId()).last("FOR UPDATE"));
+            if (current == null) {
+                throw new ServerException(1101, "商品不存在");
+            }
+            if (!productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuDO>()
+                    .eq(ProductSkuDO::getSpuId, spu.getId())).isEmpty()) {
+                throw new ServerException(409, "商品已有规格，请刷新后重新保存");
+            }
+            if (!Objects.equals(current.getStock(), spu.getStock())) {
+                requireStockAdjustReason(reason);
+            } else if (reason == null || reason.isBlank()) {
+                reason = "旧商品补齐默认规格";
+            }
+        }
+        List<ProductSkuDO> skus = normalizeRequestedSkus(spu,
+                addingDefaultSku ? List.of(defaultSku(spu)) : requestedSkus);
         applySkuSummary(spu, skus);
         validateSpu(spu);
 
-        boolean creating = spu.getId() == null;
         if (creating) {
             spu.setSalesCount(0);
             productSpuMapper.insert(spu);
-        } else if (productSpuMapper.selectById(spu.getId()) == null) {
+        } else if (!addingDefaultSku && productSpuMapper.selectById(spu.getId()) == null) {
             throw new ServerException(1101, "商品不存在");
         } else {
             spu.setSalesCount(null);
@@ -71,8 +92,9 @@ public class ProductAdminService {
                 throw new ServerException(409, "商品信息已变化，请刷新后重试");
             }
         }
-        String reason = creating && (stockAdjustReason == null || stockAdjustReason.isBlank())
-                ? "商品创建初始化库存" : stockAdjustReason;
+        if (creating && (reason == null || reason.isBlank())) {
+            reason = "商品创建初始化库存";
+        }
         saveSkusInternal(spu.getId(), skus, adminStockBizNo(), adminId, reason);
         syncSpuSummary(spu.getId());
         materialAssetService.refreshAllReferenceCounts();
@@ -188,6 +210,9 @@ public class ProductAdminService {
         List<ProductSkuDO> requestedSkus = snapshotSkus == null ? List.of() : snapshotSkus.stream()
                 .map(this::copySkuForRestore)
                 .toList();
+        if (requestedSkus.isEmpty()) {
+            requestedSkus = List.of(defaultSku(target));
+        }
         saveSkusInternal(target.getId(), normalizeRequestedSkus(target, requestedSkus), adminStockBizNo(),
                 adminId == null ? 0L : adminId, stockAdjustReason);
         syncSpuSummary(target.getId());
@@ -261,13 +286,7 @@ public class ProductAdminService {
     private List<ProductSkuDO> normalizeRequestedSkus(ProductSpuDO spu, List<ProductSkuDO> requestedSkus) {
         List<ProductSkuDO> skus = requestedSkus == null ? new ArrayList<>() : new ArrayList<>(requestedSkus);
         if (skus.isEmpty() && spu.getId() == null) {
-            ProductSkuDO defaultSku = new ProductSkuDO();
-            defaultSku.setProperties("[]");
-            defaultSku.setPrice(spu.getPrice());
-            defaultSku.setMarketPrice(spu.getMarketPrice());
-            defaultSku.setStock(spu.getStock());
-            defaultSku.setPicUrl(spu.getPicUrl());
-            skus.add(defaultSku);
+            skus.add(defaultSku(spu));
         }
         if (skus.isEmpty()) {
             throw new ServerException(400, "商品至少需要一个有效规格");
@@ -287,6 +306,16 @@ public class ProductAdminService {
             sku.setProperties(key);
         }
         return skus;
+    }
+
+    private ProductSkuDO defaultSku(ProductSpuDO spu) {
+        ProductSkuDO sku = new ProductSkuDO();
+        sku.setProperties("[]");
+        sku.setPrice(spu.getPrice());
+        sku.setMarketPrice(spu.getMarketPrice());
+        sku.setStock(spu.getStock());
+        sku.setPicUrl(spu.getPicUrl());
+        return sku;
     }
 
     private void validateSpu(ProductSpuDO spu) {
@@ -561,10 +590,7 @@ public class ProductAdminService {
                                         Long adminId, String stockAdjustReason) {
         int change = Math.subtractExact(afterStock, beforeStock);
         if (change == 0) return;
-        String reason = stockAdjustReason == null ? "" : stockAdjustReason.trim();
-        if (reason.length() < 4 || reason.length() > 200) {
-            throw new ServerException(400, "库存发生变化时，调整原因长度应为 4 至 200 个字符");
-        }
+        String reason = requireStockAdjustReason(stockAdjustReason);
         if (adminId == null || adminId < 0) {
             throw new ServerException(401, "库存调整缺少管理员身份");
         }
@@ -574,6 +600,14 @@ public class ProductAdminService {
                      after_stock, operator_type, operator_id, remark)
                 VALUES (?, ?, 'ADMIN_ADJUST', ?, ?, ?, ?, 'admin', ?, ?)
                 """, skuId, spuId, bizNo, change, beforeStock, afterStock, adminId, reason);
+    }
+
+    private String requireStockAdjustReason(String value) {
+        String reason = value == null ? "" : value.trim();
+        if (reason.length() < 4 || reason.length() > 200) {
+            throw new ServerException(400, "库存发生变化时，调整原因长度应为 4 至 200 个字符");
+        }
+        return reason;
     }
 
     private ProductSpuDO copySpuForRestore(ProductSpuDO source) {
