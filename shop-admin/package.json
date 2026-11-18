@@ -163,6 +163,7 @@
       "@tailwindcss/oxide"
     ],
     "overrides": {
+      "@vueuse/motion@3.0.3>@nuxt/kit": "-",
       "qs@>=6.7.0 <=6.14.1": ">=6.14.2",
       "qs@<6.14.1": ">=6.14.1",
       "picomatch@>=4.0.0 <4.0.4": ">=4.0.4",
