@@ -790,8 +790,8 @@ onBeforeUnmount(() => {
         <el-card shadow="never" class="section">
           <template #header><span class="card-title">价格与库存</span></template>
           <el-row :gutter="16">
-            <el-col :span="8">
-              <el-form-item label="售价（元）" label-width="100px">
+            <el-col :xs="24" :sm="8">
+              <el-form-item label="售价（元）" label-position="top">
                 <el-input-number
                   v-model="form.price"
                   :min="0"
@@ -804,8 +804,8 @@ onBeforeUnmount(() => {
                 <div v-if="showSkuSection" class="field-tip">已启用规格管理时，系统将自动取最低 SKU 售价。</div>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="市场价（元）" label-width="100px">
+            <el-col :xs="24" :sm="8">
+              <el-form-item label="市场价（元）" label-position="top">
                 <el-input-number
                   v-model="form.marketPrice"
                   :min="0"
@@ -818,8 +818,8 @@ onBeforeUnmount(() => {
                 <div v-if="showSkuSection" class="field-tip">已启用规格管理时，系统将自动取最低 SKU 市场价。</div>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="库存" label-width="100px">
+            <el-col :xs="24" :sm="8">
+              <el-form-item label="库存" label-position="top">
                 <el-input-number
                   v-model="form.stock"
                   :min="0"
