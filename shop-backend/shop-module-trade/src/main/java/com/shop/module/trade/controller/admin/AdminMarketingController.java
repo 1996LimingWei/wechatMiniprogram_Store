@@ -302,6 +302,13 @@ public class AdminMarketingController {
         if (body.containsKey("discountAmount")) tpl.setDiscountAmount(TradeRequestUtils.getInt(body, "discountAmount", 0));
         if (body.containsKey("totalCount")) tpl.setTotalCount(TradeRequestUtils.getInt(body, "totalCount", 0));
         if (body.containsKey("perUserLimit")) tpl.setPerUserLimit(TradeRequestUtils.getInt(body, "perUserLimit", 1));
+        if (body.get("status") != null) {
+            Integer status = TradeRequestUtils.getInt(body, "status", null);
+            if (!Integer.valueOf(0).equals(status) && !Integer.valueOf(1).equals(status)) {
+                throw new com.shop.common.exception.ServerException(400, "优惠券状态必须为启用或禁用");
+            }
+            tpl.setStatus(status);
+        }
         if (body.containsKey("validityType")) tpl.setValidityType(TradeRequestUtils.getInt(body, "validityType", 1));
         if (body.containsKey("validDays")) tpl.setValidDays(TradeRequestUtils.getInt(body, "validDays", null));
         if (body.containsKey("validStartTime")) {
