@@ -1,0 +1,107 @@
+GitHub 同步待删除文件清单
+仓库：C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes
+本地：3d52bd1；远端 origin/main：92d83bd
+说明：尚未合并远端提交，尚未删除任何文件。以下是远端已提交删除、本地同步时需要移除的文件。
+
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\Maven 多模块依赖与版本集中管理\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\Maven 多模块依赖与版本集中管理\dependency_management.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\Spring Boot 多环境 YAML 配置体系\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\Spring Boot 多环境 YAML 配置体系\configuration_system.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\_index.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\uni-app 小程序原生样式与 SCSS 变量规范\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\uni-app 小程序原生样式与 SCSS 变量规范\frontend_style.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\Shop 后端服务启动与装配核心\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\Shop 后端服务启动与装配核心\技术栈.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\Shop 后端服务启动与装配核心\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\Shop 后端服务启动与装配核心\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\Shop 后端服务启动与装配核心\特殊配置与命令.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\Shop 后端服务启动与装配核心\编码规范.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\后端通用框架与 Starter 组件集\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\后端通用框架与 Starter 组件集\技术栈.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\后端通用框架与 Starter 组件集\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\后端通用框架与 Starter 组件集\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\后端通用框架与 Starter 组件集\编码规范.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\商品 SPU 与分类模块\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\商品 SPU 与分类模块\技术栈.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\商品 SPU 与分类模块\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\商品 SPU 与分类模块\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\商品 SPU 与分类模块\编码规范.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\Shop 电商后端单体工程\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\开源 wx-mall 小程序源码快照\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\开源 wx-mall 小程序源码快照\技术栈.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\开源 wx-mall 小程序源码快照\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\开源 wx-mall 小程序源码快照\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\开源 wx-mall 小程序源码快照\特殊配置与命令.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\wx-mall 电商项目根编排层\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\基于 SLF4J + Lombok 的轻量级日志体系\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\基于 SLF4J + Lombok 的轻量级日志体系\logging_system.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\日志系统架构与规范\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\日志系统架构与规范\logging_system.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\构建与部署体系：Maven 多模块 + Docker 镜像打包\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\构建与部署体系：Maven 多模块 + Docker 镜像打包\build_system.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\统一异常处理与错误码规范\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\统一异常处理与错误码规范\error_handling.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\统一异常处理与错误码规范_2\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\统一异常处理与错误码规范_2\error_handling.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城依赖管理体系\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城依赖管理体系\dependency_management.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城全栈工程\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城全栈工程\shop_miniapp\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城全栈工程\技术栈.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城全栈工程\架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城全栈工程\概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城全栈工程\特殊配置与命令.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城构建与部署体系\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\药食同源商城构建与部署体系\build_system.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\配置系统：Spring Boot Starter 自动装配与多环境 YAML 管理\_module.yaml
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\配置系统：Spring Boot Starter 自动装配与多环境 YAML 管理\configuration_system.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\knowledge\zh\采用原生微信小程序替代 uni-app 作为前端实现\采用原生微信小程序替代 uni-app 作为前端实现.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\API接口文档\API接口文档.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\API接口文档\应用端API接口.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\API接口文档\管理端API接口.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\API接口文档\认证与授权接口.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\前端架构设计\API接口封装.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\前端架构设计\UI样式系统.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\前端架构设计\前端架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\前端架构设计\小程序整体架构.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\前端架构设计\状态管理.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\前端架构设计\组件架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\业务模块设计\业务模块设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\业务模块设计\会员模块 (shop-module-member).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\业务模块设计\商品模块 (shop-module-product)\SPU商品管理.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\业务模块设计\商品模块 (shop-module-product)\商品分类管理.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\业务模块设计\商品模块 (shop-module-product)\商品模块 (shop-module-product).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\业务模块设计\系统模块 (shop-module-system).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\后端架构设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\框架模块设计\MyBatis集成模块 (shop-starter-mybatis).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\框架模块设计\Web配置模块 (shop-starter-web).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\框架模块设计\安全认证模块 (shop-starter-security).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\框架模块设计\框架模块设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\后端架构设计\框架模块设计\通用模块 (shop-common).md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\安全设计\安全设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\安全设计\权限控制.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\安全设计\认证机制.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\开发指南\代码规范标准.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\开发指南\开发指南.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\开发指南\开发流程规范.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\快速开始.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\故障排除.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\数据库设计.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\部署与运维.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\项目概述\开发流程.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\项目概述\技术栈.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\项目概述\架构理念.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\项目概述\项目介绍.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\content\项目概述\项目概述.md
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\.qoder\repowiki\zh\meta\repowiki-metadata.json
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-backend\shop-module-product\src\main\java\com\shop\module\product\controller\MockData.java
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-miniapp\pages\auth\login\login.vue
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-miniapp\pages\auth\register\register.vue
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-miniapp\pages\auth\reset\reset.vue
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-miniapp\pages\payMock\payMock.vue
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-miniapp\pages\shopping\selCoupon\selCoupon.vue
+C:\Users\Tim\Documents\GitHub\weChatMiniprogram\codes\shop-miniapp\utils\mock.js
