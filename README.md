@@ -102,6 +102,7 @@ pnpm dev
 
 - [本地开发说明](docs/local-development.md)
 - [开发规范](docs/conventions.md)
+- [服务器部署与小程序更新操作教程](docs/deployment/操作教程.md)
 - [生产部署说明](docs/deployment/v1.0-production-deployment.md)
 - [客户验收清单](docs/deployment/v1.0-acceptance-checklist.md)
 - [项目状态](docs/superpowers/status.md)

@@ -1528,6 +1528,18 @@
 - `V20261118_01` 纳入发布迁移清单。图文教程从合并后的正文生成 11 月 18 日阅读版及压缩包，历史验收记录继续对应各自验证的版本。
 - PR #62 的首次交付门禁在后台生产依赖审计报出 `picomatch`。后台通过 Vite 使用 Vue Motion 的 Vue 插件，移除仅由其 Nuxt 入口使用的可选 `@nuxt/kit` 依赖，继续执行原有审计门禁。
 
+## 2026-11-24 服务器部署与小程序发布教程
+
+- 新增 `docs/deployment/操作教程.md`，覆盖宝塔 80/443 端口冲突处理、Docker 与 Python 交付环境、catalog 预演部署、日常更新与镜像回滚、小程序体验版/正式版发布流程。
+- 明确预演部署（服务器现场构建）与正式交付（固定镜像包 + 加密备份）的边界；当前尚未在客户服务器实际执行，教程中的命令需按真实环境逐项验证。
+
+## 2026-11-25 腾讯云 catalog 预演部署实测成功
+
+- 在腾讯云轻量服务器（OpenCloudOS，2 核 1.9Gi，`/www/shop`）完成 catalog 预演部署：MySQL、Redis、backend、admin、nginx 五容器全部启动，`/healthz` 返回 `ok`，`/readyz` 返回 `{"status":"UP"}`。
+- 构建阶段修复两个问题：构建容器 DNS 不可用导致 `repo.maven.apache.org` 解析失败；后端 Dockerfile 未复制 `.mvn/settings.xml`。已给 `/etc/docker/daemon.json` 合并 `dns` 配置，并在 Dockerfile 的 `WORKDIR /app` 后增加 `COPY .mvn/settings.xml /root/.m2/settings.xml`，确认 `maven.aliyun.com` 返回 IPv4 后走阿里云镜像重建。
+- 后端镜像 `shanpu/backend:local` 与管理后台镜像 `shanpu/admin:local` 均构建成功；数据库已初始化，管理员密码为 `.env.prod` 中的 `DELIVERY_ADMIN_PASSWORD`。
+- 待办：浏览器登录 `https://bhtjl.top/` 验证后台、配置小程序合法域名并发布体验版、按需填写 `WX_MA_SECRET` 以启用真实微信登录、配置备份定时任务、测试完成后切 commerce 模式。
+
 ## AI 工作流指南
 
 > 2026-11-18 人工验收续验：第 8 至 13 步记录已补入 WPS，保留全部 13 张截图，9 页排版检查通过。第 12 步更新及库存流水已核对，第 13 步两张截图确认批量上下架均成功 2、失败 0。跨电脑图片访问待部署后补验，微信端核对继续暂缓。

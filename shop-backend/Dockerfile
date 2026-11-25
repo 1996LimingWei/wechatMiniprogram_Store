@@ -1,5 +1,6 @@
 FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
+COPY .mvn/settings.xml /root/.m2/settings.xml
 COPY pom.xml .
 COPY shop-framework/ shop-framework/
 COPY shop-module-product/ shop-module-product/
