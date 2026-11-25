@@ -413,7 +413,7 @@ public class TradeObservabilityService {
 
     private List<ObservabilitySummaryRespVO.TraceItem> listAuditLogs(ObservabilitySummaryRespVO.OrderTrace trace) {
         List<Object> args = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" WHERE deleted = b'0' AND (business_ref = ?");
+        StringBuilder where = new StringBuilder(" WHERE (business_ref = ?");
         args.add(trace.getOrderSn());
         if (hasText(trace.getPaySn())) {
             where.append(" OR business_ref = ?");
