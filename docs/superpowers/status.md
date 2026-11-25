@@ -1539,6 +1539,7 @@
 - 构建阶段修复两个问题：构建容器 DNS 不可用导致 `repo.maven.apache.org` 解析失败；后端 Dockerfile 未复制 `.mvn/settings.xml`。已给 `/etc/docker/daemon.json` 合并 `dns` 配置，并在 Dockerfile 的 `WORKDIR /app` 后增加 `COPY .mvn/settings.xml /root/.m2/settings.xml`，确认 `maven.aliyun.com` 返回 IPv4 后走阿里云镜像重建。
 - 后端镜像 `shanpu/backend:local` 与管理后台镜像 `shanpu/admin:local` 均构建成功；数据库已初始化，管理员密码为 `.env.prod` 中的 `DELIVERY_ADMIN_PASSWORD`。
 - 待办：浏览器登录 `https://bhtjl.top/` 验证后台、配置小程序合法域名并发布体验版、按需填写 `WX_MA_SECRET` 以启用真实微信登录、配置备份定时任务、测试完成后切 commerce 模式。
+- 将 `docs/deployment/操作教程.md` 重构为按角色划分的操作手册：删除预演/正式路线背景与原理说明，改为“客户日常操作 / 服务器运维 / 备份 / 代码更新 / 小程序发布 / commerce 切换 / 交接清单”，并明确客户只能改后台内容，代码更新由开发团队发版。
 
 ## AI 工作流指南
 
