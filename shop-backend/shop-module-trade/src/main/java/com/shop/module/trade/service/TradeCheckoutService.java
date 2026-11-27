@@ -33,6 +33,7 @@ public class TradeCheckoutService {
                 .map(item -> tradeProductService.getSnapshot(item.getSpuId(), item.getSkuId()))
                 .toList();
         int goodsTotalPrice = 0;
+        Map<Long, Integer> spuAmounts = new LinkedHashMap<>();
         for (int index = 0; index < checkedList.size(); index++) {
             TradeCartDO item = checkedList.get(index);
             TradeProductSnapshot snapshot = snapshots.get(index);
@@ -47,9 +48,11 @@ public class TradeCheckoutService {
             item.setSpecName(snapshot.getSpecName());
             item.setPrice(snapshot.getPrice());
             goodsTotalPrice = Math.addExact(goodsTotalPrice, Math.multiplyExact(snapshot.getPrice(), item.getCount()));
+            spuAmounts.merge(snapshot.getSpuId(),
+                    Math.multiplyExact(snapshot.getPrice(), item.getCount()), Integer::sum);
         }
 
-        int freightPrice = marketingShippingService.calculateFreight(goodsTotalPrice);
+        int freightPrice = calculateFreight(spuAmounts);
 
         int couponDiscount = 0;
         int promotionDiscount = 0;
@@ -146,6 +149,19 @@ public class TradeCheckoutService {
 
     public int calculateFreight(int goodsTotalPrice) {
         return marketingShippingService.calculateFreight(goodsTotalPrice);
+    }
+
+    /**
+     * 按商品明细计算运费：同一 SPU 的多规格先合并金额，再按商品运费规则取整单最大值。
+     */
+    public int calculateFreight(Map<Long, Integer> spuAmounts) {
+        if (spuAmounts == null || spuAmounts.isEmpty()) {
+            return 0;
+        }
+        List<MarketingShippingService.FreightLine> lines = spuAmounts.entrySet().stream()
+                .map(entry -> new MarketingShippingService.FreightLine(entry.getKey(), entry.getValue()))
+                .toList();
+        return marketingShippingService.calculateFreight(lines);
     }
 
     /**

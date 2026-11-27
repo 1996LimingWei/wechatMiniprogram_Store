@@ -60,7 +60,40 @@ public class DashboardService {
                 Integer.class);
         result.put("memberCount", memberCount != null ? memberCount : 0);
 
+        // 待处理订单提醒：已支付但尚未发货完成的订单（待备货 + 备货中 + 待揽收）
+        Integer pendingFulfillmentCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM trade_order WHERE deleted = 0 AND pay_status = 1 " +
+                        "AND status IN (1, 2) AND COALESCE(fulfillment_status, 0) IN (0, 1, 2)",
+                Integer.class);
+        Integer pendingPrepareCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM trade_order WHERE deleted = 0 AND pay_status = 1 " +
+                        "AND status IN (1, 2) AND COALESCE(fulfillment_status, 0) = 0",
+                Integer.class);
+        Integer pendingShipCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM trade_order WHERE deleted = 0 AND pay_status = 1 " +
+                        "AND status IN (1, 2) AND fulfillment_status = 2",
+                Integer.class);
+        result.put("pendingFulfillmentCount", pendingFulfillmentCount != null ? pendingFulfillmentCount : 0);
+        result.put("pendingPrepareCount", pendingPrepareCount != null ? pendingPrepareCount : 0);
+        result.put("pendingShipCount", pendingShipCount != null ? pendingShipCount : 0);
+
         return result;
+    }
+
+    /**
+     * 待处理订单列表：供数据看板作出显著的备货发货提醒
+     */
+    public List<Map<String, Object>> getPendingFulfillmentOrders(int limit) {
+        if (limit <= 0) limit = 10;
+        if (limit > 50) limit = 50;
+        return jdbcTemplate.queryForList(
+                "SELECT o.id, o.order_sn, o.actual_price, o.consignee, o.mobile, o.pay_time, " +
+                        "COALESCE(o.fulfillment_status, 0) AS fulfillment_status, " +
+                        "(SELECT COALESCE(SUM(oi.count), 0) FROM trade_order_item oi " +
+                        "  WHERE oi.order_id = o.id AND oi.deleted = 0) AS item_count " +
+                        "FROM trade_order o WHERE o.deleted = 0 AND o.pay_status = 1 " +
+                        "AND o.status IN (1, 2) AND COALESCE(o.fulfillment_status, 0) IN (0, 1, 2) " +
+                        "ORDER BY o.pay_time ASC LIMIT ?", limit);
     }
 
     /**

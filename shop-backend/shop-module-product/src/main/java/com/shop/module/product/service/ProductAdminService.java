@@ -53,6 +53,16 @@ public class ProductAdminService {
     @Transactional(rollbackFor = Exception.class)
     public Long saveProduct(ProductSpuDO spu, List<ProductSkuDO> requestedSkus,
                             Long adminId, String stockAdjustReason) {
+        return saveProduct(spu, requestedSkus, adminId, stockAdjustReason, false);
+    }
+
+    /**
+     * 保存商品。syncFreightRule=true 时按传入值覆盖单品运费（含清空为 null），
+     * 后台商品表单使用；导入等批量链路传 false，避免误清空已配置的运费。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Long saveProduct(ProductSpuDO spu, List<ProductSkuDO> requestedSkus,
+                            Long adminId, String stockAdjustReason, boolean syncFreightRule) {
         if (spu == null) {
             throw new ServerException(400, "商品信息不能为空");
         }
@@ -98,6 +108,13 @@ public class ProductAdminService {
             spu.setSalesCount(null);
             if (productSpuMapper.updateById(spu) != 1) {
                 throw new ServerException(409, "商品信息已变化，请刷新后重试");
+            }
+            // 运费为空表示「跟随全局规则」，updateById 会忽略 null，需显式写入便于清空
+            if (syncFreightRule) {
+                productSpuMapper.update(null, new LambdaUpdateWrapper<ProductSpuDO>()
+                        .eq(ProductSpuDO::getId, spu.getId())
+                        .set(ProductSpuDO::getFreightBaseFee, spu.getFreightBaseFee())
+                        .set(ProductSpuDO::getFreightFreeThreshold, spu.getFreightFreeThreshold()));
             }
         }
         if (creating && (reason == null || reason.isBlank())) {
@@ -353,6 +370,14 @@ public class ProductAdminService {
         }
         if (spu.getStatus() == null || (spu.getStatus() != 0 && spu.getStatus() != 1)) {
             throw new ServerException(400, "商品状态不正确");
+        }
+        if (spu.getFreightBaseFee() != null
+                && (spu.getFreightBaseFee() < 0 || spu.getFreightBaseFee() > MAX_PRICE_CENTS)) {
+            throw new ServerException(400, "单品运费应在 0 到 1000000 元之间");
+        }
+        if (spu.getFreightFreeThreshold() != null
+                && (spu.getFreightFreeThreshold() < 0 || spu.getFreightFreeThreshold() > MAX_PRICE_CENTS)) {
+            throw new ServerException(400, "单品包邮门槛应在 0 到 1000000 元之间");
         }
         if (spu.getStatus() == 1 && (spu.getPicUrl() == null || spu.getPicUrl().isBlank())) {
             throw new ServerException(400, "上架商品必须设置主图");

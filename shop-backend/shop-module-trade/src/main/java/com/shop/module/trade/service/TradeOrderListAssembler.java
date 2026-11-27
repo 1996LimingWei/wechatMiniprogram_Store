@@ -138,6 +138,8 @@ public class TradeOrderListAssembler {
         item.put("address", order.getAddress());
         item.put("status", order.getStatus());
         item.put("payStatus", order.getPayStatus());
+        item.put("fulfillmentStatus", order.getFulfillmentStatus());
+        item.put("fulfillmentStatusText", TradeOrderFulfillmentService.statusText(order.getFulfillmentStatus()));
         item.put("orderPrice", TradeMoneyUtils.formatYuan(order.getOrderPrice()));
         item.put("payTime", formatTime(order.getPayTime()));
         item.put("expireTime", formatTime(order.getExpireTime()));
@@ -240,6 +242,14 @@ public class TradeOrderListAssembler {
             return "已退款";
         }
         Integer status = order.getStatus();
+        // 已支付订单优先展示履约进度，让客户看到「备货中」「待揽收」等真实进展
+        if (order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
+                && status != null && (status == 1 || status == 2 || status == 3)) {
+            String fulfillment = TradeOrderFulfillmentService.statusText(order.getFulfillmentStatus());
+            if (!fulfillment.isEmpty()) {
+                return fulfillment;
+            }
+        }
         return switch (status == null ? 0 : status) {
             case 0 -> "待付款";
             case 1 -> "待发货";

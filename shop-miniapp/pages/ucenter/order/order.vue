@@ -152,9 +152,11 @@ export default {
 			});
 		},
 		applyRefund(item) {
-			const reasons = item.orderStatusText === '待发货'
-				? ['不想要了', '信息填写错误', '拍错/多拍', '其他原因']
-				: ['商品与描述不符', '商品损坏/变质', '少件/漏发', '其他原因'];
+			// 发货前（含待备货/备货中/待揽收）与发货后适用不同的退款原因
+			const shipped = item.fulfillmentStatus === 3 || item.fulfillmentStatus === 4 || item.fulfillmentStatus === 5;
+			const reasons = shipped
+				? ['商品与描述不符', '商品损坏/变质', '少件/漏发', '其他原因']
+				: ['不想要了', '信息填写错误', '拍错/多拍', '其他原因'];
 			uni.showActionSheet({
 				itemList: reasons,
 				success: (actionRes) => {

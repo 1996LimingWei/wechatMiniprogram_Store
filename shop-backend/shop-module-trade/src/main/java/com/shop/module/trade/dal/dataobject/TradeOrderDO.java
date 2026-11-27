@@ -20,6 +20,9 @@ public class TradeOrderDO extends BaseDO {
     private String requestId;
     private Long userId;
     private Integer status;
+    /** 履约状态 0=待备货 1=备货中 2=待揽收 3=已发货 4=已签收 5=物流异常 */
+    private Integer fulfillmentStatus;
+    private LocalDateTime fulfillmentUpdateTime;
     private Integer payStatus;
     private Integer goodsPrice;
     private Integer freightPrice;

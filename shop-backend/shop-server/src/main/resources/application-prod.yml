@@ -75,9 +75,6 @@ trade:
     kuaidi100:
       customer: ${KUAIDI100_CUSTOMER:}
       key: ${KUAIDI100_KEY:}
-  freight:
-    free-threshold: ${TRADE_FREE_FREIGHT_THRESHOLD:19900}
-    base-fee: ${TRADE_BASE_FREIGHT_FEE:1000}
   order:
     unpaid-timeout-minutes: ${TRADE_UNPAID_TIMEOUT_MINUTES:30}
     expire-job-enabled: true

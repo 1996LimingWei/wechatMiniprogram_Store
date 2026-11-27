@@ -32,6 +32,10 @@ interface ProductFormState {
   stock: number;
   sort: number;
   status: number;
+  /** 单品运费（元），null 表示跟随全局运费规则 */
+  freightBaseFee: number | null;
+  /** 单品包邮门槛（元），null 表示跟随全局运费规则 */
+  freightFreeThreshold: number | null;
 }
 
 interface ProductEditorSnapshot {
@@ -104,7 +108,9 @@ function createEmptyFormState(): ProductFormState {
     marketPrice: 0,
     stock: 0,
     sort: 0,
-    status: 0
+    status: 0,
+    freightBaseFee: null,
+    freightFreeThreshold: null
   };
 }
 
@@ -258,7 +264,13 @@ async function loadProduct() {
       marketPrice: (detail.marketPrice ?? 0) / 100,
       stock: detail.stock ?? 0,
       sort: detail.sort ?? 0,
-      status: detail.status ?? 1
+      status: detail.status ?? 1,
+      freightBaseFee:
+        detail.freightBaseFee == null ? null : detail.freightBaseFee / 100,
+      freightFreeThreshold:
+        detail.freightFreeThreshold == null
+          ? null
+          : detail.freightFreeThreshold / 100
     });
     keywordTags.value = parseKeywordTags(detail.keyword || "");
 
@@ -424,7 +436,13 @@ function buildSpuPayload(): ProductSpu {
     marketPrice: Math.round(form.marketPrice * 100),
     stock: form.stock,
     sort: form.sort,
-    status: form.status
+    status: form.status,
+    freightBaseFee:
+      form.freightBaseFee == null ? null : Math.round(form.freightBaseFee * 100),
+    freightFreeThreshold:
+      form.freightFreeThreshold == null
+        ? null
+        : Math.round(form.freightFreeThreshold * 100)
   } as ProductSpu;
 }
 
@@ -845,6 +863,47 @@ onBeforeUnmount(() => {
               placeholder="填写盘点入库、损耗修正等具体原因"
             />
           </el-form-item>
+        </el-card>
+
+        <el-card shadow="never" class="section">
+          <template #header><span class="card-title">运费设置</span></template>
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            class="freight-tip"
+            title="留空表示跟随全局运费规则（可在「营销管理 → 包邮规则」统一维护）；填写后仅本商品生效。"
+          />
+          <el-row :gutter="16">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="单品运费（元）" label-position="top">
+                <el-input-number
+                  v-model="form.freightBaseFee"
+                  :min="0"
+                  :precision="2"
+                  :step="1"
+                  controls-position="right"
+                  placeholder="留空跟随全局"
+                  style="width: 100%"
+                />
+                <div class="field-tip">买家未达包邮门槛时收取的运费</div>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="单品包邮门槛（元）" label-position="top">
+                <el-input-number
+                  v-model="form.freightFreeThreshold"
+                  :min="0"
+                  :precision="2"
+                  :step="10"
+                  controls-position="right"
+                  placeholder="留空跟随全局"
+                  style="width: 100%"
+                />
+                <div class="field-tip">单个商品金额达到该值即包邮</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
         </el-card>
 
         <el-card shadow="never" class="section">
@@ -1571,6 +1630,10 @@ onBeforeUnmount(() => {
   color: #909399;
   font-size: 12px;
   line-height: 18px;
+}
+
+.freight-tip {
+  margin-bottom: 16px;
 }
 
 .image-placeholder {

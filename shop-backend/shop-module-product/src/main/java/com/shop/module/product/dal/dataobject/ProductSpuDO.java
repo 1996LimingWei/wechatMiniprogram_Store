@@ -29,4 +29,8 @@ public class ProductSpuDO extends BaseDO {
     private Integer salesCount;
     private Integer sort;
     private Integer status; // 0=下架 1=上架
+    /** 单品基础运费（分）；为空时跟随全局运费规则 */
+    private Integer freightBaseFee;
+    /** 单品包邮门槛（分）；为空时跟随全局运费规则 */
+    private Integer freightFreeThreshold;
 }
