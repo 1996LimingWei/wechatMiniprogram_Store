@@ -1,6 +1,7 @@
+# 注意：不要忽略 dist，Dockerfile.prebuilt 需要 COPY dist 进镜像。
+# 构建型 Dockerfile 会先 COPY . . 再执行 pnpm build 覆盖，包含 dist 无副作用。
 node_modules
 .DS_Store
-dist
 dist-ssr
 *.local
 .eslintcache

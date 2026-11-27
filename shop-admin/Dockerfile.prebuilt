@@ -1,0 +1,17 @@
+# 预构建版：镜像内不装 Node，只把构建好的 dist 拷进 Nginx。
+# 生产环境（docker-compose.prod.yml）使用本文件。
+#
+# 前置条件：本机已执行 pnpm build，并把 dist/ 放在 shop-admin/dist/ 下。
+# dist 不存在时 COPY 会立即失败，不会进入打包流程，因此不会拖垮低内存服务器。
+#
+# 构建：docker compose --env-file .env.prod -f docker-compose.prod.yml build admin
+FROM nginx:stable-alpine
+
+COPY dist /usr/share/nginx/html
+COPY default.conf.template /etc/nginx/templates/default.conf.template
+
+ENV BACKEND_URL=http://shop-backend:8085
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
