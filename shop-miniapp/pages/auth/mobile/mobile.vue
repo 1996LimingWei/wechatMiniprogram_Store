@@ -1,7 +1,7 @@
 <template>
 	<view class="page">
 		<view class="user-header">
-			<image class="user-avatar" :src="userInfo.avatar" mode="aspectFill"></image>
+			<image class="user-avatar" :src="userInfo.avatar || $shopLogo()" mode="aspectFill"></image>
 			<text class="user-name">{{userInfo.nickname}}</text>
 		</view>
 		<view class="form-card">

@@ -44,6 +44,12 @@ material:
       - https://example.com/
     max-size: ${MATERIAL_MAX_SIZE:5242880}
 
+# 本地素材地址是 http://127.0.0.1:8085/...，开发环境放行本机 http 以便完整验证「选素材 → 保存 Logo」。
+# 生产环境不配置此项，默认只接受 https（见 ShopDisplayController）。
+shop:
+  display:
+    logo-url-pattern: 'https://[^\s<>"'']+|http://(127\.0\.0\.1|localhost)(:\d+)?/[^\s<>"'']+'
+
 trade:
   mock-actions-enabled: true
   refund:

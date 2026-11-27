@@ -5,6 +5,7 @@ import com.shop.common.exception.ServerException;
 import com.shop.framework.security.SecurityUtils;
 import com.shop.module.system.service.SystemAdministrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,10 @@ import org.springframework.web.bind.annotation.*;
 public class ShopDisplayController {
     private final JdbcTemplate jdbc;
     private final SystemAdministrationService administration;
+
+    /** 生产默认只接受 https；开发环境可覆盖为放行本机 http，见 application-dev.yml */
+    @Value("${shop.display.logo-url-pattern:https://[^\\s<>\"']+}")
+    private String logoUrlPattern;
 
     @GetMapping("/app-api/index/shop-config")
     public CommonResult<DisplayConfig> publicConfig() { return CommonResult.success(read()); }
@@ -36,7 +41,7 @@ public class ShopDisplayController {
         String name = text(body.displayName(), "displayName", 30);
         if (name.isBlank()) throw new ServerException(400, "请填写店铺展示名称");
         String logo = text(body.logoUrl(), "logoUrl", 1024);
-        if (!logo.isEmpty() && !logo.matches("https://[^\\s<>\"']+"))
+        if (!logo.isEmpty() && !logo.matches(logoUrlPattern))
             throw new ServerException(400, "Logo 请使用正式 HTTPS 图片地址");
         if (!logo.isEmpty()) {
             Integer registered = jdbc.queryForObject("SELECT COUNT(*) FROM material_asset WHERE url=? AND deleted=b'0'", Integer.class, logo);
