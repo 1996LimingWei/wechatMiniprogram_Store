@@ -29,6 +29,11 @@
             <artifactId>shop-module-product</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 商家新订单邮件通知（SMTP 参数由后台配置表维护，不落配置文件） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

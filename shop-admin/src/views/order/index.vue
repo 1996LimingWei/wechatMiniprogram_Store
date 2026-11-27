@@ -14,6 +14,7 @@ import {
   getPickingList,
   importBatchShip,
   shipOrder,
+  updateFulfillmentStatus,
   updateOrderRemark
 } from "@/api/order";
 import type {
@@ -214,6 +215,85 @@ const logisticsCompanies = [
   { name: "京东物流", code: "jd" },
   { name: "邮政 EMS", code: "ems" }
 ];
+
+/* ========== 履约状态流转 ========== */
+const fulfillmentOptions = [
+  { label: "待备货", value: 0 },
+  { label: "备货中", value: 1 },
+  { label: "待揽收", value: 2 },
+  { label: "已发货", value: 3 },
+  { label: "已签收", value: 4 },
+  { label: "物流异常", value: 5 }
+];
+
+const fulfillmentVisible = ref(false);
+const fulfillmentSaving = ref(false);
+const fulfillmentForm = reactive({
+  orderId: 0,
+  orderSn: "",
+  status: 1,
+  logisticsCompany: "顺丰速运",
+  logisticsCode: "shunfeng",
+  logisticsNo: "",
+  remark: ""
+});
+
+function openFulfillment(row: TradeOrder) {
+  fulfillmentForm.orderId = row.id;
+  fulfillmentForm.orderSn = row.orderSn;
+  fulfillmentForm.status = row.fulfillmentStatus ?? 0;
+  fulfillmentForm.logisticsCompany = "顺丰速运";
+  fulfillmentForm.logisticsCode = "shunfeng";
+  fulfillmentForm.logisticsNo = "";
+  fulfillmentForm.remark = "";
+  fulfillmentVisible.value = true;
+}
+
+async function submitFulfillment() {
+  if (fulfillmentForm.status === 3) {
+    if (!fulfillmentForm.logisticsNo.trim()) {
+      ElMessage.warning("标记已发货需要填写物流单号");
+      return;
+    }
+    if (!/^[A-Za-z0-9-]{6,32}$/.test(fulfillmentForm.logisticsNo.trim())) {
+      ElMessage.warning("物流单号仅支持 6 至 32 位字母、数字或连字符");
+      return;
+    }
+  }
+  const label = fulfillmentOptions.find(
+    item => item.value === fulfillmentForm.status
+  )?.label;
+  await ElMessageBox.confirm(
+    `确认将订单 ${fulfillmentForm.orderSn} 的履约状态变更为「${label}」？`,
+    "变更履约状态",
+    { type: "warning", confirmButtonText: "确认变更" }
+  );
+  fulfillmentSaving.value = true;
+  const company = logisticsCompanies.find(
+    item => item.code === fulfillmentForm.logisticsCode
+  );
+  try {
+    await updateFulfillmentStatus({
+      orderId: fulfillmentForm.orderId,
+      status: fulfillmentForm.status,
+      logisticsCompany:
+        fulfillmentForm.status === 3 ? company?.name ?? fulfillmentForm.logisticsCompany : undefined,
+      logisticsCode:
+        fulfillmentForm.status === 3 ? fulfillmentForm.logisticsCode : undefined,
+      logisticsNo:
+        fulfillmentForm.status === 3 ? fulfillmentForm.logisticsNo.trim() : undefined,
+      remark: fulfillmentForm.remark.trim() || undefined
+    });
+    ElMessage.success(`履约状态已更新为「${label}」`);
+    fulfillmentVisible.value = false;
+    await fetchData();
+    if (detailVisible.value && detailOrder.value?.id === fulfillmentForm.orderId) {
+      await loadDetail(fulfillmentForm.orderId);
+    }
+  } finally {
+    fulfillmentSaving.value = false;
+  }
+}
 const canShip = hasAnyPerms(["trade:manage", "trade:order-ship"]);
 const canReadLogistics = hasAnyPerms(["trade:manage", "trade:logistics-read"]);
 const canExportOrder = hasAnyPerms(["trade:manage", "trade:order-export"]);
@@ -541,16 +621,35 @@ onMounted(fetchData);
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="履约进度" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag
+              v-if="row.payStatus === 1 && row.fulfillmentStatusText"
+              type="warning"
+              effect="plain"
+            >
+              {{ row.fulfillmentStatusText }}
+            </el-tag>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
         <el-table-column
           prop="addTime"
           label="下单时间"
           width="170"
           align="center"
         />
-        <el-table-column label="操作" width="190" align="center" fixed="right">
+        <el-table-column label="操作" width="250" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link :icon="View" @click="openDetail(row)"
               >详情</el-button
+            >
+            <el-button
+              v-if="canShip && row.payStatus === 1 && row.status !== 4"
+              type="warning"
+              link
+              @click="openFulfillment(row)"
+              >状态</el-button
             >
             <el-button
               v-if="canShip && row.handleOption?.ship"
@@ -602,6 +701,12 @@ onMounted(fetchData);
           </div>
           <div v-if="detailOrder" class="drawer-actions">
             <el-button
+              v-if="canShip && detailOrder.payStatus === 1 && detailOrder.status !== 4"
+              type="warning"
+              @click="openFulfillment(detailOrder)"
+              >变更履约状态</el-button
+            >
+            <el-button
               v-if="canShip && detail?.handleOption?.ship"
               type="success"
               :icon="Van"
@@ -634,6 +739,16 @@ onMounted(fetchData);
                 >
                   {{ detailOrder.orderStatusText }}
                 </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="履约进度">
+                <el-tag
+                  v-if="detailOrder.fulfillmentStatusText"
+                  type="warning"
+                  effect="plain"
+                >
+                  {{ detailOrder.fulfillmentStatusText }}
+                </el-tag>
+                <span v-else>—</span>
               </el-descriptions-item>
               <el-descriptions-item label="用户 ID">{{
                 detailOrder.userId
@@ -832,6 +947,74 @@ onMounted(fetchData);
         <el-button @click="shipVisible = false">取消</el-button>
         <el-button type="primary" :loading="shipSaving" @click="submitShip"
           >确认发货</el-button
+        >
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="fulfillmentVisible"
+      title="变更履约状态"
+      width="min(520px, 92vw)"
+      destroy-on-close
+    >
+      <el-alert
+        :title="`订单号：${fulfillmentForm.orderSn}`"
+        type="info"
+        :closable="false"
+        class="dialog-alert"
+      />
+      <el-form label-width="90px">
+        <el-form-item label="履约状态" required>
+          <el-radio-group v-model="fulfillmentForm.status">
+            <el-radio-button
+              v-for="option in fulfillmentOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="fulfillmentForm.status === 3">
+          <el-form-item label="物流公司" required>
+            <el-select
+              v-model="fulfillmentForm.logisticsCode"
+              filterable
+              style="width: 100%"
+              @change="handleLogisticsCompanyChange"
+            >
+              <el-option
+                v-for="company in logisticsCompanies"
+                :key="company.code"
+                :label="company.name"
+                :value="company.code"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="物流单号" required>
+            <el-input
+              v-model="fulfillmentForm.logisticsNo"
+              maxlength="32"
+              show-word-limit
+              placeholder="请输入物流单号（必填）"
+            />
+          </el-form-item>
+        </template>
+        <el-form-item label="备注">
+          <el-input
+            v-model="fulfillmentForm.remark"
+            maxlength="200"
+            placeholder="可选，例如：客户要求周末送"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="fulfillmentVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="fulfillmentSaving"
+          @click="submitFulfillment"
+          >确认变更</el-button
         >
       </template>
     </el-dialog>

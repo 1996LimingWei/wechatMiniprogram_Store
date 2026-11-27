@@ -56,9 +56,6 @@ trade:
     provider: mock
   logistics:
     provider: mock
-  freight:
-    free-threshold: 19900
-    base-fee: 1000
   order:
     unpaid-timeout-minutes: 30
     expire-job-enabled: true

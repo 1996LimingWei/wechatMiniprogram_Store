@@ -181,7 +181,7 @@ class TradeCheckoutServiceTest {
         when(tradeCartService.toCartItem(any())).thenReturn(new HashMap<>(Map.of("id", 1L)));
         when(memberAddressService.getAddress(1L, 1L)).thenReturn(address);
         when(memberAddressService.toResp(any())).thenReturn(Map.of("id", 1L));
-        when(marketingShippingService.calculateFreight(10000)).thenReturn(0); // 包邮
+        when(marketingShippingService.calculateFreight(anyList())).thenReturn(0); // 包邮
 
         // 优惠券：满50减20
         MarketingCouponDO coupon = new MarketingCouponDO();

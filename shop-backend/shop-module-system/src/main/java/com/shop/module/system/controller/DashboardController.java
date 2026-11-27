@@ -53,6 +53,15 @@ public class DashboardController {
     }
 
     /**
+     * 待处理订单（待备货 / 备货中 / 待揽收），用于首页备货发货提醒
+     */
+    @RequestMapping("/pending-fulfillment")
+    public CommonResult<List<Map<String, Object>>> pendingFulfillment(
+            @RequestParam(defaultValue = "10") int limit) {
+        return CommonResult.success(dashboardService.getPendingFulfillmentOrders(limit));
+    }
+
+    /**
      * 最近订单列表
      */
     @RequestMapping("/recent-orders")

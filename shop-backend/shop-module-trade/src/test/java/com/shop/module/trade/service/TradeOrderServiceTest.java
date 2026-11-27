@@ -62,6 +62,8 @@ class TradeOrderServiceTest {
     private WechatPayService wechatPayService;
     @Mock
     private MarketingCouponService marketingCouponService;
+    @Mock
+    private OrderNotifyMailService orderNotifyMailService;
     @InjectMocks
     private TradeOrderService tradeOrderService;
 
@@ -110,7 +112,8 @@ class TradeOrderServiceTest {
         when(tradeCartService.getCheckedCartList(1L)).thenReturn(List.of(cart));
         when(memberAddressService.getAddress(1L, 8L)).thenReturn(address);
         when(tradeProductService.getSnapshot(100L, 200L)).thenReturn(snapshot);
-        when(tradeCheckoutService.calculateFreight(2598)).thenReturn(1000);
+        when(tradeCheckoutService.calculateFreight(org.mockito.ArgumentMatchers.<Map<Long, Integer>>any()))
+                .thenReturn(1000);
         when(tradeCheckoutService.calculateDiscount(1L, null, 2598))
                 .thenReturn(new TradeCheckoutService.CheckoutDiscount(0, null, null));
         when(tradeOrderMapper.insert(any())).thenAnswer(invocation -> {
@@ -231,7 +234,8 @@ class TradeOrderServiceTest {
         when(tradeCartService.getCheckedCartList(1L)).thenReturn(List.of(cart));
         when(memberAddressService.getAddress(1L, 8L)).thenReturn(address);
         when(tradeProductService.getSnapshot(100L, 200L)).thenReturn(snapshot);
-        when(tradeCheckoutService.calculateFreight(10000)).thenReturn(1000);
+        when(tradeCheckoutService.calculateFreight(org.mockito.ArgumentMatchers.<Map<Long, Integer>>any()))
+                .thenReturn(1000);
         when(tradeCheckoutService.calculateDiscount(1L, 50L, 10000))
                 .thenReturn(new TradeCheckoutService.CheckoutDiscount(2000, 50L, "coupon"));
         when(tradeOrderMapper.insert(any())).thenAnswer(invocation -> {

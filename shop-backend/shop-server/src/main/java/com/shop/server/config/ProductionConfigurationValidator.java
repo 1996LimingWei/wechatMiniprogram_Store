@@ -96,10 +96,6 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
             requireText("trade.logistics.kuaidi100.key", missing);
         }
         }
-        Integer freeThreshold = environment.getProperty("trade.freight.free-threshold", Integer.class);
-        Integer baseFee = environment.getProperty("trade.freight.base-fee", Integer.class);
-        if (freeThreshold == null || freeThreshold < 0) missing.add("trade.freight.free-threshold 必须大于等于 0");
-        if (baseFee == null || baseFee < 0) missing.add("trade.freight.base-fee 必须大于等于 0");
         List<String> adminPasswords = jdbcTemplate.queryForList(
                 "SELECT password FROM sys_admin_user WHERE status = 1 AND deleted = b'0'", String.class);
         if (adminPasswords.isEmpty()) {

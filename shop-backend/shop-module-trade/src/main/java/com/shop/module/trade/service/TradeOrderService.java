@@ -51,6 +51,7 @@ public class TradeOrderService {
     private final PayOrderMapper payOrderMapper;
     private final WechatPayService wechatPayService;
     private final MarketingCouponService marketingCouponService;
+    private final OrderNotifyMailService orderNotifyMailService;
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> submitOrder(Long userId, Long addressId, String requestId) {
@@ -76,6 +77,7 @@ public class TradeOrderService {
 
         List<OrderLine> orderLines = new ArrayList<>(checkedList.size());
         int goodsTotalPrice = 0;
+        Map<Long, Integer> spuAmounts = new LinkedHashMap<>();
         for (TradeCartDO cart : checkedList) {
             if (cart.getCount() == null || cart.getCount() < 1 || cart.getCount() > 99) {
                 throw new ServerException(400, "商品数量必须在 1 到 99 之间");
@@ -88,9 +90,11 @@ public class TradeOrderService {
             }
             goodsTotalPrice = Math.addExact(goodsTotalPrice,
                     Math.multiplyExact(snapshot.getPrice(), cart.getCount()));
+            spuAmounts.merge(snapshot.getSpuId(),
+                    Math.multiplyExact(snapshot.getPrice(), cart.getCount()), Integer::sum);
             orderLines.add(new OrderLine(cart, snapshot));
         }
-        int freightPrice = tradeCheckoutService.calculateFreight(goodsTotalPrice);
+        int freightPrice = tradeCheckoutService.calculateFreight(spuAmounts);
         TradeCheckoutService.CheckoutDiscount discount = tradeCheckoutService.calculateDiscount(userId, couponId, goodsTotalPrice);
         int couponPrice = discount.discountAmount();
         int actualPrice = Math.max(0, Math.subtractExact(Math.addExact(goodsTotalPrice, freightPrice), couponPrice));
@@ -256,10 +260,13 @@ public class TradeOrderService {
                 .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.UNPAID)
                 .set(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
                 .set(TradeOrderDO::getStatus, 1)
+                .set(TradeOrderDO::getFulfillmentStatus, TradeOrderFulfillmentService.PENDING)
+                .set(TradeOrderDO::getFulfillmentUpdateTime, LocalDateTime.now())
                 .set(TradeOrderDO::getPayTime, LocalDateTime.now()));
         if (updated == 1) {
             order.setStatus(1);
             order.setPayStatus(TradeOrderPayStatus.PAID);
+            order.setFulfillmentStatus(TradeOrderFulfillmentService.PENDING);
             for (TradeOrderItemDO item : getOrderItems(orderId)) {
                 tradeProductService.adjustSales(item.getSpuId(), item.getCount());
             }
@@ -267,6 +274,8 @@ public class TradeOrderService {
                     "PAY_SUCCESS", 0, 1, 0, 1, "支付成功");
             log.info("订单支付成功 orderSn={} orderId={} userId={} operatorType={} operatorId={}",
                     order.getOrderSn(), orderId, userId, operatorType, operatorId);
+            // 支付成功后立即异步提醒商家备货发货（未开启通知时内部直接跳过）
+            orderNotifyMailService.notifyOrderPaid(orderId);
             return;
         }
         TradeOrderDO latest = tradeOrderMapper.selectById(orderId);
@@ -340,6 +349,8 @@ public class TradeOrderService {
         item.put("address", order.getAddress());
         item.put("status", order.getStatus());
         item.put("payStatus", order.getPayStatus());
+        item.put("fulfillmentStatus", order.getFulfillmentStatus());
+        item.put("fulfillmentStatusText", TradeOrderFulfillmentService.statusText(order.getFulfillmentStatus()));
         item.put("orderPrice", TradeMoneyUtils.formatYuan(order.getOrderPrice()));
         item.put("payTime", order.getPayTime() == null ? "" : order.getPayTime().format(TIME_FORMATTER));
         item.put("expireTime", order.getExpireTime() == null ? "" : order.getExpireTime().format(TIME_FORMATTER));
@@ -483,6 +494,14 @@ public class TradeOrderService {
             return "已退款";
         }
         Integer status = order.getStatus();
+        // 已支付订单优先展示履约进度，客户能看到「备货中」「待揽收」等真实进展
+        if (order.getPayStatus() != null && order.getPayStatus() == TradeOrderPayStatus.PAID
+                && status != null && (status == 1 || status == 2 || status == 3)) {
+            String fulfillment = TradeOrderFulfillmentService.statusText(order.getFulfillmentStatus());
+            if (!fulfillment.isEmpty()) {
+                return fulfillment;
+            }
+        }
         return switch (status == null ? 0 : status) {
             case 0 -> "待付款";
             case 1 -> "待发货";

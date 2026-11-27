@@ -81,7 +81,9 @@ public class TradeLogisticsService {
                 .eq(TradeOrderDO::getId, order.getId())
                 .eq(TradeOrderDO::getStatus, 1)
                 .eq(TradeOrderDO::getPayStatus, TradeOrderPayStatus.PAID)
-                .set(TradeOrderDO::getStatus, 2));
+                .set(TradeOrderDO::getStatus, 2)
+                .set(TradeOrderDO::getFulfillmentStatus, TradeOrderFulfillmentService.SHIPPED)
+                .set(TradeOrderDO::getFulfillmentUpdateTime, LocalDateTime.now()));
         if (orderUpdated != 1) {
             throw new ServerException(409, "订单状态已变更，不能重复发货");
         }

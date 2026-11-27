@@ -1643,6 +1643,16 @@
 
 > 2026-11-27 店铺 Logo 本地联调放行：dev 素材地址为 http://127.0.0.1:8085/...，而 ShopDisplayController 原写死 https 正则，导致本地「选素材 → 保存 Logo」必然 400。改为 @Value("${shop.display.logo-url-pattern:...}") 可配置，默认仍只接受 https（prod/staging 不配置即走默认值）；application-dev.yml 放行 127.0.0.1 与 localhost 的 http，外链 http 仍被 400 拦截。本地实测：选素材保存成功、shop-config 回读一致、小程序首页与「我的」页头像及授权登录页三处同步更新。另将 shop-backend/.runtime-uploads/（dev 素材落盘目录）加入 .gitignore。
 
+> 2026-11-27 三项运营能力开发：下单通知、订单履约状态、运费可配置。新增迁移 V20261127_01（trade_order 加 fulfillment_status 与物流公司/单号/备注）、V20261127_02（shop_notify_config、shop_order_notify_log）、V20261127_03（product_spu 加 freight_base_fee/freight_free_threshold）、V20261127_04（默认包邮规则 199 元门槛/10 元运费），均已在本机 dev 库执行。
+
+> 2026-11-27 下单通知：trade 模块内新增 ShopNotifyConfigService（配置读写、授权码掩码、超管校验）与 OrderNotifyMailService（@Async 异步、JavaMailSenderImpl 运行时按库内配置构造 465 SSL / 587 STARTTLS、发送结果写 shop_order_notify_log、失败不影响支付），TradeOrderService.markPaid 成功后触发；后台接口 /admin-api/trade/notify-config 的 GET/save/test 与 /logs，SMTP 参数全部存库，不读取 .env。管理后台新增「系统设置 → 通知设置」页；数据看板新增红色提醒卡片（待备货/待揽收数量 + 待处理订单表格）与 /admin-api/dashboard/pending-fulfillment 接口。本地实测：未配置 SMTP 时开启总开关返回 400、非法邮箱返回 400、保存后 GET 回显 ******、通知日志分页正常。
+
+> 2026-11-27 履约状态：新增 TradeOrderFulfillmentService 状态机（0 待备货/1 备货中/2 待揽收/3 已发货/4 已签收/5 物流异常），标已发货强制要求物流公司与单号（[A-Za-z0-9-]{6,32}），发货联动 status=2、签收联动 status=3 并写完成时间；订单列表与详情返回 fulfillmentStatus/Text，orderStatusText 对已支付未完成订单优先展示履约文案（小程序无需改造展示）。后台订单页新增「履约进度」列、状态弹窗与详情内变更入口。本地实测：无单号发货 400、0→1→2→3→4 全链路成功、已签收退回备货中被 400 拦截。
+
+> 2026-11-27 运费可配置：全局运费仍由「营销管理 → 包邮规则」维护（marketing_shipping_rule，单位分）；product_spu 新增单品运费与单品包邮门槛，NULL 表示跟随全局，多商品下单按单品分别计算后取最大值，运费计算不再读取 .env。后台商品表单新增「运费设置」卡片（元↔分转换、留空跟随全局），saveProduct 增加 syncFreightRule 参数以便显式清空为 NULL，导入链路沿用 4 参重载不受影响，并补充 0~1000000 元范围校验。本地实测：商品 1 保存运费 8 元/门槛 88 元后详情与库内一致，清空后两列恢复 NULL。
+
+> 2026-11-27 本机 dev 库缺失 admin_operation_snapshot（迁移 V20260829_02），导致商品保存虽落库但接口返回 500「系统异常」。已按仓库迁移文件补建该表，保存接口恢复 code=0；该表为商品/内容操作快照与回退功能依赖，正式库不受影响。后端 mvn install 全绿（trade 103 项测试），管理后台 vue-tsc 无错误。
+
 ```
 开始新对话时：
 1. 读取本文件 → 了解当前在做什么

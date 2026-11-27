@@ -200,6 +200,7 @@ class TradeOrderListAssemblerTest {
     private static final Set<String> EXPECTED_LIST_KEYS = Set.of(
             "id", "orderSn", "userId", "orderStatusText", "actualPrice", "goodsPrice", "freightPrice",
             "couponPrice", "consignee", "mobile", "fullRegion", "address", "status", "payStatus",
+            "fulfillmentStatus", "fulfillmentStatusText",
             "orderPrice", "payTime", "expireTime", "closeTime", "closeReason", "handleOption",
             "addTime", "goodsList", "logistics", "afterSale");
 }

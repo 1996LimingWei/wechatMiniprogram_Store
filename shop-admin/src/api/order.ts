@@ -55,6 +55,21 @@ export const shipOrder = (data: {
   });
 };
 
+/** 管理员更新履约状态：0=待备货 1=备货中 2=待揽收 3=已发货 4=已签收 5=物流异常 */
+export const updateFulfillmentStatus = (data: {
+  orderId: number;
+  status: number;
+  logisticsCompany?: string;
+  logisticsCode?: string;
+  logisticsNo?: string;
+  remark?: string;
+}) => {
+  return http.post<Record<string, unknown>, typeof data>(
+    "/admin-api/trade/order/fulfillment-status",
+    { data }
+  );
+};
+
 export const downloadBatchShipTemplate = () => {
   return http.get<Blob, undefined>("/admin-api/trade/order/batch-ship/template", {
     responseType: "blob"

@@ -1,23 +1,28 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { useRouter } from "vue-router";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import {
   getDashboardSummary,
   getOrderTrend,
   getOrderStatusDistribution,
   getTopProducts,
-  getRecentOrders
+  getRecentOrders,
+  getPendingFulfillment
 } from "@/api/dashboard";
 import type {
   DashboardSummary,
   OrderTrend,
   OrderStatusItem,
   TopProduct,
-  DashboardRecentOrder
+  DashboardRecentOrder,
+  DashboardPendingOrder
 } from "@/api/types";
 import echarts from "@/plugins/echarts";
 
 defineOptions({ name: "Dashboard" });
+
+const router = useRouter();
 
 /* ========== 数据 ========== */
 const loading = ref(true);
@@ -27,9 +32,22 @@ const summary = ref<DashboardSummary>({
   todayRefundAmount: 0,
   todaySalesAmount: 0,
   productCount: 0,
-  memberCount: 0
+  memberCount: 0,
+  pendingFulfillmentCount: 0,
+  pendingPrepareCount: 0,
+  pendingShipCount: 0
 });
 const recentOrders = ref<DashboardRecentOrder[]>([]);
+const pendingOrders = ref<DashboardPendingOrder[]>([]);
+
+const fulfillmentStatusMap: Record<number, { label: string; type: TagType }> = {
+  0: { label: "待备货", type: "danger" },
+  1: { label: "备货中", type: "warning" },
+  2: { label: "待揽收", type: "primary" },
+  3: { label: "已发货", type: "success" },
+  4: { label: "已签收", type: "success" },
+  5: { label: "物流异常", type: "danger" }
+};
 
 /* 趋势天数切换 */
 const trendDays = ref(7);
@@ -113,16 +131,18 @@ const statCards = [
 async function fetchAll() {
   loading.value = true;
   try {
-    const [sumData, trendData, statusData, topData, orderData] =
+    const [sumData, trendData, statusData, topData, orderData, pendingData] =
       await Promise.all([
         getDashboardSummary(),
         getOrderTrend(trendDays.value),
         getOrderStatusDistribution(),
         getTopProducts(10),
-        getRecentOrders()
+        getRecentOrders(),
+        getPendingFulfillment(8)
       ]);
     summary.value = sumData as DashboardSummary;
     recentOrders.value = (orderData as DashboardRecentOrder[]) ?? [];
+    pendingOrders.value = (pendingData as DashboardPendingOrder[]) ?? [];
 
     await nextTick();
     renderTrendChart(trendData as OrderTrend[]);
@@ -331,6 +351,18 @@ function getStatusType(s: number): TagType {
   return orderStatusMap[s]?.type ?? "info";
 }
 
+function getFulfillmentLabel(s?: number) {
+  return fulfillmentStatusMap[s ?? 0]?.label ?? "待备货";
+}
+
+function getFulfillmentType(s?: number): TagType {
+  return fulfillmentStatusMap[s ?? 0]?.type ?? "info";
+}
+
+function goOrderList() {
+  router.push("/trade/order");
+}
+
 /* ========== 生命周期 ========== */
 onMounted(() => {
   fetchAll();
@@ -346,6 +378,55 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="dashboard" v-loading="loading">
+    <!-- 备货发货提醒：有未发货订单时置顶高亮 -->
+    <el-card
+      v-if="(summary.pendingFulfillmentCount ?? 0) > 0"
+      shadow="never"
+      class="notify-card"
+    >
+      <div class="notify-inner">
+        <div class="notify-main">
+          <div class="notify-count">{{ summary.pendingFulfillmentCount }}</div>
+          <div class="notify-text">
+            <strong>笔订单待备货发货，请尽快处理</strong>
+            <span>
+              待备货 {{ summary.pendingPrepareCount ?? 0 }} 笔 · 待揽收
+              {{ summary.pendingShipCount ?? 0 }} 笔
+            </span>
+          </div>
+        </div>
+        <div class="notify-actions">
+          <el-button type="primary" plain @click="goOrderList">立即处理</el-button>
+        </div>
+      </div>
+      <el-table
+        v-if="pendingOrders.length"
+        native-scrollbar
+        :data="pendingOrders"
+        size="small"
+        class="notify-table"
+      >
+        <el-table-column prop="order_sn" label="订单号" min-width="180" />
+        <el-table-column prop="consignee" label="收货人" width="100" />
+        <el-table-column label="商品数" width="80" align="center">
+          <template #default="{ row }">{{ row.item_count }}</template>
+        </el-table-column>
+        <el-table-column label="实付金额" width="120" align="right">
+          <template #default="{ row }">{{ formatPrice(row.actual_price) }}</template>
+        </el-table-column>
+        <el-table-column label="履约状态" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getFulfillmentType(row.fulfillment_status)" size="small">
+              {{ getFulfillmentLabel(row.fulfillment_status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="支付时间" min-width="170">
+          <template #default="{ row }">{{ row.pay_time }}</template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <!-- 核心指标卡片 -->
     <el-row :gutter="16" class="stat-row">
       <el-col
@@ -498,6 +579,52 @@ onBeforeUnmount(() => {
 <style scoped>
 .dashboard {
   padding: 16px;
+}
+
+.notify-card {
+  margin-bottom: 16px;
+  border: 1px solid #fbc4c4;
+  background: linear-gradient(135deg, #fef0f0 0%, #fff6f0 100%);
+}
+
+.notify-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.notify-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.notify-count {
+  font-size: 34px;
+  font-weight: 700;
+  color: #f56c6c;
+  line-height: 1;
+}
+
+.notify-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notify-text strong {
+  font-size: 16px;
+  color: #303133;
+}
+
+.notify-text span {
+  font-size: 13px;
+  color: #909399;
+}
+
+.notify-table {
+  margin-top: 14px;
 }
 
 .stat-row {

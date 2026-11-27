@@ -1,5 +1,6 @@
 package com.shop.module.trade.service;
 
+import com.shop.common.exception.ServerException;
 import com.shop.module.trade.dal.dataobject.MarketingShippingRuleDO;
 import com.shop.module.trade.dal.mysql.MarketingShippingRuleMapper;
 import org.junit.jupiter.api.BeforeAll;
@@ -8,10 +9,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,86 +30,100 @@ class MarketingShippingServiceTest {
 
     @Mock
     private MarketingShippingRuleMapper shippingRuleMapper;
+    @Mock
+    private JdbcTemplate jdbcTemplate;
     @InjectMocks
     private MarketingShippingService marketingShippingService;
 
     @Test
     void shouldChargeFreightWhenBelowThreshold() {
-        MarketingShippingRuleDO rule = createRule(19900, 1000);
-        when(shippingRuleMapper.selectOne(any())).thenReturn(rule);
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
 
-        int freight = marketingShippingService.calculateFreight(10000);
-
-        assertEquals(1000, freight);
+        assertEquals(1000, marketingShippingService.calculateFreight(10000));
     }
 
     @Test
     void shouldFreeShippingWhenAboveThreshold() {
-        MarketingShippingRuleDO rule = createRule(19900, 1000);
-        when(shippingRuleMapper.selectOne(any())).thenReturn(rule);
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
 
-        int freight = marketingShippingService.calculateFreight(20000);
-
-        assertEquals(0, freight);
+        assertEquals(0, marketingShippingService.calculateFreight(20000));
     }
 
     @Test
     void shouldFreeShippingWhenExactThreshold() {
-        MarketingShippingRuleDO rule = createRule(19900, 1000);
-        when(shippingRuleMapper.selectOne(any())).thenReturn(rule);
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
 
-        int freight = marketingShippingService.calculateFreight(19900);
-
-        assertEquals(0, freight);
-    }
-
-    @Test
-    void shouldUseFallbackWhenNoRuleInDatabase() {
-        when(shippingRuleMapper.selectOne(any())).thenReturn(null);
-        ReflectionTestUtils.setField(marketingShippingService, "fallbackFreeThreshold", 19900);
-        ReflectionTestUtils.setField(marketingShippingService, "fallbackBaseFee", 1000);
-
-        int freight = marketingShippingService.calculateFreight(10000);
-
-        assertEquals(1000, freight);
-    }
-
-    @Test
-    void shouldFreeShippingByFallbackWhenAboveThreshold() {
-        when(shippingRuleMapper.selectOne(any())).thenReturn(null);
-        ReflectionTestUtils.setField(marketingShippingService, "fallbackFreeThreshold", 19900);
-        ReflectionTestUtils.setField(marketingShippingService, "fallbackBaseFee", 1000);
-
-        int freight = marketingShippingService.calculateFreight(20000);
-
-        assertEquals(0, freight);
+        assertEquals(0, marketingShippingService.calculateFreight(19900));
     }
 
     @Test
     void shouldReturnZeroFreightWhenGoodsPriceIsZero() {
-        MarketingShippingRuleDO rule = createRule(19900, 1000);
-        when(shippingRuleMapper.selectOne(any())).thenReturn(rule);
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
 
-        int freight = marketingShippingService.calculateFreight(0);
-
-        assertEquals(0, freight);
+        assertEquals(0, marketingShippingService.calculateFreight(0));
     }
 
     @Test
-    void shouldUseFallbackWhenRuleHasInvalidConfig() {
-        MarketingShippingRuleDO rule = createRule(-1, -1);
-        when(shippingRuleMapper.selectOne(any())).thenReturn(rule);
-        ReflectionTestUtils.setField(marketingShippingService, "fallbackFreeThreshold", 19900);
-        ReflectionTestUtils.setField(marketingShippingService, "fallbackBaseFee", 1000);
+    void shouldFailFastWhenNoRuleConfigured() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(null);
 
-        int freight = marketingShippingService.calculateFreight(10000);
-
-        assertEquals(1000, freight);
+        ServerException error = assertThrows(ServerException.class,
+                () -> marketingShippingService.calculateFreight(10000));
+        assertEquals("运费规则未配置，请先在后台「营销 → 包邮规则」设置", error.getMessage());
     }
 
     @Test
-    void cartThresholdMatchesActiveRuleInsteadOfFallback() {
+    void shouldFailFastWhenRuleIsInvalid() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(-1, -1));
+
+        assertThrows(ServerException.class, () -> marketingShippingService.calculateFreight(10000));
+    }
+
+    /** 一单多商品时运费取各商品候选值的最大者，不叠加。 */
+    @Test
+    void multiGoodsOrderChargesFreightOnlyOnce() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+
+        List<MarketingShippingService.FreightLine> lines = List.of(
+                new MarketingShippingService.FreightLine(101L, 5000),
+                new MarketingShippingService.FreightLine(102L, 6000));
+
+        assertEquals(1000, marketingShippingService.calculateFreight(lines));
+    }
+
+    /** 其中一个商品达到包邮门槛时，整单仍按另一个商品的运费收取。 */
+    @Test
+    void oneGoodsReachingThresholdDoesNotWaiveOthers() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+
+        List<MarketingShippingService.FreightLine> lines = List.of(
+                new MarketingShippingService.FreightLine(101L, 25000),
+                new MarketingShippingService.FreightLine(102L, 6000));
+
+        assertEquals(1000, marketingShippingService.calculateFreight(lines));
+    }
+
+    @Test
+    void allGoodsReachingThresholdMeansFreeShipping() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 1000));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+
+        List<MarketingShippingService.FreightLine> lines = List.of(
+                new MarketingShippingService.FreightLine(101L, 25000),
+                new MarketingShippingService.FreightLine(102L, 21000));
+
+        assertEquals(0, marketingShippingService.calculateFreight(lines));
+    }
+
+    @Test
+    void cartThresholdMatchesActiveRule() {
         when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(9900, 1000));
+
         assertEquals(9900, marketingShippingService.getFreeThreshold());
         assertEquals(0, marketingShippingService.calculateFreight(9900));
     }
@@ -111,8 +131,16 @@ class MarketingShippingServiceTest {
     @Test
     void zeroBaseFeeDoesNotRequireMorePurchases() {
         when(shippingRuleMapper.selectOne(any())).thenReturn(createRule(19900, 0));
+
         assertEquals(0, marketingShippingService.getFreeThreshold());
         assertEquals(0, marketingShippingService.calculateFreight(100));
+    }
+
+    @Test
+    void cartThresholdFallsBackToZeroWhenNoRule() {
+        when(shippingRuleMapper.selectOne(any())).thenReturn(null);
+
+        assertEquals(0, marketingShippingService.getFreeThreshold());
     }
 
     private MarketingShippingRuleDO createRule(int freeThreshold, int baseFee) {

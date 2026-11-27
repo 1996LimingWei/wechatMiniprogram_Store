@@ -28,6 +28,10 @@ export interface ProductSpu {
   salesCount?: number;
   sort?: number;
   status?: number;
+  /** 单品基础运费（分），为空表示跟随全局规则 */
+  freightBaseFee?: number | null;
+  /** 单品包邮门槛（分），为空表示跟随全局规则 */
+  freightFreeThreshold?: number | null;
   createTime?: string;
   updateTime?: string;
 }
@@ -84,6 +88,9 @@ export interface TradeOrder {
   status: number;
   payStatus: number;
   orderStatusText: string;
+  /** 履约状态 0=待备货 1=备货中 2=待揽收 3=已发货 4=已签收 5=物流异常 */
+  fulfillmentStatus?: number;
+  fulfillmentStatusText?: string;
   goodsPrice: string;
   freightPrice: string;
   couponPrice: string;
@@ -366,6 +373,24 @@ export interface DashboardSummary {
   todaySalesAmount: number;
   productCount: number;
   memberCount: number;
+  /** 待处理（待备货 + 备货中 + 待揽收）订单数 */
+  pendingFulfillmentCount?: number;
+  /** 待备货订单数 */
+  pendingPrepareCount?: number;
+  /** 待揽收订单数 */
+  pendingShipCount?: number;
+}
+
+/** 数据看板 - 待处理订单 */
+export interface DashboardPendingOrder {
+  id: number;
+  order_sn: string;
+  actual_price: number;
+  consignee?: string;
+  mobile?: string;
+  pay_time?: string;
+  fulfillment_status: number;
+  item_count: number;
 }
 
 /** 数据看板 - 订单趋势 */

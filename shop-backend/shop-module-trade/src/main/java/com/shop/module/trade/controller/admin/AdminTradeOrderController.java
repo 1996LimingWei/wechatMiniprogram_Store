@@ -3,6 +3,7 @@ package com.shop.module.trade.controller.admin;
 import com.shop.common.pojo.CommonResult;
 import com.shop.common.pojo.PageResult;
 import com.shop.module.trade.service.TradeLogisticsService;
+import com.shop.module.trade.service.TradeOrderFulfillmentService;
 import com.shop.module.trade.service.TradeOrderOperationService;
 import com.shop.module.trade.service.TradeOrderQueryService;
 import com.shop.module.trade.service.TradeOrderService;
@@ -35,6 +36,7 @@ public class AdminTradeOrderController {
     private final TradeOrderQueryService tradeOrderQueryService;
     private final TradeLogisticsService tradeLogisticsService;
     private final TradeOrderOperationService tradeOrderOperationService;
+    private final TradeOrderFulfillmentService tradeOrderFulfillmentService;
 
     @GetMapping("/list")
     public CommonResult<PageResult<Map<String, Object>>> list(@RequestParam Map<String, Object> params,
@@ -61,6 +63,24 @@ public class AdminTradeOrderController {
         Map<String, Object> request = TradeRequestUtils.parse(rawBody, params);
         Long orderId = TradeRequestUtils.getLong(request, "orderId", 0L);
         return CommonResult.success(tradeLogisticsService.adminShip(TradeSecurityUtils.getRequiredUserId(), orderId, request));
+    }
+
+    /**
+     * 履约状态流转：0=待备货 1=备货中 2=待揽收 3=已发货 4=已签收 5=物流异常。
+     * 标到已发货时必须带 logisticsCompany 与 logisticsNo。
+     */
+    @PostMapping("/fulfillment-status")
+    public CommonResult<Map<String, Object>> updateFulfillmentStatus(@RequestBody Map<String, Object> body) {
+        Long orderId = TradeRequestUtils.getLong(body, "orderId", 0L);
+        Integer status = TradeRequestUtils.getInt(body, "status", null);
+        return CommonResult.success(tradeOrderFulfillmentService.updateStatus(
+                TradeSecurityUtils.getRequiredUserId(),
+                orderId,
+                status,
+                TradeRequestUtils.getString(body, "logisticsCompany", null),
+                TradeRequestUtils.getString(body, "logisticsNo", null),
+                TradeRequestUtils.getString(body, "logisticsCode", null),
+                TradeRequestUtils.getString(body, "remark", null)));
     }
 
     @GetMapping("/export")

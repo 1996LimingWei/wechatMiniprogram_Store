@@ -4,7 +4,8 @@ import type {
   OrderTrend,
   OrderStatusItem,
   TopProduct,
-  DashboardRecentOrder
+  DashboardRecentOrder,
+  DashboardPendingOrder
 } from "./types";
 
 /** 核心指标汇总 */
@@ -33,6 +34,14 @@ export const getOrderStatusDistribution = () => {
 export const getTopProducts = (limit: number = 10) => {
   return http.get<TopProduct[], { limit: number }>(
     "/admin-api/dashboard/top-products",
+    { params: { limit } }
+  );
+};
+
+/** 待处理订单（待备货 / 备货中 / 待揽收） */
+export const getPendingFulfillment = (limit: number = 10) => {
+  return http.get<DashboardPendingOrder[], { limit: number }>(
+    "/admin-api/dashboard/pending-fulfillment",
     { params: { limit } }
   );
 };

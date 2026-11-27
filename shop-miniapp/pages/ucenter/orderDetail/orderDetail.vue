@@ -291,8 +291,12 @@
 			},
 			applyRefund() {
 				this.refundItems = this.orderGoods.map(item => ({ orderItemId: item.id, count: item.number }));
-				this.refundReason = this.orderInfo.orderStatusText === '待发货' ? '不想要了' : '商品问题退货';
+				this.refundReason = this.isShipped() ? '商品问题退货' : '不想要了';
 				this.showRefundForm = true;
+			},
+			isShipped() {
+				const status = this.orderInfo && this.orderInfo.fulfillmentStatus;
+				return status === 3 || status === 4 || status === 5;
 			},
 			isRefundSelected(orderItemId) {
 				return this.refundItems.some(item => item.orderItemId === orderItemId);

@@ -44,7 +44,7 @@ public class AdminProductController {
         Long spuId = request == null || request.getSpu() == null ? null : request.getSpu().getId();
         var before = operationSnapshotService.captureProducts(spuId == null ? List.of() : List.of(spuId));
         Long savedId = productAdminService.saveProduct(
-                request.getSpu(), request.getSkus(), adminId, request.getStockAdjustReason());
+                request.getSpu(), request.getSkus(), adminId, request.getStockAdjustReason(), true);
         var after = operationSnapshotService.captureProducts(List.of(savedId));
         operationSnapshotService.recordProductOperation(spuId == null ? "新建商品" : "保存商品", adminId, before, after);
         return CommonResult.success(savedId);
