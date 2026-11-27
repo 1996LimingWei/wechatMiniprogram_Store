@@ -1629,7 +1629,13 @@
 
 > 2026-11-25 运行监控订单追踪修复已推送至远端 main（666bd28），远端分支提交已核对。本轮人工验收 Word 与过程记录留在本地。
 
-> 2026-11-25 人工验收归档：本地管理后台已验收至第 37 步，文档包含 48 张截图，本次随验收过程记录一并提交。第 19、23 步按用户要求跳过补验，真实微信和小程序实机留待联验。
+> 2026-11-25 人工验收归档：本地管理后台已验收至第 37 步，文档包含 48 张截图，本 次随验收过程记录一并提交。第 19、23 步按用户要求跳过补验，真实微信和小程序实机留待联验。
+
+> 2026-11-27 生产环境代码更新至 78cc50e。仓库内 Preparation 需求文档与 PDF 截图占 230MB，服务器 git 拉取长期无进展，改用本机 git archive 排除该目录的 30MB 快照上传覆盖 /www/shop（覆盖前备份 .env.prod 与 deploy/secrets）。核对 sql/migrations 最新迁移与库中 schema_migration_history 最大版本同为 20261118_01，无需补迁移。后端在服务器 --no-cache 重建成功，编译 80 个源文件、峰值内存 1.2G、耗时约 80 秒。
+
+> 2026-11-27 管理后台构建的两套结论：在 2 核 1.9G 服务器上执行 docker compose build admin 会因 Vite 打包峰值超过 2G 触发 swap thrashing，表现为端口可连但 sshd 无 banner、宝塔面板无响应，只能控制台重启（两次实测均复现）。改为本机 Mac 执行 pnpm build（12.9 秒、3.3MB），上传 dist 后在服务器仅做 COPY 组成 nginx 镜像（0.9 秒），up -d --no-build 后五容器全部 Healthy，/readyz 返回 UP、admin 首页 200、/app-api/goods/count 返回 6，后台登录与商品改价保存均通过。后续前端更新固定走本机构建，服务器禁止 build admin。
+
+> 2026-11-27 管理后台构建链路改造：新增 shop-admin/Dockerfile.prebuilt（只 COPY dist，镜像内不含 Node），docker-compose.prod.yml 的 admin 服务改指该文件；.dockerignore 不再忽略 dist 以使 COPY 生效；构建型 Dockerfile 顶部加注释禁用低内存服务器。本地实测 build 耗时 0.2 秒，镜像内 index.html 入口 JS 为 index-DbhZ_PPz.js，与本机 dist 一致。改造后服务器上 build admin 成为安全操作（dist 缺失时 COPY 立即失败，不会进入打包），操作教程 5.3.2 同步简化为：本机 build → 解压到 shop-admin/dist → build admin → up -d --no-build admin。
 
 ```
 开始新对话时：

@@ -89,7 +89,9 @@ services:
     image: ${SHOP_ADMIN_IMAGE:-shanpu/admin:local}
     build:
       context: ./shop-admin
-      dockerfile: Dockerfile
+      # 生产机内存小，禁止在服务器上跑 Vite 打包（会 thrashing 假死）。
+      # 本文件只 COPY 已构建好的 shop-admin/dist，由开发机 pnpm build 产出。
+      dockerfile: Dockerfile.prebuilt
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:8085
