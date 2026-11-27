@@ -1637,6 +1637,12 @@
 
 > 2026-11-27 管理后台构建链路改造：新增 shop-admin/Dockerfile.prebuilt（只 COPY dist，镜像内不含 Node），docker-compose.prod.yml 的 admin 服务改指该文件；.dockerignore 不再忽略 dist 以使 COPY 生效；构建型 Dockerfile 顶部加注释禁用低内存服务器。本地实测 build 耗时 0.2 秒，镜像内 index.html 入口 JS 为 index-DbhZ_PPz.js，与本机 dist 一致。改造后服务器上 build admin 成为安全操作（dist 缺失时 COPY 立即失败，不会进入打包），操作教程 5.3.2 同步简化为：本机 build → 解压到 shop-admin/dist → build admin → up -d --no-build admin。
 
+> 2026-11-27 排查「服务器后台看不到订单管理、同事本地能看到」：未改代码。菜单权限来自登录接口返回的 permissions（经 filterNoPermissionTree 过滤路由），存于浏览器 localStorage；本地实登 admin 返回 44 条权限、含 trade:manage 与 trade:order-read，SUPER_ADMIN 在库中持 25 个 trade 权限。用户退出后台重新登录后菜单恢复，确认根因为换包后沿用旧登录态。已在操作教程 5.5 补一条：更换前端包后所有人必须重新登录。
+
+> 2026-11-27 小程序 Logo 改为后台可配：新增 utils/image.js 的 shopLogo()/bindShopStore()，由 main.js 注入 store 并挂到 Vue.prototype.$shopLogo；改造 6 处写死 /static/images/logo.png——首页导航、授权登录页、会员中心头像、个人资料头像、“我的”页头像、游客态头像；图片加载失败兜底通过 module.exports 的 FALLBACK_IMAGE getter 动态返回店铺 Logo，10+ 个页面无需逐个改造。后台保存仍限定素材库地址（非素材库 URL 返回 400）。本地实测：登录取 token → POST /admin-api/system/shop 保存 → GET /app-api/index/shop-config 回读到 logoUrl；生产接口已返回 displayName=陕铺、logoUrl 为空（走本地兜底）。名称方面代码层三处（manifest.name、pages.json 全局标题、project.config.json projectname）已为“陕铺”，微信内显示的名称与图标仍需微信公众平台修改，tabBar 图标只能本地图片。
+
+> 2026-11-27 店铺 Logo 本地联调放行：dev 素材地址为 http://127.0.0.1:8085/...，而 ShopDisplayController 原写死 https 正则，导致本地「选素材 → 保存 Logo」必然 400。改为 @Value("${shop.display.logo-url-pattern:...}") 可配置，默认仍只接受 https（prod/staging 不配置即走默认值）；application-dev.yml 放行 127.0.0.1 与 localhost 的 http，外链 http 仍被 400 拦截。本地实测：选素材保存成功、shop-config 回读一致、小程序首页与「我的」页头像及授权登录页三处同步更新。另将 shop-backend/.runtime-uploads/（dev 素材落盘目录）加入 .gitignore。
+
 ```
 开始新对话时：
 1. 读取本文件 → 了解当前在做什么

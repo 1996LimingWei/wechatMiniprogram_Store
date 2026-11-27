@@ -4,7 +4,7 @@
 		<view class="top-header" :style="{paddingTop: statusBarHeight + 'px'}">
 			<view class="nav-bar">
 				<view class="nav-brand">
-					<image class="nav-logo" :src="$store.state.shop.logoUrl || '/static/images/logo.png'" mode="aspectFit"></image>
+					<image class="nav-logo" :src="$shopLogo()" mode="aspectFit"></image>
 					<view class="nav-title">
 						<text class="brand-name">{{ $store.state.shop.displayName }}</text>
 						<text class="brand-slogan">安心选购，便捷到家</text>

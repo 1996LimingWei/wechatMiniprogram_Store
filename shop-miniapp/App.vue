@@ -6,7 +6,7 @@
 			userInfo: {
         nickname: 'Hi,游客',
 				userName: '点击去登录',
-				avatar: '/static/images/logo.png'
+				avatar: '' // 游客态头像由 $shopLogo() 兜底，跟随后台店铺配置
 			},
 			token: ''
 		},

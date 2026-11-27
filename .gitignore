@@ -24,6 +24,9 @@ unpackage/
 .DS_Store
 *.local
 
+# 后端本地运行时素材（dev profile 的 material.storage.root）
+shop-backend/.runtime-uploads/
+
 # Environment
 .env
 .env.local

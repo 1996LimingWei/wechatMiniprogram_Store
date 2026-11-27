@@ -2,6 +2,7 @@ import Vue from 'vue'
 import App from './App'
 import store from './store'
 const imageUtil = require('./utils/image.js')
+imageUtil.bindShopStore(store)
 Vue.config.productionTip = false
 // #ifdef H5 
 window.QQmap = null;
@@ -22,8 +23,11 @@ Vue.prototype.$store = store
 Vue.prototype.$imageUrl = function(url) {
 	return imageUtil.normalizeImageUrl(url)
 }
+// 店铺 Logo：由后台「店铺展示设置」控制，未配置时退回本地默认图
+Vue.prototype.$shopLogo = imageUtil.shopLogo
 Vue.prototype.$setImageFallback = function(item, field) {
-	if (item && item[field] !== imageUtil.FALLBACK_IMAGE) this.$set(item, field, imageUtil.FALLBACK_IMAGE)
+	const fallback = imageUtil.shopLogo()
+	if (item && item[field] !== fallback) this.$set(item, field, fallback)
 }
 App.mpType = 'app'
 

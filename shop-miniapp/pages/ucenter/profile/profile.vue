@@ -17,15 +17,13 @@
 </template>
 
 <script>
-const DEFAULT_AVATAR = '/static/images/logo.png';
-
 export default {
 	data() {
 		return { nickname: '', avatar: '', mobile: '' };
 	},
 	computed: {
 		avatarUrl() {
-			return this.avatar || DEFAULT_AVATAR;
+			return this.avatar || this.$shopLogo();
 		},
 		maskedMobile() {
 			if (!this.mobile || this.mobile.length !== 11) return '未绑定';

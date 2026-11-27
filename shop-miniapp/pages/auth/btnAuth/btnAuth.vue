@@ -4,7 +4,7 @@
 		<view class="bg-circle bg-circle--2"></view>
 		<view class="content">
 			<view class="brand-area">
-				<image class="logo" src="/static/images/logo.png" mode="aspectFit"></image>
+				<image class="logo" :src="$shopLogo()" mode="aspectFit"></image>
 				<view class="brand-name">{{ $store.state.shop.displayName }}</view>
 				<view class="brand-slogan">传承经典 · 健康生活</view>
 			</view>

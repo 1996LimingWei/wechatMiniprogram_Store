@@ -170,7 +170,7 @@ export default {
 			return this.memberLevel === 2;
 		},
 		avatarUrl() {
-			return this.avatar || '/static/images/logo.png';
+			return this.avatar || this.$shopLogo();
 		}
 	},
 	methods: {

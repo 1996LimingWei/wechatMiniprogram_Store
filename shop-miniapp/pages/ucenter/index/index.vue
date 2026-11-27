@@ -168,8 +168,6 @@ const util = require('@/utils/util.js');
 const api = require('@/utils/api.js');
 const app = getApp();
 
-const DEFAULT_AVATAR = '/static/images/logo.png';
-
 export default {
 	data() {
 		return {
@@ -186,7 +184,7 @@ export default {
 			return this.userInfo.nickname || '点击登录';
 		},
 		avatarUrl() {
-			return this.userInfo.avatar || DEFAULT_AVATAR;
+			return this.userInfo.avatar || this.$shopLogo();
 		}
 	},
 	methods: {
